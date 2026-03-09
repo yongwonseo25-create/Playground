@@ -1,0 +1,69 @@
+---
+
+## 1) `.codex/config.toml`
+
+```toml
+# Voxera project-scoped Codex configuration
+# Save at: .codex/config.toml
+
+model = "gpt-5.4"
+model_provider = "openai"
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+# Optional: make project root detection explicit
+project_root_markers = [".git"]
+
+# Optional: allow AGENTS.md fallback names if you use alternates later
+project_doc_fallback_filenames = ["AGENTS.md"]
+
+[features]
+web_search = true
+
+[tools]
+web_search = true
+
+# ------------------------------------------------------------
+# MCP SERVERS
+# ------------------------------------------------------------
+
+# Official OpenAI developer docs MCP
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+startup_timeout_ms = 10000
+required = false
+
+# Figma MCP server (stdio)
+[mcp_servers.figma]
+command = "npx"
+args = ["-y", "@figma/mcp-server"]
+env_vars = ["FIGMA_ACCESS_TOKEN"]
+startup_timeout_ms = 20000
+required = false
+
+# Notion MCP wrapper (stdio)
+[mcp_servers.notion]
+command = "node"
+args = [".codex/mcp/notion-server.mjs"]
+env_vars = ["NOTION_TOKEN", "NOTION_SEARCH_PAGE_SIZE"]
+startup_timeout_ms = 15000
+required = false
+
+# Airtable MCP wrapper (stdio)
+[mcp_servers.airtable]
+command = "node"
+args = [".codex/mcp/airtable-server.mjs"]
+env_vars = ["AIRTABLE_TOKEN", "AIRTABLE_BASE_ID"]
+startup_timeout_ms = 15000
+required = false
+
+# Make.com MCP gateway (HTTP)
+[mcp_servers.make]
+url = "https://YOUR_MAKE_MCP_GATEWAY_HOST/mcp"
+http_headers = { "Authorization" = "Bearer ${MAKE_MCP_TOKEN}" }
+startup_timeout_ms = 15000
+required = false
+```
+
+---
