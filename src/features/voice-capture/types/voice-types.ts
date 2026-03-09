@@ -1,19 +1,42 @@
 import type { BackendConnectionState, VoiceSessionContract } from '@/shared/contracts/voice';
 
-export type VoiceCaptureStatus = 'idle' | 'listening' | 'processing' | 'complete' | 'error';
+export const FIXED_VOICE_STATES = [
+  'idle',
+  'permission-requesting',
+  'ready',
+  'recording',
+  'stopping',
+  'uploading',
+  'success',
+  'error'
+] as const;
 
-export interface VoiceCaptureUiState {
-  status: VoiceCaptureStatus;
-  confidence: number;
-  transcriptPreview: string;
+export type VoiceReducerState = (typeof FIXED_VOICE_STATES)[number];
+
+export const MAX_RECORDING_MS = 15000;
+
+export interface VoiceCaptureMachineState {
+  status: VoiceReducerState;
   connection: BackendConnectionState;
+  elapsedMs: number;
+  maxRecordingMs: number;
+  recordingStartedAt: number | null;
+  clientRequestId: string | null;
+  submissionLocked: boolean;
+  transcriptPreview: string;
+  lastError: string | null;
 }
 
-export const initialVoiceCaptureState: VoiceCaptureUiState = {
+export const initialVoiceCaptureState: VoiceCaptureMachineState = {
   status: 'idle',
-  confidence: 0,
+  connection: 'disconnected',
+  elapsedMs: 0,
+  maxRecordingMs: MAX_RECORDING_MS,
+  recordingStartedAt: null,
+  clientRequestId: null,
+  submissionLocked: false,
   transcriptPreview: 'No audio session yet.',
-  connection: 'disconnected'
+  lastError: null
 };
 
 export const voiceSessionPlaceholder: VoiceSessionContract = {
@@ -23,7 +46,7 @@ export const voiceSessionPlaceholder: VoiceSessionContract = {
     auth: 'unknown'
   },
   audio: {
-    inputFormat: 'unknown',
+    inputFormat: 'pcm16',
     sampleRateHz: null,
     channelCount: null
   },
