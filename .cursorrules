@@ -1,0 +1,15 @@
+```md
+Always follow `SKILL.md` at repo root as the primary project constitution for Voxera.
+
+Hard rules:
+1. Never use MediaRecorder; use AudioWorklet + PCM over WSS only.
+2. Preserve the fixed 8-state reducer architecture.
+3. Enforce exact 15-second cutoff and clientRequestId duplicate lock.
+4. Read `docs/sprint-summary.md` before coding and update it after sprint work.
+
+At the end of every coding task, output:
+- files changed
+- commands to run
+- manual QA steps
+- known risks
+```
