@@ -1,0 +1,2 @@
+# 깡통 코덱스 오발동 방지 설정
+allow_implicit_invocation: false
