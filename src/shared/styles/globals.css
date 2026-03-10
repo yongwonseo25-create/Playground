@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -37,4 +37,28 @@ body {
   font-feature-settings: 'ss01' on, 'cv01' on;
   background-image: radial-gradient(circle at 15% -10%, hsl(199 89% 48% / 0.12), transparent 35%),
     radial-gradient(circle at 90% 0%, hsl(36 100% 50% / 0.1), transparent 40%);
+}
+
+.voxera-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.55) rgba(15, 23, 42, 0.4);
+}
+
+.voxera-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.voxera-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.42);
+  border-radius: 9999px;
+}
+
+.voxera-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(103, 232, 249, 0.95) 0%, rgba(34, 211, 238, 0.78) 100%);
+  border: 2px solid rgba(15, 23, 42, 0.52);
+}
+
+.voxera-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(125, 211, 252, 1) 0%, rgba(34, 211, 238, 0.92) 100%);
 }

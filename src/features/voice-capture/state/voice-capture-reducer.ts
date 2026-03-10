@@ -1,5 +1,4 @@
-import {
-  MAX_RECORDING_MS,
+﻿import {
   type VoiceCaptureMachineState,
   type VoiceReducerState,
   initialVoiceCaptureState
@@ -11,7 +10,7 @@ export type VoiceCaptureAction =
   | { type: 'PERMISSION_DENIED'; reason: string }
   | { type: 'START_RECORDING'; startedAt: number }
   | { type: 'TICK'; now: number }
-  | { type: 'STOP_RECORDING' }
+  | { type: 'STOP_RECORDING'; stoppedAt: number }
   | { type: 'AUTO_STOP_AT_LIMIT' }
   | { type: 'LOCK_SUBMISSION'; clientRequestId: string }
   | { type: 'UPLOAD_SUCCESS' }
@@ -45,7 +44,9 @@ export function voiceCaptureReducer(
       return {
         ...state,
         status: ensureValidStatus('error'),
-        lastError: action.reason
+        lastError: action.reason,
+        submissionLocked: false,
+        clientRequestId: null
       };
     }
     case 'START_RECORDING': {
@@ -64,7 +65,7 @@ export function voiceCaptureReducer(
         return state;
       }
 
-      const elapsedMs = Math.min(action.now - state.recordingStartedAt, MAX_RECORDING_MS);
+      const elapsedMs = Math.min(action.now - state.recordingStartedAt, state.maxRecordingMs);
       return {
         ...state,
         elapsedMs
@@ -78,24 +79,26 @@ export function voiceCaptureReducer(
       return {
         ...state,
         status: ensureValidStatus('stopping'),
-        elapsedMs: MAX_RECORDING_MS,
+        elapsedMs: state.maxRecordingMs,
         recordingStartedAt: null
       };
     }
     case 'STOP_RECORDING': {
-      if (state.status !== 'recording' || state.elapsedMs < MAX_RECORDING_MS) {
+      if (state.status !== 'recording' || state.recordingStartedAt === null) {
         return state;
       }
+
+      const elapsedMs = Math.min(action.stoppedAt - state.recordingStartedAt, state.maxRecordingMs);
 
       return {
         ...state,
         status: ensureValidStatus('stopping'),
-        elapsedMs: MAX_RECORDING_MS,
+        elapsedMs: Math.max(0, elapsedMs),
         recordingStartedAt: null
       };
     }
     case 'LOCK_SUBMISSION': {
-      if (state.status !== 'stopping') {
+      if (state.status !== 'stopping' && state.status !== 'error') {
         return state;
       }
 
@@ -103,7 +106,8 @@ export function voiceCaptureReducer(
         ...state,
         status: ensureValidStatus('uploading'),
         clientRequestId: action.clientRequestId,
-        submissionLocked: true
+        submissionLocked: true,
+        lastError: null
       };
     }
     case 'UPLOAD_SUCCESS': {
@@ -113,13 +117,16 @@ export function voiceCaptureReducer(
 
       return {
         ...state,
-        status: ensureValidStatus('success')
+        status: ensureValidStatus('success'),
+        lastError: null
       };
     }
     case 'UPLOAD_ERROR': {
       return {
         ...state,
         status: ensureValidStatus('error'),
+        clientRequestId: null,
+        submissionLocked: false,
         lastError: action.reason
       };
     }

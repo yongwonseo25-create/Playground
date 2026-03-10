@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useReducer } from 'react';
 import { uploadPcmPlaceholder } from '@/features/voice-capture/services/upload-placeholder';
@@ -47,23 +47,41 @@ export function useVoiceCaptureMachine() {
   const remainingMs = Math.max(0, state.maxRecordingMs - state.elapsedMs);
 
   const requestPermission = () => {
+    if (state.status !== 'idle') {
+      return;
+    }
+
     dispatch({ type: 'REQUEST_PERMISSION' });
     dispatch({ type: 'PERMISSION_GRANTED' });
   };
 
   const startRecording = () => {
+    const startedAt = Date.now();
+
+    if (state.status === 'idle') {
+      dispatch({ type: 'REQUEST_PERMISSION' });
+      dispatch({ type: 'PERMISSION_GRANTED' });
+      dispatch({ type: 'START_RECORDING', startedAt });
+      return;
+    }
+
     if (state.status !== 'ready' && state.status !== 'success') {
       return;
     }
-    dispatch({ type: 'START_RECORDING', startedAt: Date.now() });
+
+    dispatch({ type: 'START_RECORDING', startedAt });
   };
 
   const stopRecording = () => {
-    dispatch({ type: 'STOP_RECORDING' });
+    if (state.status !== 'recording') {
+      return;
+    }
+
+    dispatch({ type: 'STOP_RECORDING', stoppedAt: Date.now() });
   };
 
   const submitRecording = async () => {
-    if (state.status !== 'stopping') {
+    if (state.status !== 'stopping' && state.status !== 'error') {
       return;
     }
 

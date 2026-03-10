@@ -8,8 +8,10 @@
     "dev:https": "next dev --experimental-https --hostname localhost --port 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint . --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test tests/e2e/env-core.spec.ts -c tests/playwright.env-core.config.ts",
+    "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts -c tests/playwright.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.2",
@@ -20,6 +22,7 @@
     "@radix-ui/react-visually-hidden": "^1.1.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "framer-motion": "^11.18.2",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",
     "react": "^19.0.0",
