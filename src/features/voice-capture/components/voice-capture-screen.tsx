@@ -46,14 +46,14 @@ const micPlateVariants: Variants = {
   recording: {
     scale: [1, 1.015, 1],
     boxShadow: [
-      '0 16px 34px rgba(0,0,0,0.38), 0 0 0 1px rgba(56,189,248,0.18), 0 0 12px 3px rgba(34,211,238,0.16)',
-      '0 18px 38px rgba(0,0,0,0.40), 0 0 0 1px rgba(56,189,248,0.26), 0 0 18px 5px rgba(34,211,238,0.24)',
-      '0 20px 42px rgba(0,0,0,0.42), 0 0 0 1px rgba(56,189,248,0.34), 0 0 24px 7px rgba(34,211,238,0.30)',
-      '0 18px 38px rgba(0,0,0,0.40), 0 0 0 1px rgba(56,189,248,0.26), 0 0 18px 5px rgba(34,211,238,0.24)',
-      '0 16px 34px rgba(0,0,0,0.38), 0 0 0 1px rgba(56,189,248,0.18), 0 0 12px 3px rgba(34,211,238,0.16)'
+      '0 16px 34px rgba(0,0,0,0.38), 0 0 0 1px rgba(56,189,248,0.18), 0 0 12px 3px rgba(34,211,238,0.14)',
+      '0 18px 38px rgba(0,0,0,0.40), 0 0 0 1px rgba(56,189,248,0.24), 0 0 14px 4px rgba(34,211,238,0.22)',
+      '0 20px 42px rgba(0,0,0,0.42), 0 0 0 1px rgba(56,189,248,0.34), 0 0 16px 5px rgba(34,211,238,0.34)',
+      '0 18px 38px rgba(0,0,0,0.40), 0 0 0 1px rgba(56,189,248,0.24), 0 0 14px 4px rgba(34,211,238,0.22)',
+      '0 16px 34px rgba(0,0,0,0.38), 0 0 0 1px rgba(56,189,248,0.18), 0 0 12px 3px rgba(34,211,238,0.14)'
     ],
     transition: {
-      duration: 2.2,
+      duration: 1.8,
       ease: 'easeInOut',
       repeat: Infinity
     }
@@ -67,10 +67,27 @@ const micButtonVariants: Variants = {
   },
   recording: {
     scale: 1.3,
-    filter: ['brightness(1)', 'brightness(1.06)', 'brightness(1)'],
+    filter: ['brightness(1.02)', 'brightness(1.22)', 'brightness(1.05)'],
+    boxShadow: [
+      '0 0 0 1px rgba(186,230,253,0.12), 0 0 10px rgba(56,189,248,0.20), 0 0 18px rgba(34,211,238,0.14)',
+      '0 0 0 1px rgba(186,230,253,0.22), 0 0 12px rgba(56,189,248,0.38), 0 0 20px rgba(34,211,238,0.26)',
+      '0 0 0 1px rgba(186,230,253,0.14), 0 0 10px rgba(56,189,248,0.22), 0 0 18px rgba(34,211,238,0.16)'
+    ],
     transition: {
-      duration: 0.4,
-      ease: [0.22, 1, 0.36, 1]
+      scale: {
+        duration: 0.4,
+        ease: [0.22, 1, 0.36, 1]
+      },
+      filter: {
+        duration: 1.55,
+        ease: 'easeInOut',
+        repeat: Infinity
+      },
+      boxShadow: {
+        duration: 1.55,
+        ease: 'easeInOut',
+        repeat: Infinity
+      }
     }
   }
 };
@@ -212,9 +229,7 @@ export function VoiceCaptureScreen() {
         </div>
 
         <footer className="pt-6">
-          <p className="whitespace-nowrap text-center text-[14px] font-medium tracking-[0.02em] text-white/68">
-            Speak. Awaken your second brain.
-          </p>
+          <FooterMarquee />
         </footer>
       </div>
     </main>
@@ -233,6 +248,7 @@ function Step1Main({
   disabled: boolean;
 }) {
   const waveformBars = useMemo(() => [18, 28, 22, 40, 56, 48, 32, 60, 42, 26, 34, 20], []);
+  const idleWaveformBars = useMemo(() => [24, 34, 28, 46, 62, 54, 38, 66, 48, 32, 40, 26], []);
   const remainingSeconds = (remainingMs / 1000).toFixed(1);
 
   return (
@@ -255,7 +271,7 @@ function Step1Main({
           {waveformBars.map((base, index) => (
             <motion.span
               key={index}
-              className="block w-[6px] rounded-full bg-gradient-to-t from-cyan-500/70 via-sky-300/95 to-cyan-100 shadow-[0_0_10px_rgba(34,211,238,0.32)]"
+              className="block w-[6px] rounded-full bg-gradient-to-t from-[#1d4ed8] via-[#38bdf8] to-[#dbeafe] shadow-[0_0_12px_rgba(56,189,248,0.34)]"
               initial={{
                 height: `${base}px`,
                 opacity: 0.9
@@ -270,13 +286,27 @@ function Step1Main({
                         `${Math.round(base * 0.82)}px`,
                         `${base}px`
                       ],
-                      opacity: [0.78, 1, 0.88, 1, 0.78],
-                      filter: ['blur(0px)', 'blur(0px)', 'blur(0.4px)', 'blur(0px)', 'blur(0px)']
+                      opacity: [0.84, 1, 0.92, 1, 0.84],
+                      boxShadow: [
+                        '0 0 10px rgba(56,189,248,0.24)',
+                        '0 0 14px rgba(56,189,248,0.40)',
+                        '0 0 18px rgba(56,189,248,0.58)',
+                        '0 0 14px rgba(56,189,248,0.40)',
+                        '0 0 10px rgba(56,189,248,0.24)'
+                      ],
+                      filter: [
+                        'brightness(0.98)',
+                        'brightness(1.12)',
+                        'brightness(1.2)',
+                        'brightness(1.08)',
+                        'brightness(0.98)'
+                      ]
                     }
                   : {
-                      height: `${Math.max(16, base * 0.72)}px`,
-                      opacity: 0.7,
-                      filter: 'blur(0px)'
+                      height: `${idleWaveformBars[index]}px`,
+                      opacity: 0.82,
+                      boxShadow: '0 0 11px rgba(56,189,248,0.22)',
+                      filter: 'brightness(0.96)'
                     }
               }
               transition={{
@@ -320,6 +350,29 @@ function Step1Main({
         </p>
       </div>
     </motion.section>
+  );
+}
+
+function FooterMarquee() {
+  const copy = 'Speak. Awaken your second brain.';
+
+  return (
+    <div className="overflow-hidden">
+      <motion.div
+        className="flex w-max gap-12 whitespace-nowrap text-[14px] font-medium tracking-[0.02em] text-white/68"
+        animate={{ x: ['-50%', '0%'] }}
+        transition={{
+          duration: 7.5,
+          ease: 'linear',
+          repeat: Infinity
+        }}
+      >
+        <span>{copy}</span>
+        <span>{copy}</span>
+        <span>{copy}</span>
+        <span>{copy}</span>
+      </motion.div>
+    </div>
   );
 }
 
@@ -499,3 +552,4 @@ function Step3Complete() {
     </motion.section>
   );
 }
+

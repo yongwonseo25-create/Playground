@@ -101,6 +101,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Safe-area support: baseline implemented
 - Accessibility status: touch targets, labels, and Playwright test ids applied
 - Error messaging status: inline Step 2 retry/cancel feedback available
+- Motion polish status: idle waveform silhouette preserved, mic breathing glow clarified, and footer copy now loops as a one-way marquee
 
 ---
 
@@ -151,6 +152,8 @@ Establish project rules, Codex constitution, guardrails, and sprint memory proto
 - [x] Confirm `.cursorrules` exists at repo root
 - [x] Confirm `docs/sprint-summary.md` exists
 - [x] Confirm Guardrail Block is available for prompt use
+
+- [x] `npm run build` with local-safe placeholder env values compiles successfully
 
 #### Next Sprint Prerequisites
 - Initialize Next.js app foundation
@@ -218,6 +221,8 @@ Build the project foundation, secure environment rules, initial state machine, a
 - [x] Secure env strategy present
 - [x] No Sprint 1 defects found in manual QA
 
+- [x] `npm run build` with local-safe placeholder env values compiles successfully
+
 #### Next Sprint Prerequisites
 - implement backend / Make.com integration entry flow
 - wire typed webhook adapter
@@ -257,6 +262,8 @@ Integrate the front-end with the backend entrypoint and Make.com workflow safely
 #### Manual QA
 - TBD
 
+- [x] `npm run build` with local-safe placeholder env values compiles successfully
+
 #### Next Sprint Prerequisites
 - webhook submission flow verification
 - duplicate-submit regression tests
@@ -294,6 +301,8 @@ Implement the real-time microphone pipeline using AudioWorklet + PCM over WSS an
 
 #### Manual QA
 - TBD
+
+- [x] `npm run build` with local-safe placeholder env values compiles successfully
 
 #### Next Sprint Prerequisites
 - mobile lifecycle hardening
@@ -355,6 +364,8 @@ Polish the mobile-first voice UI/UX and finalize production readiness.
 - [x] `npm run test:e2e`
 - [x] Verified Step 1 -> Step 2 -> Step 3 -> Step 1 loop in Playwright
 
+- [x] `npm run build` with local-safe placeholder env values compiles successfully
+
 #### Next Sprint Prerequisites
 - wire real AudioWorklet session lifecycle into the reducer
 - connect WSS / webhook transport to live upload and transcript data
@@ -362,6 +373,57 @@ Polish the mobile-first voice UI/UX and finalize production readiness.
 
 ---
 
+### Sprint 5 - Voice Motion Detail Polish
+- Date: 2026-03-10
+- Status: completed
+
+#### Goal
+Tune only the requested visual details in the capture screen without changing reducer logic, state transitions, timing truth, or submission locking.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `src/features/voice-capture/components/voice-capture-screen.tsx`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- No architecture or routing changes
+- UI polish remained isolated to the Step 1 visual layer and footer motion
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states and existing reducer-driven timing behavior
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Reference image `8.jpg` was not present in the workspace, so tuning was implemented from the user's written spec
+- Final visual fidelity should still be manually checked against the intended reference asset if it is later provided
+
+#### Manual QA
+- [x] `npm run typecheck`
+- [x] `npm run lint`
+- [x] `npm run test`
+- [x] `npm run test:e2e`
+- [x] Verify idle waveform remains vertically sculpted before recording starts
+- [x] Verify recording waveform color/glow matches the neon blue mic button
+- [x] Verify mic breathing reads as brightness pulsing without messy glow spread
+- [x] Verify footer copy loops left-to-right continuously with no yoyo motion
+
+- [x] `npm run build` with local-safe placeholder env values compiles successfully
+
+#### Next Sprint Prerequisites
+- Validate motion polish against the missing visual reference asset
+- Continue preserving reducer/state-machine ownership as live audio transport is added
+
+---
 ## Current Known Risks (Rolling Section)
 
 - AudioWorklet runtime path is not yet implemented
@@ -409,4 +471,11 @@ After finishing a sprint, Codex must:
 3. Update Current Known Risks.
 4. Update Current Manual Regression Checklist if needed.
 ```
+
+
+
+
+
+
+
 
