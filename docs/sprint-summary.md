@@ -52,7 +52,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Status: stable foundation complete
 - Current routing approach: Next.js App Router with route groups
 - Current feature folder approach: feature-first structure centered on `features/voice-capture`
-- Current UI shell status: premium 3-step voice capture flow implemented and Playwright-verified
+- Current UI shell status: premium 3-step voice capture flow implemented and Playwright-verified with Step 1 neon trace waveform restored
 
 ### Voice State Machine
 - Status: implemented and stable
@@ -96,7 +96,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Duplicate prevention strategy: upload button disables during `uploading`, reducer lock preserved for real transport wiring
 
 ### Mobile UX
-- Status: premium 3-step capture flow complete
+- Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
 - One-handed usage support: yes
 - Safe-area support: baseline implemented
 - Accessibility status: touch targets, labels, and Playwright test ids applied
@@ -359,6 +359,48 @@ Polish the mobile-first voice UI/UX and finalize production readiness.
 - wire real AudioWorklet session lifecycle into the reducer
 - connect WSS / webhook transport to live upload and transcript data
 - regression-test live 15-second stop and duplicate-lock behavior against backend
+
+---
+
+### Sprint 5 - Step 1 Neon Waveform Recovery
+- Date: 2026-03-11
+- Status: completed
+
+#### Goal
+Restore the lost Step 1 waveform styling without touching the Step 2 / Step 3 centered transcript layout or any reducer-driven voice logic.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `src/features/voice-capture/components/voice-capture-screen.tsx`
+
+#### Architecture Changes
+- Replaced the old bottom-anchored bar waveform with a center-baseline neon blue vertical trace waveform in Step 1 only
+- Removed the Step 1 mic-area English helper copy while keeping Step 2 / Step 3 layout structure intact
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without restructuring
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and `clientRequestId` duplicate lock remain untouched
+
+#### Known Risks
+- Visual waveform pacing is tuned for the current premium shell and may need a design pass after real AudioWorklet data is wired in
+
+#### Manual QA
+- [x] `npm run lint`
+- [x] `npm run build`
+
+#### Next Sprint Prerequisites
+- Verify the restored Step 1 waveform against live audio transport once AudioWorklet + WSS runtime lands
 
 ---
 

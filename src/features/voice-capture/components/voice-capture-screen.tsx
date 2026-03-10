@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useVoiceCaptureMachine } from '@/features/voice-capture/state/use-voice-capture-machine';
 import type { VoiceReducerState } from '@/features/voice-capture/types/voice-types';
@@ -126,8 +126,23 @@ const completionTextVariants: Variants = {
   }
 };
 
+const STEP1_WAVEFORM_TRACES = [
+  { idle: 20, peak: 36 },
+  { idle: 28, peak: 54 },
+  { idle: 18, peak: 34 },
+  { idle: 36, peak: 68 },
+  { idle: 52, peak: 96 },
+  { idle: 40, peak: 78 },
+  { idle: 24, peak: 42 },
+  { idle: 58, peak: 108 },
+  { idle: 34, peak: 64 },
+  { idle: 22, peak: 40 },
+  { idle: 30, peak: 56 },
+  { idle: 16, peak: 30 }
+] as const;
+
 export function VoiceCaptureScreen() {
-  const { state, remainingMs, actions } = useVoiceCaptureMachine();
+  const { state, actions } = useVoiceCaptureMachine();
   const step = getUiStep(state.status);
   const isRecording = state.status === 'recording';
   const isSending = state.status === 'uploading';
@@ -190,7 +205,6 @@ export function VoiceCaptureScreen() {
               <Step1Main
                 key="step1"
                 isRecording={isRecording}
-                remainingMs={remainingMs}
                 onMicTouch={handleMicTouch}
                 disabled={state.status === 'permission-requesting'}
               />
@@ -210,12 +224,13 @@ export function VoiceCaptureScreen() {
             {step === 'step3' && <Step3Complete key="step3" />}
           </AnimatePresence>
         </div>
-
-        <footer className="pt-6">
-          <p className="whitespace-nowrap text-center text-[14px] font-medium tracking-[0.02em] text-white/68">
-            Speak. Awaken your second brain.
-          </p>
-        </footer>
+        {step !== 'step1' ? (
+          <footer className="pt-6">
+            <p className="whitespace-nowrap text-center text-[14px] font-medium tracking-[0.02em] text-white/68">
+              Speak. Awaken your second brain.
+            </p>
+          </footer>
+        ) : null}
       </div>
     </main>
   );
@@ -223,18 +238,13 @@ export function VoiceCaptureScreen() {
 
 function Step1Main({
   isRecording,
-  remainingMs,
   onMicTouch,
   disabled
 }: {
   isRecording: boolean;
-  remainingMs: number;
   onMicTouch: () => void;
   disabled: boolean;
 }) {
-  const waveformBars = useMemo(() => [18, 28, 22, 40, 56, 48, 32, 60, 42, 26, 34, 20], []);
-  const remainingSeconds = (remainingMs / 1000).toFixed(1);
-
   return (
     <motion.section
       variants={screenFade}
@@ -249,44 +259,56 @@ function Step1Main({
         <motion.div
           variants={waveformContainerVariants}
           animate={isRecording ? 'recording' : 'idle'}
-          className="mb-10 flex h-[88px] w-[84%] items-end justify-center gap-[6px]"
+          className="mb-10 flex h-[128px] w-[84%] items-center justify-center"
           aria-hidden="true"
         >
-          {waveformBars.map((base, index) => (
-            <motion.span
-              key={index}
-              className="block w-[6px] rounded-full bg-gradient-to-t from-cyan-500/70 via-sky-300/95 to-cyan-100 shadow-[0_0_10px_rgba(34,211,238,0.32)]"
-              initial={{
-                height: `${base}px`,
-                opacity: 0.9
-              }}
-              animate={
-                isRecording
-                  ? {
-                      height: [
-                        `${Math.max(14, base * 0.62)}px`,
-                        `${base}px`,
-                        `${Math.round(base * 1.2)}px`,
-                        `${Math.round(base * 0.82)}px`,
-                        `${base}px`
-                      ],
-                      opacity: [0.78, 1, 0.88, 1, 0.78],
-                      filter: ['blur(0px)', 'blur(0px)', 'blur(0.4px)', 'blur(0px)', 'blur(0px)']
-                    }
-                  : {
-                      height: `${Math.max(16, base * 0.72)}px`,
-                      opacity: 0.7,
-                      filter: 'blur(0px)'
-                    }
-              }
-              transition={{
-                duration: 1.8 + (index % 4) * 0.18,
-                repeat: Infinity,
-                ease: 'easeInOut',
-                delay: index * 0.045
-              }}
-            />
-          ))}
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full">
+            <div className="absolute inset-x-2 top-1/2 h-px -translate-y-1/2 bg-cyan-200/22 shadow-[0_0_14px_rgba(56,189,248,0.28)]" />
+            <div className="absolute inset-x-6 top-1/2 h-10 -translate-y-1/2 bg-[radial-gradient(circle,rgba(56,189,248,0.18),transparent_72%)] blur-xl" />
+            <div className="relative flex h-full items-center justify-center gap-[7px]">
+              {STEP1_WAVEFORM_TRACES.map((trace, index) => (
+                <motion.span
+                  key={index}
+                  className="block w-[2px] rounded-full bg-gradient-to-b from-cyan-100 via-sky-300 to-cyan-400 shadow-[0_0_10px_rgba(56,189,248,0.72),0_0_22px_rgba(34,211,238,0.36)]"
+                  initial={{
+                    height: `${trace.idle}px`,
+                    opacity: 0.72
+                  }}
+                  animate={
+                    isRecording
+                      ? {
+                          height: [
+                            `${Math.max(16, Math.round(trace.peak * 0.42))}px`,
+                            `${Math.round(trace.peak * 0.82)}px`,
+                            `${trace.peak}px`,
+                            `${Math.round(trace.peak * 0.58)}px`,
+                            `${Math.round(trace.peak * 0.92)}px`
+                          ],
+                          opacity: [0.62, 0.94, 1, 0.78, 0.96],
+                          boxShadow: [
+                            '0 0 8px rgba(56,189,248,0.42), 0 0 16px rgba(34,211,238,0.18)',
+                            '0 0 12px rgba(56,189,248,0.58), 0 0 24px rgba(34,211,238,0.26)',
+                            '0 0 16px rgba(125,211,252,0.72), 0 0 32px rgba(34,211,238,0.34)',
+                            '0 0 10px rgba(56,189,248,0.5), 0 0 18px rgba(34,211,238,0.22)',
+                            '0 0 14px rgba(125,211,252,0.66), 0 0 28px rgba(34,211,238,0.3)'
+                          ]
+                        }
+                      : {
+                          height: `${trace.idle}px`,
+                          opacity: 0.6,
+                          boxShadow: '0 0 8px rgba(56,189,248,0.34), 0 0 16px rgba(34,211,238,0.16)'
+                        }
+                  }
+                  transition={{
+                    duration: 1.35 + (index % 5) * 0.14,
+                    repeat: Infinity,
+                    ease: [0.42, 0, 0.58, 1],
+                    delay: index * 0.05
+                  }}
+                />
+              ))}
+            </div>
+          </div>
         </motion.div>
 
         <motion.div
@@ -311,13 +333,6 @@ function Step1Main({
             </svg>
           </motion.button>
         </motion.div>
-
-        <p className="mt-7 text-center text-[15px] font-medium tracking-[0.01em] text-white/72">
-          {isRecording ? 'Touch once more to move to confirmation.' : 'Touch once to begin recording.'}
-        </p>
-        <p className="mt-2 text-center text-[13px] font-medium tracking-[0.02em] text-cyan-200/80">
-          {isRecording ? `Hard stop armed at 15.0s · ${remainingSeconds}s left` : 'AudioWorklet + PCM over WSS only'}
-        </p>
       </div>
     </motion.section>
   );
