@@ -397,7 +397,7 @@ function Step2Confirm({
       exit="exit"
       className="flex h-full flex-col"
     >
-      <div className="pt-20" />
+    
 
       <div className="flex flex-1 flex-col items-center">
         <div className="w-full">
