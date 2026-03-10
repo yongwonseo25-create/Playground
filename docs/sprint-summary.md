@@ -1,4 +1,4 @@
-```md
+﻿```md
 # Voxera Sprint Summary
 
 > This file is the persistent architecture memory for the Voxera front-end.
@@ -51,15 +51,15 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 ### App Structure
 - Status: stable foundation complete
 - Current routing approach: Next.js App Router with route groups
-- Current feature folder approach: feature-first structure centered on `features/voice`
-- Current UI shell status: initial mobile-first voice shell implemented and manually QA-verified
+- Current feature folder approach: feature-first structure centered on `features/voice-capture`
+- Current UI shell status: premium 3-step voice capture flow implemented and Playwright-verified
 
 ### Voice State Machine
 - Status: implemented and stable
 - Source of truth file(s):
-  - `src/features/voice/machine/voice-machine.types.ts`
-  - `src/features/voice/machine/voice-machine.ts`
-  - `src/features/voice/machine/voice-machine.selectors.ts`
+  - `src/features/voice-capture/types/voice-types.ts`
+  - `src/features/voice-capture/state/voice-capture-reducer.ts`
+  - `src/features/voice-capture/state/use-voice-capture-machine.ts`
 - Current states:
   - `idle`
   - `permission-requesting`
@@ -69,11 +69,11 @@ The following 8 states are fixed and must not be arbitrarily restructured:
   - `uploading`
   - `success`
   - `error`
-- Current selectors: start/stop availability, busy state, submit lock visibility, permission hint visibility
+- Current selectors: UI step derivation, recording activity, upload activity, remaining time
 - Current known guard rules:
-  - permission request cannot re-enter while already in flight
-  - insecure context is blocked
-  - upload lock blocks duplicate submission
+  - permission request starts only from explicit user interaction
+  - recording can stop early from the second mic touch while the 15-second hard stop remains reducer-driven
+  - upload lock blocks duplicate submission and is created before async upload starts
   - reducer remains pure and side effects are externalized
 
 ### Audio Engine
@@ -90,17 +90,17 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Env validation status: implemented for secure endpoint handling
 
 ### Submission / Cost Defense
-- Status: architecture prepared, full integration pending
-- 15-second cutoff status: constitutional requirement fixed, full runtime integration pending
-- `clientRequestId` lock status: architectural rule fixed, full integration pending
-- Duplicate prevention strategy: reducer-driven lock model defined, end-to-end submission flow pending
+- Status: UI-integrated placeholder flow active, live transport integration pending
+- 15-second cutoff status: reducer timer remains the source of truth and auto-stops at the hard limit
+- `clientRequestId` lock status: generated synchronously before placeholder upload begins
+- Duplicate prevention strategy: upload button disables during `uploading`, reducer lock preserved for real transport wiring
 
 ### Mobile UX
-- Status: initial shell complete
+- Status: premium 3-step capture flow complete
 - One-handed usage support: yes
 - Safe-area support: baseline implemented
-- Accessibility status: baseline labels and touch sizing applied
-- Error messaging status: shell-level support prepared
+- Accessibility status: touch targets, labels, and Playwright test ids applied
+- Error messaging status: inline Step 2 retry/cancel feedback available
 
 ---
 
@@ -108,7 +108,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 
 ---
 
-### Sprint 0 — Project Rules / Custom Skills
+### Sprint 0 ??Project Rules / Custom Skills
 - Date: completed previously
 - Status: completed
 
@@ -160,7 +160,7 @@ Establish project rules, Codex constitution, guardrails, and sprint memory proto
 
 ---
 
-### Sprint 1 — Project Framework and Secure Environment
+### Sprint 1 ??Project Framework and Secure Environment
 - Date: completed
 - Status: completed with no manual QA defects
 
@@ -226,7 +226,7 @@ Build the project foundation, secure environment rules, initial state machine, a
 
 ---
 
-### Sprint 2 — Backend / Make.com Integration
+### Sprint 2 ??Backend / Make.com Integration
 - Date:
 - Status: not started
 
@@ -264,7 +264,7 @@ Integrate the front-end with the backend entrypoint and Make.com workflow safely
 
 ---
 
-### Sprint 3 — AudioWorklet + WSS Runtime Integration
+### Sprint 3 ??AudioWorklet + WSS Runtime Integration
 - Date:
 - Status: not started
 
@@ -301,41 +301,64 @@ Implement the real-time microphone pipeline using AudioWorklet + PCM over WSS an
 
 ---
 
-### Sprint 4 — Mobile-Optimized Voice UX and Production Hardening
-- Date:
-- Status: not started
+### Sprint 4 ??Mobile-Optimized Voice UX and Production Hardening
+- Date: 2026-03-10
+- Status: completed
 
 #### Goal
 Polish the mobile-first voice UI/UX and finalize production readiness.
 
 #### Files Created
-- TBD
+- `eslint.config.mjs`
+- `tests/playwright.env-core.config.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
 
 #### Files Modified
-- TBD
+- `package.json`
+- `src/features/voice-capture/components/voice-capture-screen.tsx`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `src/features/voice-capture/state/voice-capture-reducer.ts`
+- `src/features/voice-capture/types/voice-types.ts`
+- `src/features/voice-capture/services/upload-placeholder.ts`
+- `src/shared/styles/globals.css`
+- `tests/e2e/env-core.spec.ts`
+- `tests/playwright.config.ts`
+- `docs/sprint-summary.md`
 
 #### Architecture Changes
-- TBD
+- Replaced the legacy card-based capture shell with a motion-driven 3-step capture interface tied to reducer status mapping
+- Isolated Playwright smoke and UI-flow configs so env validation and capture UX can be verified independently
 
 #### State Machine Changes
-- TBD
+- Preserved all 8 constitutional states
+- Allowed `recording -> stopping` on the second mic touch without weakening the 15-second auto-stop
+- Preserved synchronous `clientRequestId` submission locking before async upload begins
 
 #### Audio / Transport Changes
-- TBD
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- Placeholder upload delay added only for deterministic UI sending feedback
 
 #### Submission / Cost Defense Changes
-- TBD
+- Step 2 now appears immediately after user stop instead of waiting for 15 seconds
+- Send state shows rotating neon border while reducer status is `uploading`
+- Success step auto-returns to Step 1 exactly 2000ms after success text appears
 
 #### Known Risks
-- TBD
+- Real AudioWorklet capture and WSS transport are still not wired
+- Placeholder upload success path does not exercise backend failures beyond UI retry plumbing
 
 #### Manual QA
-- TBD
+- [x] `npm run typecheck`
+- [x] `npm run lint`
+- [x] `npm run test`
+- [x] `npm run test:e2e`
+- [x] Verified Step 1 -> Step 2 -> Step 3 -> Step 1 loop in Playwright
 
 #### Next Sprint Prerequisites
-- production QA
-- launch checklist
-- regression verification
+- wire real AudioWorklet session lifecycle into the reducer
+- connect WSS / webhook transport to live upload and transcript data
+- regression-test live 15-second stop and duplicate-lock behavior against backend
 
 ---
 
@@ -346,6 +369,7 @@ Polish the mobile-first voice UI/UX and finalize production readiness.
 - backend / Make.com integration not yet tested end-to-end
 - duplicate lock must be verified again once webhook upload is added
 - timeout and upload flow must be verified together once live network flow exists
+- current premium UI is validated against placeholder upload timing, not live backend latency
 
 ---
 
@@ -361,6 +385,7 @@ Polish the mobile-first voice UI/UX and finalize production readiness.
 - [x] No insecure `ws://` remains in production code paths
 - [x] No permission popup infinite loop exists in current shell logic
 - [x] UI supports one-handed mobile use
+- [x] Step 1 -> Step 2 -> Step 3 -> Step 1 loop is Playwright-verified
 
 ---
 
@@ -384,3 +409,4 @@ After finishing a sprint, Codex must:
 3. Update Current Known Risks.
 4. Update Current Manual Regression Checklist if needed.
 ```
+

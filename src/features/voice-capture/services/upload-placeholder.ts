@@ -1,7 +1,9 @@
-export interface UploadPcmPayload {
+﻿export interface UploadPcmPayload {
   clientRequestId: string;
   pcmFrameCount: number;
 }
+
+const PLACEHOLDER_UPLOAD_DELAY_MS = 1200;
 
 /**
  * Backend contract placeholder only.
@@ -12,5 +14,9 @@ export async function uploadPcmPlaceholder(payload: UploadPcmPayload): Promise<{
     throw new Error('Missing clientRequestId lock.');
   }
 
-  return Promise.resolve({ acknowledged: true });
+  await new Promise((resolve) => {
+    window.setTimeout(resolve, PLACEHOLDER_UPLOAD_DELAY_MS);
+  });
+
+  return { acknowledged: true };
 }

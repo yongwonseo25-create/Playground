@@ -1,4 +1,4 @@
-import type { BackendConnectionState, VoiceSessionContract } from '@/shared/contracts/voice';
+﻿import type { BackendConnectionState, VoiceSessionContract } from '@/shared/contracts/voice';
 
 export const FIXED_VOICE_STATES = [
   'idle',
@@ -14,6 +14,9 @@ export const FIXED_VOICE_STATES = [
 export type VoiceReducerState = (typeof FIXED_VOICE_STATES)[number];
 
 export const MAX_RECORDING_MS = 15000;
+
+export const DEFAULT_TRANSCRIPT_PREVIEW =
+  'Your captured voice transcript will appear here.\nEdit-free confirmation flow starts immediately.';
 
 export interface VoiceCaptureMachineState {
   status: VoiceReducerState;
@@ -35,7 +38,7 @@ export const initialVoiceCaptureState: VoiceCaptureMachineState = {
   recordingStartedAt: null,
   clientRequestId: null,
   submissionLocked: false,
-  transcriptPreview: 'No audio session yet.',
+  transcriptPreview: DEFAULT_TRANSCRIPT_PREVIEW,
   lastError: null
 };
 

@@ -1,4 +1,4 @@
-import path from 'node:path';
+﻿import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { runNextDevOnce } from './helpers/next-dev';
 
@@ -34,7 +34,7 @@ test.describe('env-core fail-fast', () => {
     });
 
     expect(result.ready).toBe(false);
-    expect(result.output).toContain('NEXT_PUBLIC_WEBHOOK_URL must use https:// (or http:// for local loopback only).');
+    expect(result.output).toContain('NEXT_PUBLIC_WEBHOOK_URL must use https:// outside local environment.');
   });
 
   test('accepts local loopback ws/http exceptions', async () => {

@@ -1,160 +1,501 @@
-'use client';
+﻿'use client';
 
-import { useMemo } from 'react';
-import { Mic, ShieldCheck, Timer } from 'lucide-react';
-import { toast } from 'sonner';
-import { Alert, AlertDescription, AlertIcon, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { useEffect, useMemo } from 'react';
+import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useVoiceCaptureMachine } from '@/features/voice-capture/state/use-voice-capture-machine';
-import { clientEnv } from '@/shared/config/env.client';
-import { VoiceShell } from '@/shared/layouts/voice-shell';
+import type { VoiceReducerState } from '@/features/voice-capture/types/voice-types';
 
-const statusLabelMap = {
-  idle: 'Idle',
-  'permission-requesting': 'Requesting microphone permission',
-  ready: 'Ready to capture',
-  recording: 'Recording PCM stream (max 15s)',
-  stopping: 'Stopping capture',
-  uploading: 'Uploading secured payload',
-  success: 'Submission complete',
-  error: 'Error'
-} as const;
+type Step = 'step1' | 'step2' | 'step3';
+
+const STEP3_CIRCLE_DURATION_MS = 700;
+const STEP3_RETURN_DELAY_AFTER_TEXT_MS = 2000;
+
+function getUiStep(status: VoiceReducerState): Step {
+  if (status === 'success') {
+    return 'step3';
+  }
+
+  if (status === 'stopping' || status === 'uploading' || status === 'error') {
+    return 'step2';
+  }
+
+  return 'step1';
+}
+
+const screenFade: Variants = {
+  initial: { opacity: 0, y: 14 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.42, ease: [0.22, 1, 0.36, 1] }
+  },
+  exit: {
+    opacity: 0,
+    y: -10,
+    transition: { duration: 0.24, ease: [0.4, 0, 1, 1] }
+  }
+};
+
+const micPlateVariants: Variants = {
+  idle: {
+    scale: 1,
+    boxShadow:
+      '0 14px 32px rgba(0,0,0,0.36), 0 0 0 1px rgba(56,189,248,0.12), 0 0 10px 2px rgba(34,211,238,0.10)',
+    transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] }
+  },
+  recording: {
+    scale: [1, 1.015, 1],
+    boxShadow: [
+      '0 16px 34px rgba(0,0,0,0.38), 0 0 0 1px rgba(56,189,248,0.18), 0 0 12px 3px rgba(34,211,238,0.16)',
+      '0 18px 38px rgba(0,0,0,0.40), 0 0 0 1px rgba(56,189,248,0.26), 0 0 18px 5px rgba(34,211,238,0.24)',
+      '0 20px 42px rgba(0,0,0,0.42), 0 0 0 1px rgba(56,189,248,0.34), 0 0 24px 7px rgba(34,211,238,0.30)',
+      '0 18px 38px rgba(0,0,0,0.40), 0 0 0 1px rgba(56,189,248,0.26), 0 0 18px 5px rgba(34,211,238,0.24)',
+      '0 16px 34px rgba(0,0,0,0.38), 0 0 0 1px rgba(56,189,248,0.18), 0 0 12px 3px rgba(34,211,238,0.16)'
+    ],
+    transition: {
+      duration: 2.2,
+      ease: 'easeInOut',
+      repeat: Infinity
+    }
+  }
+};
+
+const micButtonVariants: Variants = {
+  idle: {
+    scale: 1,
+    filter: 'brightness(1)'
+  },
+  recording: {
+    scale: 1.3,
+    filter: ['brightness(1)', 'brightness(1.06)', 'brightness(1)'],
+    transition: {
+      duration: 0.4,
+      ease: [0.22, 1, 0.36, 1]
+    }
+  }
+};
+
+const waveformContainerVariants: Variants = {
+  idle: {
+    opacity: 0.82,
+    y: 0,
+    transition: { duration: 0.3 }
+  },
+  recording: {
+    opacity: 1,
+    y: [0, -1.5, 0],
+    transition: {
+      duration: 2.4,
+      ease: 'easeInOut',
+      repeat: Infinity
+    }
+  }
+};
+
+const sendRingVariants: Variants = {
+  idle: {
+    opacity: 0,
+    rotate: 0
+  },
+  sending: {
+    opacity: 1,
+    rotate: 360,
+    transition: {
+      rotate: {
+        duration: 1.2,
+        repeat: Infinity,
+        ease: 'linear'
+      },
+      opacity: {
+        duration: 0.16
+      }
+    }
+  }
+};
+
+const completionTextVariants: Variants = {
+  initial: { opacity: 0, y: 8 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: STEP3_CIRCLE_DURATION_MS / 1000,
+      duration: 0.24,
+      ease: [0.22, 1, 0.36, 1]
+    }
+  }
+};
 
 export function VoiceCaptureScreen() {
-  const { state, progress, remainingMs, actions } = useVoiceCaptureMachine();
+  const { state, remainingMs, actions } = useVoiceCaptureMachine();
+  const step = getUiStep(state.status);
+  const isRecording = state.status === 'recording';
+  const isSending = state.status === 'uploading';
 
-  const canRequestPermission = state.status === 'idle';
-  const canStart = state.status === 'ready' || state.status === 'success';
-  const canSubmit = state.status === 'stopping';
+  useEffect(() => {
+    if (step !== 'step3') {
+      return;
+    }
 
-  const remainingSeconds = useMemo(() => (remainingMs / 1000).toFixed(1), [remainingMs]);
+    const totalMs = STEP3_CIRCLE_DURATION_MS + STEP3_RETURN_DELAY_AFTER_TEXT_MS;
+    const timeout = window.setTimeout(() => {
+      actions.reset();
+    }, totalMs);
+
+    return () => window.clearTimeout(timeout);
+  }, [actions, step]);
+
+  const handleMicTouch = () => {
+    if (step !== 'step1') {
+      return;
+    }
+
+    if (isRecording) {
+      actions.stopRecording();
+      return;
+    }
+
+    actions.startRecording();
+  };
+
+  const handleCancel = () => {
+    if (isSending) {
+      return;
+    }
+
+    actions.reset();
+  };
+
+  const handleSend = async () => {
+    if (isSending) {
+      return;
+    }
+
+    await actions.submitRecording();
+  };
 
   return (
-    <VoiceShell title="Voxera Capture" subtitle="AudioWorklet + PCM over WSS architecture (UI foundation)">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Mic className="h-4 w-4" />
-            Voice state machine
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-sm font-medium">{statusLabelMap[state.status]}</p>
-            <Progress value={progress} />
-            <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Timer className="h-3.5 w-3.5" />
-              Remaining: {remainingSeconds}s / hard stop at 15.0s (no early stop)
-            </p>
-          </div>
+    <main className="relative min-h-dvh w-full overflow-hidden bg-[#030712] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.16),transparent_35%),radial-gradient(circle_at_50%_45%,rgba(56,189,248,0.12),transparent_42%),linear-gradient(180deg,rgba(2,6,23,0.96),rgba(3,7,18,1))]" />
+      <div className="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top,rgba(125,211,252,0.12),transparent_65%)]" />
 
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="secondary"
-              disabled={!canRequestPermission}
-              onClick={() => {
-                actions.requestPermission();
-                toast.info('Permission flow moved to ready state.');
-              }}
-            >
-              Request Access
-            </Button>
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pb-10 pt-8">
+        <header className="flex justify-center">
+          <h1 className="text-[20px] font-semibold uppercase tracking-[0.28em] text-white/95">VOXERA</h1>
+        </header>
 
-            <Button
-              disabled={!canStart}
-              onClick={() => {
-                actions.startRecording();
-                toast.info('Recording started. Hard stop set for exactly 15 seconds.');
-              }}
-            >
-              Start 15s
-            </Button>
+        <div className="flex-1">
+          <AnimatePresence mode="wait">
+            {step === 'step1' && (
+              <Step1Main
+                key="step1"
+                isRecording={isRecording}
+                remainingMs={remainingMs}
+                onMicTouch={handleMicTouch}
+                disabled={state.status === 'permission-requesting'}
+              />
+            )}
 
-            <Button variant="outline" disabled>
-              Auto-Stop @15s
-            </Button>
+            {step === 'step2' && (
+              <Step2Confirm
+                key="step2"
+                transcript={state.transcriptPreview}
+                isSending={isSending}
+                errorMessage={state.lastError}
+                onCancel={handleCancel}
+                onSend={handleSend}
+              />
+            )}
 
-            <Button
-              variant="default"
-              disabled={!canSubmit}
-              onClick={async () => {
-                await actions.submitRecording();
-                toast.success('Submission lock applied with clientRequestId.');
-              }}
-            >
-              Submit
-            </Button>
-          </div>
-
-          <Button variant="ghost" className="w-full" onClick={actions.reset}>
-            Reset Session
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Alert>
-        <div className="mb-2 flex items-center gap-2">
-          <AlertIcon />
-          <AlertTitle>Constitutional audio guardrails active</AlertTitle>
+            {step === 'step3' && <Step3Complete key="step3" />}
+          </AnimatePresence>
         </div>
-        <AlertDescription>
-          MediaRecorder is forbidden. This flow is scoped to AudioWorklet + PCM over WSS only, with fixed reducer states and request locking.
-        </AlertDescription>
-      </Alert>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline">Session Info</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Submission lock</DialogTitle>
-              <DialogDescription>
-                Upload can begin only after `clientRequestId` is generated and locked in the `uploading` transition.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button onClick={() => toast.info(`clientRequestId: ${state.clientRequestId ?? 'not assigned'}`)}>
-                Show Lock ID
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button>
-              <ShieldCheck className="h-4 w-4" />
-              Security
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="rounded-t-2xl">
-            <SheetHeader>
-              <SheetTitle>Security model</SheetTitle>
-              <SheetDescription>Transport constraints for Sprint 1 foundation.</SheetDescription>
-            </SheetHeader>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>- WSS origin: {new URL(clientEnv.NEXT_PUBLIC_WSS_URL).origin}</p>
-              <p>- Non-local ws:// is rejected at startup.</p>
-              <p>- Upload flow requires clientRequestId lock.</p>
-            </div>
-          </SheetContent>
-        </Sheet>
+        <footer className="pt-6">
+          <p className="whitespace-nowrap text-center text-[14px] font-medium tracking-[0.02em] text-white/68">
+            Speak. Awaken your second brain.
+          </p>
+        </footer>
       </div>
-    </VoiceShell>
+    </main>
   );
 }
 
+function Step1Main({
+  isRecording,
+  remainingMs,
+  onMicTouch,
+  disabled
+}: {
+  isRecording: boolean;
+  remainingMs: number;
+  onMicTouch: () => void;
+  disabled: boolean;
+}) {
+  const waveformBars = useMemo(() => [18, 28, 22, 40, 56, 48, 32, 60, 42, 26, 34, 20], []);
+  const remainingSeconds = (remainingMs / 1000).toFixed(1);
+
+  return (
+    <motion.section
+      variants={screenFade}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="flex h-full flex-col items-center"
+    >
+      <div className="pt-16" />
+
+      <div className="flex w-full flex-col items-center justify-center">
+        <motion.div
+          variants={waveformContainerVariants}
+          animate={isRecording ? 'recording' : 'idle'}
+          className="mb-10 flex h-[88px] w-[84%] items-end justify-center gap-[6px]"
+          aria-hidden="true"
+        >
+          {waveformBars.map((base, index) => (
+            <motion.span
+              key={index}
+              className="block w-[6px] rounded-full bg-gradient-to-t from-cyan-500/70 via-sky-300/95 to-cyan-100 shadow-[0_0_10px_rgba(34,211,238,0.32)]"
+              initial={{
+                height: `${base}px`,
+                opacity: 0.9
+              }}
+              animate={
+                isRecording
+                  ? {
+                      height: [
+                        `${Math.max(14, base * 0.62)}px`,
+                        `${base}px`,
+                        `${Math.round(base * 1.2)}px`,
+                        `${Math.round(base * 0.82)}px`,
+                        `${base}px`
+                      ],
+                      opacity: [0.78, 1, 0.88, 1, 0.78],
+                      filter: ['blur(0px)', 'blur(0px)', 'blur(0.4px)', 'blur(0px)', 'blur(0px)']
+                    }
+                  : {
+                      height: `${Math.max(16, base * 0.72)}px`,
+                      opacity: 0.7,
+                      filter: 'blur(0px)'
+                    }
+              }
+              transition={{
+                duration: 1.8 + (index % 4) * 0.18,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay: index * 0.045
+              }}
+            />
+          ))}
+        </motion.div>
+
+        <motion.div
+          variants={micPlateVariants}
+          animate={isRecording ? 'recording' : 'idle'}
+          className="relative flex h-36 w-36 items-center justify-center rounded-full bg-[radial-gradient(circle_at_32%_28%,rgba(255,255,255,0.18),rgba(255,255,255,0.04)_30%,rgba(15,23,42,0.92)_68%,rgba(2,6,23,1)_100%)] ring-1 ring-sky-300/18 backdrop-blur-md before:absolute before:inset-[7px] before:rounded-full before:bg-slate-950/78 after:absolute after:inset-[2px] after:rounded-full after:border after:border-white/10"
+        >
+          <motion.button
+            type="button"
+            onClick={onMicTouch}
+            variants={micButtonVariants}
+            animate={isRecording ? 'recording' : 'idle'}
+            whileTap={{ scale: isRecording ? 1.25 : 0.96 }}
+            className="relative z-10 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-b from-sky-400 via-cyan-400 to-sky-500 text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300/80 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label={isRecording ? 'Stop recording and continue' : 'Start recording'}
+            data-testid="voice-mic-button"
+            disabled={disabled}
+          >
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z" />
+              <path d="M17 11a1 1 0 1 0-2 0 3 3 0 1 1-6 0 1 1 0 1 0-2 0 5 5 0 0 0 4 4.9V19H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-3.1A5 5 0 0 0 17 11Z" />
+            </svg>
+          </motion.button>
+        </motion.div>
+
+        <p className="mt-7 text-center text-[15px] font-medium tracking-[0.01em] text-white/72">
+          {isRecording ? 'Touch once more to move to confirmation.' : 'Touch once to begin recording.'}
+        </p>
+        <p className="mt-2 text-center text-[13px] font-medium tracking-[0.02em] text-cyan-200/80">
+          {isRecording ? `Hard stop armed at 15.0s · ${remainingSeconds}s left` : 'AudioWorklet + PCM over WSS only'}
+        </p>
+      </div>
+    </motion.section>
+  );
+}
+
+function Step2Confirm({
+  transcript,
+  isSending,
+  errorMessage,
+  onCancel,
+  onSend
+}: {
+  transcript: string;
+  isSending: boolean;
+  errorMessage: string | null;
+  onCancel: () => void;
+  onSend: () => void;
+}) {
+  return (
+    <motion.section
+      variants={screenFade}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="flex h-full flex-col"
+    >
+      <div className="pt-20" />
+
+      <div className="flex flex-1 flex-col items-center">
+        <div className="w-full">
+          <div className="relative mx-auto w-full max-w-[420px]">
+            <motion.div
+              variants={sendRingVariants}
+              animate={isSending ? 'sending' : 'idle'}
+              aria-hidden="true"
+              data-testid="voice-send-ring"
+              data-state={isSending ? 'sending' : 'idle'}
+              className="pointer-events-none absolute inset-0 rounded-[30px] [background:conic-gradient(from_0deg,rgba(34,211,238,0)_0deg,rgba(34,211,238,0.92)_75deg,rgba(125,211,252,0)_160deg,rgba(34,211,238,0)_360deg)] p-[1.5px] [mask:linear-gradient(#fff_0_0)_content-box,linear-gradient(#fff_0_0)] [mask-composite:xor] [-webkit-mask:linear-gradient(#fff_0_0)_content-box,linear-gradient(#fff_0_0)] [-webkit-mask-composite:xor]"
+            />
+
+            <div className="relative min-h-[336px] w-full rounded-[30px] border border-cyan-400/42 bg-slate-950/88 px-5 py-5 shadow-[0_0_0_1px_rgba(56,189,248,0.14),0_0_28px_rgba(34,211,238,0.08)] backdrop-blur-md">
+              <div
+                data-testid="voice-transcript-box"
+                className="voxera-scroll h-[276px] w-full overflow-y-auto touch-pan-y overscroll-contain scroll-smooth pr-2"
+              >
+                <p className="whitespace-pre-wrap break-words text-[16px] leading-8 text-white/92">{transcript}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {errorMessage ? (
+          <p className="mt-4 w-full rounded-2xl border border-rose-300/18 bg-rose-400/8 px-4 py-3 text-[13px] text-rose-100/90">
+            {errorMessage}
+          </p>
+        ) : null}
+
+        <div className="mt-8 flex w-full gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSending}
+            data-testid="voice-cancel-button"
+            className="h-14 flex-1 rounded-2xl border border-white/14 bg-white/[0.04] text-[15px] font-semibold text-white/88 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onSend}
+            disabled={isSending}
+            data-testid="voice-send-button"
+            className="h-14 flex-1 rounded-2xl bg-gradient-to-r from-cyan-400 to-sky-400 text-[15px] font-semibold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.18)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isSending ? 'Sending...' : 'Send'}
+          </button>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+function Step3Complete() {
+  const radius = 48;
+  const circumference = 2 * Math.PI * radius;
+
+  return (
+    <motion.section
+      variants={screenFade}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="flex h-full items-center justify-center"
+      data-testid="voice-success-container"
+    >
+      <div className="flex flex-col items-center justify-center">
+        <div className="relative flex h-36 w-36 items-center justify-center">
+          <svg viewBox="0 0 120 120" className="absolute h-full w-full -rotate-90" aria-hidden="true">
+            <circle cx="60" cy="60" r={radius} stroke="rgba(34,197,94,0.14)" strokeWidth="6" fill="transparent" />
+            <motion.circle
+              cx="60"
+              cy="60"
+              r={radius}
+              stroke="rgb(74, 222, 128)"
+              strokeWidth="6"
+              strokeLinecap="round"
+              fill="transparent"
+              initial={{
+                strokeDasharray: circumference,
+                strokeDashoffset: circumference,
+                filter: 'drop-shadow(0 0 0px rgba(74,222,128,0))'
+              }}
+              animate={{
+                strokeDasharray: circumference,
+                strokeDashoffset: 0,
+                filter: [
+                  'drop-shadow(0 0 0px rgba(74,222,128,0))',
+                  'drop-shadow(0 0 10px rgba(74,222,128,0.42))',
+                  'drop-shadow(0 0 16px rgba(74,222,128,0.58))'
+                ]
+              }}
+              transition={{
+                duration: STEP3_CIRCLE_DURATION_MS / 1000,
+                ease: [0.33, 1, 0.68, 1]
+              }}
+            />
+          </svg>
+
+          <motion.svg
+            viewBox="0 0 52 52"
+            className="relative z-10 h-12 w-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{
+              delay: STEP3_CIRCLE_DURATION_MS / 1000,
+              duration: 0.16,
+              ease: 'easeOut'
+            }}
+            aria-hidden="true"
+          >
+            <motion.path
+              d="M14 27l8 8 16-18"
+              fill="transparent"
+              stroke="rgb(134,239,172)"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{
+                pathLength: 0,
+                filter: 'drop-shadow(0 0 0px rgba(134,239,172,0))'
+              }}
+              animate={{
+                pathLength: 1,
+                filter: [
+                  'drop-shadow(0 0 0px rgba(134,239,172,0))',
+                  'drop-shadow(0 0 10px rgba(134,239,172,0.42))'
+                ]
+              }}
+              transition={{
+                delay: STEP3_CIRCLE_DURATION_MS / 1000,
+                duration: 0.26,
+                ease: [0.22, 1, 0.36, 1]
+              }}
+            />
+          </motion.svg>
+        </div>
+
+        <motion.h2
+          variants={completionTextVariants}
+          initial="initial"
+          animate="animate"
+          data-testid="voice-success-text"
+          className="mt-6 text-center text-[28px] font-semibold tracking-[-0.02em] text-emerald-300"
+        >
+          전송 완료!
+        </motion.h2>
+      </div>
+    </motion.section>
+  );
+}
