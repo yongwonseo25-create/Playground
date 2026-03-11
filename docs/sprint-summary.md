@@ -404,6 +404,96 @@ Restore the lost Step 1 waveform styling without touching the Step 2 / Step 3 ce
 
 ---
 
+
+### Sprint 6 - Free Trial VIP Modal Component
+- Date: 2026-03-11
+- Status: completed
+
+#### Goal
+Add an isolated premium Free Trial modal UI component for marketing use without modifying existing landing page route files.
+
+#### Files Created
+- `src/features/marketing/components/free-trial-modal.tsx`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a standalone client component that includes:
+  - local trigger button (`무료로 시작하기`)
+  - fade-in modal with premium dark glass styling
+  - fake live update animation (183 -> 184 after 3 seconds)
+- No changes to existing `page.tsx` route files or voice-capture architecture.
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without restructuring
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and `clientRequestId` duplicate lock remain untouched
+
+#### Known Risks
+- New modal component is intentionally isolated and not yet wired into the existing marketing landing tree in this sprint.
+
+#### Manual QA
+- [x] `npm run typecheck`
+- [x] `npm run lint`
+- [x] `npm run test`
+
+#### Next Sprint Prerequisites
+- Wire `FreeTrialModal` into the intended landing hero trigger without changing protected files unexpectedly
+- Add dedicated Playwright interaction test for modal open/close and 3-second fake live update
+
+---
+
+### Sprint 7 - Free Trial Modal Premium Visual Upgrade
+- Date: 2026-03-11
+- Status: completed
+
+#### Goal
+Upgrade only the FreeTrialModal visual tone to a high-end Silicon Valley style while preserving existing start/close interaction logic.
+
+#### Files Created
+- None
+
+#### Files Modified
+- src/features/marketing/components/free-trial-modal.tsx
+- docs/sprint-summary.md
+
+#### Architecture Changes
+- Preserved modal logic and interaction flow
+- Upgraded visual layer with stronger glassmorphism, premium glow, badge tint, and CTA hover depth
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without restructuring
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and clientRequestId duplicate lock remain untouched
+
+#### Known Risks
+- Modal visuals are now intentionally bolder and may need minor color balancing against future global theme tokens.
+
+#### Manual QA
+- [x] npm run typecheck
+- [x] npm run lint
+- [x] npm run test
+
+#### Next Sprint Prerequisites
+- Add dedicated E2E test coverage for modal open, close, and delayed counter/progress change
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - AudioWorklet runtime path is not yet implemented
@@ -451,4 +541,7 @@ After finishing a sprint, Codex must:
 3. Update Current Known Risks.
 4. Update Current Manual Regression Checklist if needed.
 ```
+
+
+
 

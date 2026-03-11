@@ -11,7 +11,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "playwright test tests/e2e/env-core.spec.ts -c tests/playwright.env-core.config.ts",
-    "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts -c tests/playwright.config.ts"
+    "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts -c tests/playwright.config.ts",
+    "preview:free-trial": "powershell -ExecutionPolicy Bypass -File scripts/open-free-trial-preview.ps1"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.2",

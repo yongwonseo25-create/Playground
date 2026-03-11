@@ -1,0 +1,13 @@
+﻿{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": [
+        "stitch-mcp-auto"
+      ],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "upbeat-aura-484502-r2"
+      }
+    }
+  }
+}
