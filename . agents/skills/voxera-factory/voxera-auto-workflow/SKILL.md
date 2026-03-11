@@ -26,7 +26,9 @@ description: "Use when user says $voxera-auto-workflow. Voice OS 프로젝트의
 - 빌드(`npm run build`) 및 테스트(`npm test`)를 터미널에서 자동 실행하여 에러가 0개인지 독립적으로 검증하라. 에러가 발생하면 STEP 3으로 돌아가 무한 수정(Verify Loop)하라.
 
 **STEP 5: AUTO COMMIT & PUSH (자동 업로드)**
-- STEP 4의 모든 검증이 완벽하게 통과하면, 사용자가 터미널을 열 필요 없이 네가 직접 아래 명령어를 실행하여 깃허브에 올려라.
+
+
+- STEP 4의 모든 검증이 완벽하게 통과하면, 작업한 내용을 반드시 차을 띠워서 사용자가 확인할 수 있게하고, 사용자가 제적 한거 보고 컨펌 후에 ,터미널을 열 필요 없이 네가 직접 아래 명령어를 실행하여 깃허브에 올려라.
   `git add .`
   `git commit -m "feat: [작업명] 완벽 구현 및 검증 완료"`
   `git push origin HEAD`
