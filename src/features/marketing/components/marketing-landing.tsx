@@ -1,44 +1,31 @@
-import Link from 'next/link';
-import { Rocket } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+'use client';
+
+import { BentoGridSection } from '@/components/sections/BentoGridSection';
+import { HeroSection } from '@/components/sections/HeroSection';
+import { TrustRailSection } from '@/components/sections/TrustRailSection';
+import { FreeTrialModal } from '@/features/marketing/components/free-trial-modal';
+import { useState } from 'react';
 
 export function MarketingLanding() {
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col px-4 py-10 sm:px-6">
-      <section className="animate-slide-up space-y-4">
-        <p className="inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-          <Rocket className="h-3.5 w-3.5" />
-          Voxera foundation
-        </p>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Listen. Think. Act.</h1>
-        <p className="max-w-prose text-sm text-muted-foreground sm:text-base">
-          Mobile-first front-end scaffold for a voice-based business execution agent. Audio logic and backend integrations are intentionally deferred.
-        </p>
-      </section>
+  const [isFreeTrialOpen, setIsFreeTrialOpen] = useState(false);
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Voice Workflow</CardTitle>
-            <CardDescription>Route group prepared for capture, state, and execution UX.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full sm:w-auto">
-              <Link href="/capture">Open voice shell</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Architecture Ready</CardTitle>
-            <CardDescription>Typed placeholders for future AudioWorklet + WebSocket streams.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">No backend assumptions are hardcoded.</p>
-          </CardContent>
-        </Card>
-      </section>
-    </main>
+  return (
+    <>
+      <main className="relative min-h-screen overflow-hidden bg-[#06090F] text-white">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(143,160,184,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(143,160,184,0.12)_1px,transparent_1px)] bg-[size:80px_80px] opacity-[0.12]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,#06090F_0%,#0B111B_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_32%_18%,rgba(86,204,242,0.14),transparent_34%),radial-gradient(circle_at_72%_14%,rgba(187,107,217,0.16),transparent_32%)]" />
+
+        <div className="relative z-10">
+          <HeroSection
+            onPrimaryClick={() => setIsFreeTrialOpen(true)}
+            onSecondaryClick={() => setIsFreeTrialOpen(true)}
+          />
+          <TrustRailSection />
+          <BentoGridSection />
+        </div>
+      </main>
+      <FreeTrialModal open={isFreeTrialOpen} onOpenChange={setIsFreeTrialOpen} />
+    </>
   );
 }

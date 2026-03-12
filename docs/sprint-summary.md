@@ -1,4 +1,3 @@
-﻿```md
 # Voxera Sprint Summary
 
 > This file is the persistent architecture memory for the Voxera front-end.
@@ -102,6 +101,16 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Accessibility status: touch targets, labels, and Playwright test ids applied
 - Error messaging status: inline Step 2 retry/cancel feedback available
 - Motion polish status: idle waveform silhouette preserved, mic breathing glow clarified, and footer copy now loops as a one-way marquee
+
+### Diagram Workflow
+- Status: Excalidraw intake workflow initialized
+- Source folder: `docs/diagrams/`
+- Intake file types:
+  - `.excalidraw`
+  - `.png`
+  - `.svg`
+- Interpretation policy: the newest relevant diagram acts as the visual brief for subsequent Codex implementation work
+- Rule file: `skills.md`
 
 ---
 
@@ -424,6 +433,49 @@ Tune only the requested visual details in the capture screen without changing re
 - Continue preserving reducer/state-machine ownership as live audio transport is added
 
 ---
+
+### Sprint 6 - Excalidraw Intake Workflow
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Establish a repository-level workflow so Excalidraw and exported design assets can be dropped into a shared folder and interpreted as the visual brief for Codex implementation work.
+
+#### Files Created
+- `docs/diagrams/README.md`
+- `skills.md`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a diagram intake layer centered on `docs/diagrams/` for `.excalidraw`, `.png`, and `.svg` design sources
+- Added repository-level interpretation rules so diagram-driven work remains aligned with Voxera guardrails
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Diagram intake is workflow-based and depends on the user placing files in `docs/diagrams/`
+- Image exports may omit behavioral nuance that exists only in the original `.excalidraw` annotations
+
+#### Manual QA
+- [ ] Place a sample `.excalidraw`, `.png`, or `.svg` file in `docs/diagrams/`
+- [ ] Ask Codex to implement from that file and confirm the file is treated as the source brief
+
+#### Next Sprint Prerequisites
+- Add the first real Excalidraw artifact and validate the interpretation workflow against a live implementation task
+
+---
 ## Current Known Risks (Rolling Section)
 
 - AudioWorklet runtime path is not yet implemented
@@ -432,6 +484,7 @@ Tune only the requested visual details in the capture screen without changing re
 - duplicate lock must be verified again once webhook upload is added
 - timeout and upload flow must be verified together once live network flow exists
 - current premium UI is validated against placeholder upload timing, not live backend latency
+- diagram intake depends on source files being added to `docs/diagrams/`
 
 ---
 
@@ -448,6 +501,7 @@ Tune only the requested visual details in the capture screen without changing re
 - [x] No permission popup infinite loop exists in current shell logic
 - [x] UI supports one-handed mobile use
 - [x] Step 1 -> Step 2 -> Step 3 -> Step 1 loop is Playwright-verified
+- [ ] Excalidraw artifacts in `docs/diagrams/` are treated as the source brief for diagram-driven tasks
 
 ---
 
@@ -470,12 +524,1113 @@ After finishing a sprint, Codex must:
 2. Update Current Architecture Snapshot.
 3. Update Current Known Risks.
 4. Update Current Manual Regression Checklist if needed.
-```
 
+### Zero-Touch Design Automation Addendum
+- Idea source folder: `docs/ideas/`
+- Blueprint output folder: `docs/blueprints/`
+- Component output folder: `src/components/generated/`
+- Watch script: `scripts/auto-design.js`
+- Runtime requirement: local `ANTHROPIC_API_KEY`, network access, and installed `chokidar`
 
+### Sprint 7 - Zero-Touch Text-to-SVG Automation
+- Date: 2026-03-12
+- Status: completed
 
+#### Goal
+Establish a local watcher that converts one-line text briefs into an SVG blueprint and a generated React component in a single automated flow.
 
+#### Files Created
+- `docs/ideas/README.md`
+- `docs/blueprints/README.md`
+- `scripts/auto-design.js`
 
+#### Files Modified
+- `package.json`
+- `skills.md`
+- `docs/sprint-summary.md`
 
+#### Architecture Changes
+- Added a zero-touch design intake path rooted at `docs/ideas/`
+- Added automated SVG blueprint output at `docs/blueprints/`
+- Added generated React component output at `src/components/generated/`
+- Added a local watcher script that performs a two-stage Claude generation flow
 
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
 
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The watcher requires `ANTHROPIC_API_KEY` and runtime network access
+- Generated code may still need manual review before being merged into production paths
+- `chokidar` was declared in `package.json` but not installed in this environment
+
+#### Manual QA
+- [ ] Add a one-line `.txt` brief to `docs/ideas/`
+- [ ] Run `node scripts/auto-design.js`
+- [ ] Confirm a matching `.svg` file appears in `docs/blueprints/`
+- [ ] Confirm a matching generated component appears in `src/components/generated/`
+
+#### Next Sprint Prerequisites
+- Install dependencies and validate the live Claude call path
+- Decide when generated components should be promoted from `src/components/generated/` into feature-owned UI
+
+### Sprint 8 - Warm Landing Zero-Touch Verification
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Self-verify the zero-touch watcher by generating a warm landing brief, producing SVG and React outputs, and wiring the generated landing into the marketing route with a Free Trial modal trigger.
+
+#### Files Created
+- `docs/ideas/warm-landing.txt`
+- `docs/blueprints/warm-landing.svg`
+- `docs/blueprints/warm-landing.json`
+- `src/components/generated/WarmLandingGenerated.tsx`
+- `src/features/marketing/components/free-trial-modal.tsx`
+
+#### Files Modified
+- `scripts/auto-design.js`
+- `src/features/marketing/components/marketing-landing.tsx`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Verified the zero-touch watcher can ingest a local idea brief and emit blueprint plus component artifacts
+- Promoted the generated warm landing into the marketing route for live browser rendering
+- Added a local Free Trial modal so the warm landing mic and CTA can toggle a VIP-style modal state
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Remote Claude generation was not exercised because `ANTHROPIC_API_KEY` was unavailable in this environment
+- The current warm landing uses a local fallback generator path for deterministic offline output
+
+#### Manual QA
+- [x] Confirmed `docs/ideas/`, `docs/blueprints/`, and `src/components/` exist
+- [x] Ran `node scripts/auto-design.js` and generated `warm-landing` blueprint and component artifacts
+- [x] Verified `npm run typecheck`
+- [x] Verified `npm run lint`
+- [x] Verified `npm run test`
+- [ ] Open the local marketing route in a browser and confirm mic click opens the VIP modal
+
+#### Next Sprint Prerequisites
+- Add `ANTHROPIC_API_KEY` and re-run the watcher to validate the remote Claude path
+- Decide whether the warm landing becomes the default marketing page or a campaign-specific route
+
+### Sprint 9 - OpenAI-Keyed S.T.R.U.C.T. Warm Landing Regeneration
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Load a live API key from `.env`, run the S.T.R.U.C.T. translation path for `warm-landing`, and regenerate the Visual PRD, SVG, and TSX outputs.
+
+#### Files Created
+- `.env`
+
+#### Files Modified
+- `.gitignore`
+- `scripts/auto-design.js`
+- `docs/blueprints/warm-landing.visual-prd.md`
+- `docs/blueprints/warm-landing.svg`
+- `src/components/generated/WarmLandingGenerated.tsx`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added local `.env` loading to the zero-touch watcher
+- Added a Visual PRD generation stage ahead of SVG and TSX generation
+- Verified remote provider metadata can record `openai / gpt-4o` generation for warm landing artifacts
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The remote model response introduced mojibake in Korean copy, so final render artifacts were normalized against the original brief after the remote translation stage
+- `.env` now contains a live secret and must remain uncommitted
+
+#### Manual QA
+- [x] Loaded API credentials from `.env`
+- [x] Generated a remote `openai / gpt-4o` Visual PRD for `warm-landing`
+- [x] Rewrote the final SVG and TSX artifacts to preserve exact Korean copy from the brief
+- [x] Verified `npm run typecheck`
+- [x] Verified `npm run lint`
+- [x] Verified `npm run test`
+
+#### Next Sprint Prerequisites
+- Decide whether to automate post-generation Unicode normalization for multilingual briefs
+- Consider adding a one-shot CLI mode to `auto-design.js` so remote generation can complete without watcher timeouts
+
+### Sprint 10 - V-DD Landing Skill Authoring
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Add a reusable local skill that forces V-DD landing-page work to flow through S.T.R.U.C.T reverse-design and SVG blueprinting before implementation.
+
+#### Files Created
+- `.agents/skills/v-dd-landing-rendering/SKILL.md`
+- `.agents/skills/v-dd-landing-rendering/agents/openai.yaml`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a repository-local skill for landing-page generation workflow guidance
+- Formalized a pre-code sequence of S.T.R.U.C.T spec -> SVG blueprint -> implementation for V-DD landing work
+- Standardized fixed `max-w-*` container usage and `break-keep` text handling in the new skill rules
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The new skill governs future agent behavior but does not retroactively rewrite existing generated landing assets
+- The skill does not yet bundle helper scripts for automatic SVG emission, so blueprint generation still depends on the active agent following the instructions
+
+#### Manual QA
+- [x] Initialized the skill with `init_skill.py`
+- [x] Rewrote `SKILL.md` with the required workflow and constraints
+- [x] Validated the skill folder with `quick_validate.py`
+
+#### Next Sprint Prerequisites
+- Use the new skill on a live landing-page brief and confirm the output order remains S.T.R.U.C.T -> SVG -> code
+
+### Sprint 11 - Visual Auto-Launch Rule
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Persist an automatic visual preview rule so frontend work ends with a running local server and an opened browser, not just code completion.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `skills.md`
+- `.agents/skills/v-dd-landing-rendering/SKILL.md`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a repository-level Visual Auto-Launch rule for frontend and UI tasks
+- Extended the V-DD landing skill so local preview boot and browser popup are part of completion behavior
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Automatic browser launch assumes port `3000` remains the active local preview target
+- Background dev servers can linger if they are not intentionally shut down after review
+
+#### Manual QA
+- [x] Added repository rule text for automatic visual launch
+- [x] Added matching behavior to the V-DD landing skill
+- [ ] Start the dev server and confirm the browser opens to the warm landing automatically
+
+#### Next Sprint Prerequisites
+- If multiple frontend apps are added later, define route-aware preview selection rules per app
+
+### Sprint 12 - Node Browser Launcher And V-DD Blueprint Delivery
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Add a Node-based browser launcher that bypasses shell popup limits and use the V-DD workflow to deliver blueprint-only SVG visuals for new landing concepts without writing TSX.
+
+#### Files Created
+- `scripts/open-browser.js`
+- `docs/blueprints/warm-landing-revival.visual-prd.md`
+- `docs/blueprints/warm-landing-revival.svg`
+- `docs/blueprints/b2b-cold-bento.visual-prd.md`
+- `docs/blueprints/b2b-cold-bento.svg`
+
+#### Files Modified
+- `skills.md`
+- `.agents/skills/v-dd-landing-rendering/SKILL.md`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a Node fallback launcher for visual QA targets such as local preview URLs and generated SVG blueprint files
+- Extended the V-DD skill and repository rules so blueprint-only work can auto-open SVGs even when shell popup commands are blocked
+- Added two new blueprint artifacts that stop at S.T.R.U.C.T spec plus SVG planning output
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Browser opening still depends on the local OS honoring child-process launch behavior from Node
+- The generated SVGs are planning blueprints and not pixel-perfect final UI renders
+
+#### Manual QA
+- [x] Created `scripts/open-browser.js`
+- [x] Generated warm and B2B Visual PRDs
+- [x] Generated warm and B2B SVG blueprint files
+- [ ] Confirm both SVG files open in the local browser/windowing environment
+
+#### Next Sprint Prerequisites
+- Convert the approved SVG blueprint into production landing code only after visual sign-off
+
+### Sprint 13 - Open Package Browser Launcher Rewrite
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Replace the brittle child-process browser launcher with an `open` package-based launcher that resolves paths absolutely and opens multiple visual QA targets reliably.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `package.json`
+- `package-lock.json`
+- `scripts/open-browser.js`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Swapped the visual QA launcher from manual OS process spawning to the `open` library
+- Standardized absolute-path conversion with `path.resolve()` and `pathToFileURL()` before browser dispatch
+- Added Promise-based multi-target opening so one command can launch multiple SVG tabs
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Successful process launch still does not let the agent introspect the user's desktop to visually prove the tabs are frontmost
+- `npm install` updated lockfile state in a repository that otherwise prefers `pnpm`
+
+#### Manual QA
+- [x] Installed `open`
+- [x] Rewrote `scripts/open-browser.js` to use `open`
+- [x] Re-ran the launcher on both SVG blueprint files without shell errors
+
+#### Next Sprint Prerequisites
+- If visual QA expands further, add a tiny launcher self-test that records opened targets to a local log
+
+### Sprint 14 - Native Final B2B SVG Delivery
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Deliver a final B2B cold landing SVG blueprint aligned to the approved hybrid Hero + Vercel Bento concept and open it with the VS Code native tab workflow.
+
+#### Files Created
+- `docs/blueprints/final-b2b-landing.svg`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a final single-file B2B blueprint artifact tuned for VS Code native SVG review
+- Adopted the VS Code CLI file-open path as the approved visual QA mechanism for SVG blueprint review
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Native VS Code tab opening confirms editor delivery, but final visual polish still depends on human review of the rendered SVG
+
+#### Manual QA
+- [x] Generated `docs/blueprints/final-b2b-landing.svg`
+- [x] Opened the SVG via `code docs/blueprints/final-b2b-landing.svg`
+
+#### Next Sprint Prerequisites
+- Convert the approved final B2B SVG into implementation work only after visual sign-off
+
+### Sprint 15 - Final B2B SVG Detail Correction
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Correct the final B2B blueprint's CTA fit, hero spacing, motion annotation, and bento lighting details before any implementation work begins.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/blueprints/final-b2b-landing.svg`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Refined the SVG-only final B2B blueprint with explicit motion comments and stronger spacing/spec fidelity
+- Kept review flow on VS Code native SVG tabs with no React or TSX work introduced
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The SVG now better documents intended motion, but actual animation timing still needs implementation after sign-off
+
+#### Manual QA
+- [x] Expanded CTA geometry so the text sits fully inside each button
+- [x] Increased the copy-to-mic vertical separation past the requested 96px gap
+- [x] Added implementation comment text for staggered EQ and pulse/glow mic motion
+- [x] Reworked bento cards to 1px / 5% white borders with spotlight-style radial fills
+- [x] Re-opened `final-b2b-landing.svg` in VS Code
+
+#### Next Sprint Prerequisites
+- Translate the approved SVG motion annotations into production animation only after final visual approval
+
+### Sprint 16 - Final B2B SVG Centering Revision
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Rework the final B2B SVG so the hero copy becomes a strict centered 2-line statement, the CTA pair shares a unified filled tone, and the mic/EQ cluster expands to a perfectly centered 7-by-7 arrangement with stronger spacing separation.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/blueprints/final-b2b-landing.svg`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Tightened the SVG blueprint's hero alignment and spacing rules without introducing any code implementation work
+- Switched Korean SVG labels to numeric character references to avoid shell mojibake during review workflows
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Character references improve file stability in tooling, but visual approval is still required inside the editor render surface
+
+#### Manual QA
+- [x] Replaced the hero line with a forced 2-line centered copy block
+- [x] Unified both CTA buttons with a single filled gradient tone
+- [x] Preserved more than 120px of safe space between the CTA group and the mic plate
+- [x] Expanded EQ bars to 7 left + 7 right and aligned them to the mic center axis
+- [x] Re-opened `final-b2b-landing.svg` in VS Code
+
+#### Next Sprint Prerequisites
+- Wait for final visual sign-off before any production implementation work
+
+### Sprint 17 - Final B2B Real Image Embedding
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Replace the synthetic mic drawing in the final B2B SVG with the user-provided local mic image and hard-align the top and bottom groups to a shared center axis.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/blueprints/final-b2b-landing.svg`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Swapped the blueprint's center mic from vector stand-in geometry to a real local raster asset embedded with SVG `<image>`
+- Tightened the hero and mic/EQ groups around a single `center x = 800` alignment rule
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The SVG now depends on the local image file `docs/blueprints/unnamed (2).jpg` remaining present beside the blueprint
+
+#### Manual QA
+- [x] Confirmed the local mic reference file exists in `docs/blueprints/`
+- [x] Embedded the reference image in `final-b2b-landing.svg` with `<image>`
+- [x] Re-aligned the top copy/CTA group and bottom mic/EQ group to `center x = 800`
+- [x] Split EQ gradients to mint-left and purple-right
+
+#### Next Sprint Prerequisites
+- Lock the final approved asset filename if the user wants to remove spaces from the current image path
+
+### Sprint 18 - Final B2B Base64 Embedding
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Eliminate local-path fragility by embedding the approved mic reference JPG directly into the final B2B SVG as a Base64 data URI while preserving the shared center axis.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/blueprints/final-b2b-landing.svg`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Replaced the relative file reference inside the final B2B SVG with an inline `data:image/jpeg;base64,...` payload
+- Preserved the `center x = 800` alignment rule for both the top content group and the bottom mic/EQ group
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The final SVG file is now much larger because it carries the full raster asset inline
+
+#### Manual QA
+- [x] Read the local JPG from `docs/blueprints/unnamed (2).jpg`
+- [x] Encoded the JPG to Base64 and embedded it directly in `final-b2b-landing.svg`
+- [x] Re-opened the SVG via VS Code native file opening
+
+#### Next Sprint Prerequisites
+- Proceed only after visual sign-off on the fully self-contained final SVG artifact
+
+### Sprint 19 - Final B2B Center Axis Correction
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Correct the final B2B SVG center-axis math so the top copy/CTA group and the bottom mic/EQ group share the same vertical center line with the mic image placed by `center - width / 2`.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/blueprints/final-b2b-landing.svg`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Kept the final B2B artifact as a self-contained SVG with embedded Base64 JPG
+- Re-centered the CTA pair around `center x = 800`
+- Preserved the mic image at `x = 600` for a `400px`-wide asset, matching `800 - 400 / 2`
+- Repositioned the left/right 7-bar EQ groups to remain symmetric around the same center axis
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- None
+
+#### Manual QA
+- [x] Verified the mic image remains embedded as Base64
+- [x] Verified the mic image origin is `x=600` for a `400px` width asset on an `x=800` center line
+- [x] Verified the CTA pair and EQ bars were repositioned to align with the shared center axis
+- [x] Re-opened the SVG via VS Code native file opening
+
+#### Next Sprint Prerequisites
+- Proceed only after visual sign-off on the corrected center-axis layout
+
+### Sprint 20 - Final B2B Mike Image And Copy Refresh
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Swap the final B2B mic asset to the newly provided `MIKE_IMAGE.jpg` via inline Base64 and replace the upper headline/subcopy with the approved Korean launch copy while preserving the existing center axis and EQ layout.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/blueprints/final-b2b-landing.svg`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Replaced the embedded JPG payload inside the central `<image>` tag with the new `MIKE_IMAGE.jpg` Base64 data URI
+- Kept the mic placement, center axis, CTA positions, and 7+7 EQ bar coordinates unchanged
+- Replaced the upper content copy with a 2-line headline and 2-line subcopy centered at `x = 800`
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- None
+
+#### Manual QA
+- [x] Verified `docs/blueprints/MIKE_IMAGE.jpg` exists and was read locally
+- [x] Replaced the existing SVG `<image>` payload with a new `data:image/jpeg;base64,...` string
+- [x] Replaced the upper text block with the approved 2-line headline and 2-line subcopy
+- [x] Re-opened the SVG through VS Code native file opening
+
+#### Next Sprint Prerequisites
+- Proceed only after visual sign-off on the updated mic branding and approved launch copy
+
+### Sprint 21 - Final B2B Copy Reduction And Aurora EQ Rollback
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Reduce visual noise in the final B2B SVG by removing the subcopy block and restoring the 14 EQ bars to a shared multi-color aurora gradient without changing the approved image placement or layout.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/blueprints/final-b2b-landing.svg`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Removed the 2-line subcopy block entirely from the hero area
+- Replaced the split mint/purple EQ gradients with a single multi-color aurora gradient applied to all 14 bars
+- Preserved the mic Base64 asset, center axis, CTA placement, and EQ geometry
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- None
+
+#### Manual QA
+- [x] Verified the subcopy `<text>` block was removed from the hero area
+- [x] Verified all 14 EQ bars now use the same multi-color aurora gradient
+- [x] Re-opened the SVG through VS Code native file opening
+
+#### Next Sprint Prerequisites
+- Proceed only after visual sign-off on the simplified hero and aurora EQ color treatment
+
+### Sprint 22 - Final B2B Headline Box Tightening And EQ Reference Restore
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Tighten the headline box to the actual copy width and restore the original short multi-color EQ cluster using the provided waveform reference image.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/blueprints/final-b2b-landing.svg`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Reduced the headline card width and kept the headline text centered on `x = 800`
+- Replaced the wide 14-bar aurora treatment with a compact reference-style left/right EQ cluster positioned around the mic
+- Preserved the embedded mic image, overall hero frame, CTA placement, and center-axis rule
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- None
+
+#### Manual QA
+- [x] Opened `docs/blueprints/파형 레퍼런스.jpg` and restored the short multi-color EQ cluster based on it
+- [x] Reduced the headline box width and kept its text centered on the mic axis
+- [x] Re-opened the SVG through VS Code native file opening
+
+#### Next Sprint Prerequisites
+- Proceed only after visual sign-off on the tightened headline box and restored EQ reference look
+
+### Sprint 23 - One-Page Landing Code Dump
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Render the approved final B2B blueprint into a single continuous TSX landing file for production implementation prep.
+
+#### Files Created
+- `temp/stitch_dump.tsx`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a one-page landing TSX dump that mirrors the approved hero, trust rail, and bento layout in a single continuous view
+- Embedded the approved mic JPG as a Base64 data URI inside the dump component to avoid file-path fragility
+- Preserved repository constitutional rules by keeping voice/audio state architecture untouched
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- `stitch-mcp` was not available in this session, so the dump was generated locally instead of through `generate_ui_v3`
+- The dump file is not yet wired into the app route tree
+
+#### Manual QA
+- [x] Generated a single long-page TSX component in `temp/stitch_dump.tsx`
+- [x] Embedded the approved mic image as Base64 inside the dump
+- [x] Preserved the approved center-aligned hero, trust rail, and bento composition in one continuous page
+
+#### Next Sprint Prerequisites
+- Decide whether to replace the current marketing entry component with the new dump or refactor it into reusable sections
+
+### Sprint 24 - Stitch MCP Remote Connection Verification
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Verify the local Google auth state against Stitch, register the remote Stitch MCP endpoint in Codex config, and produce a real Stitch-generated landing artifact.
+
+#### Files Created
+- `temp/stitch-create-response.json`
+- `temp/stitch-generate-response.json`
+- `temp/stitch-real.html`
+- `temp/stitch-real.png`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### External Config Modified
+- `C:\Users\Master\.codex\config.toml`
+
+#### Architecture Changes
+- Confirmed the local machine already had Stitch setup metadata at `C:\Users\Master\.stitch-mcp-auto\config.json` pointing to project `upbeat-aura-484502-r2`
+- Verified the remote Stitch MCP endpoint at `https://stitch.googleapis.com/mcp` responds to authenticated MCP initialization and tool discovery
+- Registered the Stitch MCP endpoint in Codex config and generated a real Stitch screen artifact via the remote MCP HTTP interface
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The currently exposed Stitch MCP tools are `create_project`, `generate_screen_from_text`, `edit_screens`, etc.; `generate_ui_v3` is not exposed on this endpoint
+- The current Codex session did not hot-inject a new `stitch-mcp` tool after config update, so the real generation was executed by direct authenticated MCP HTTP calls instead of an in-session tool binding
+- Stitch's generated copy diverged from the approved Korean blueprint in parts, so the artifact should be treated as a real vendor render baseline, not a final approved production implementation
+
+#### Manual QA
+- [x] Confirmed ADC token auth works with `https://stitch.googleapis.com/mcp`
+- [x] Confirmed `tools/list` exposes live Stitch tools for the authenticated project
+- [x] Created a real Stitch project and generated a desktop landing screen
+- [x] Downloaded the Stitch HTML and screenshot artifacts locally and opened them in VS Code
+
+#### Next Sprint Prerequisites
+- Decide whether to iterate inside Stitch using `edit_screens` or to port the approved SVG spec directly into production React/Next code
+
+### Sprint 25 - Marketing Landing Layout Correction
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Replace the generated placeholder marketing page with a sectioned production landing and correct hero alignment, waveform rendering, and bento grid ordering against the approved B2B blueprint.
+
+#### Files Created
+- `public/images/mike-image.jpg`
+- `src/components/sections/HeroSection.tsx`
+- `src/components/sections/TrustRailSection.tsx`
+- `src/components/sections/BentoGridSection.tsx`
+
+#### Files Modified
+- `src/features/marketing/components/marketing-landing.tsx`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Replaced the old generated warm landing entry with a section-based B2B marketing page
+- Added a centered hero section with the approved mic image, compact multi-color EQ clusters, and unified CTA styling
+- Rebuilt the lower bento area so the four workflow cards share the same width and height and the KPI card renders visibly without empty placeholder space
+- Preserved voice capture architecture by limiting changes to the marketing route only
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The current QA loop verified the landing at `localhost:3000` with Agent Browser desktop viewport; additional mobile-specific visual polish may still be desirable
+- `src/components/generated/WarmLandingGenerated.tsx` still exists on disk but is no longer wired into the marketing route
+
+#### Manual QA
+- [x] Ran `agent-browser --headed open http://localhost:3000`
+- [x] Captured multiple headed screenshots after each correction pass
+- [x] Verified card box parity with Agent Browser: all four feature cards reported `227.5 x 214`
+- [x] Verified hero and mic center alignment with Agent Browser boxes: hero center `640`, mic center `640`, delta `0`
+
+#### Next Sprint Prerequisites
+- Decide whether to keep refining this landing as the main marketing entry or fold the remaining proof/support sections from the approved SVG into separate reusable sections
+
+### Sprint 26 - Marketing Polish Cleanup
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Remove blueprint instruction leakage from the marketing UI and polish the hero CTA, trust marquee, mic frame, and closing strip for production presentation quality.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `src/components/sections/HeroSection.tsx`
+- `src/components/sections/TrustRailSection.tsx`
+- `src/components/sections/BentoGridSection.tsx`
+- `src/shared/styles/globals.css`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Removed the temporary hero badge and workflow instruction copy from the rendered UI
+- Added a rotating glow border treatment to the primary CTA via global CSS
+- Smoothed the trust marquee by extending the repeated content set and adjusting the animation distance
+- Masked the embedded mic image corner watermark and removed the closing strip badge
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Agent Browser screenshots in this environment occasionally pad the unused viewport with white canvas, so DOM inspection was used alongside screenshots for confirmation
+
+#### Manual QA
+- [x] Confirmed the hero badge was removed and the subcopy now renders as two intentional lines
+- [x] Confirmed the workflow instruction text was replaced with `Voice OS 핵심 기능`
+- [x] Confirmed the closing strip badge was removed and the closing line is forced onto one line
+- [x] Re-verified the page in the headed local browser session at `http://localhost:3000`
+
+#### Next Sprint Prerequisites
+- If needed, tighten the remaining typography and section density after stakeholder sign-off on the current production-facing copy
+
+### Sprint 27 - Marketing Copy Overhaul And EQ Motion Upgrade
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Execute the second-round UI surgery by replacing blueprint-like text with production copy, enforcing exact hero subcopy line breaks, and increasing EQ visual motion intensity.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `src/components/sections/HeroSection.tsx`
+- `src/components/sections/BentoGridSection.tsx`
+- `src/shared/styles/globals.css`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Updated hero subcopy into two intentional lines split after `음성 실행 플랫폼을,`
+- Upgraded EQ bars from mild motion to stronger CSS keyframe rhythm with per-bar duration and delay variance
+- Replaced bento top label/headline with production copy: `VOICE-FIRST WORKFLOW` and `복잡한 입력 과정을, 한 번의 음성으로`
+- Replaced all four workflow card title/body pairs with the approved killer copy set
+- Removed residual instructional workflow heading text from the right bento block
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Agent Browser viewport screenshots in this environment continue to include gray padded areas outside the rendered page; DOM inspection and text assertions were used alongside screenshots
+
+#### Manual QA
+- [x] Confirmed hero subcopy line break appears exactly after `음성 실행 플랫폼을,`
+- [x] Confirmed old bento texts (`6-Column Bento Grid`, `실행 지표와 운영 설계를...`, workflow instruction copy) are removed
+- [x] Confirmed new killer-copy card titles and bodies are rendered
+- [x] Confirmed EQ bars now render with per-bar animation duration/delay and dynamic height variance in browser inspection
+
+#### Next Sprint Prerequisites
+- Tune card typography density at smaller desktop widths if stakeholders request stronger readability at 1366x768
+
+### Sprint 28 - Third Surgery Cleanup (Mask Removal + Motion Smoothing)
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Remove the fake black watermark mask, replace it with real image crop behavior, smooth EQ motion for premium B2B tone, and eliminate the last two blueprint-instruction texts from the rendered landing.
+
+#### Files Created
+- `temp/sprint28-after-fix.png`
+
+#### Files Modified
+- `src/components/sections/HeroSection.tsx`
+- `src/components/sections/BentoGridSection.tsx`
+- `src/shared/styles/globals.css`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Hero mic container now uses `overflow-hidden` + scaled image crop (`scale-105`) instead of an overlaid dark circle mask
+- EQ bars keep the existing structure while switching to slower `1.6s~2.45s` animation durations with `ease-in-out`
+- Removed residual instruction labels from production UI: `1. KPI Card` and `Closing Proof Strip`
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Hero/KPI/body copy appears mojibake in this terminal code page, but browser-rendered Korean text is validated through Agent Browser snapshot output
+- Current EQ cluster count remains `5 + 5`; if product direction still requires `7 + 7`, apply as a follow-up visual task
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `agent-browser open http://localhost:3000 --headed`
+- [x] `agent-browser screenshot temp/sprint28-after-fix.png --full`
+- [x] `agent-browser eval` confirmed:
+  - black mask element absent
+  - `1. KPI Card` text absent
+  - `Closing Proof Strip` text absent
+  - EQ animation durations within `1.6s~2.45s` and timing function `ease-in-out`
+
+#### Next Sprint Prerequisites
+- If needed, re-run final visual sign-off on mobile viewport with Agent Browser and tune typography scale only
+
+### Sprint 29 - Bento Removal And Z-Pattern Rebuild
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Keep the approved hero and trust bar unchanged, remove the dense bento grid, and rebuild the lower body as four wide alternating Z-pattern sections with premium dark glassmorphism mock panels.
+
+#### Files Created
+- `temp/sprint29-z-pattern.png`
+
+#### Files Modified
+- `src/components/sections/BentoGridSection.tsx`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Replaced the prior bento-kpi/workflow layout with four vertical `grid-cols-2` zigzag sections
+- Enforced alternating composition per section: text-left/mock-right then mock-left/text-right
+- Introduced deep-dark glassmorphism mock containers with thin mint/purple neon borders and internal metric visualization
+- Preserved top-of-page structure by leaving `HeroSection` and `TrustRailSection` wiring unchanged in `marketing-landing.tsx`
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The new section-copy and mock density are tuned for desktop first; additional mobile typography tightening may be requested after visual sign-off
+- Terminal code page can still display Korean as mojibake while browser rendering remains correct
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `agent-browser open http://localhost:3000 --headed`
+- [x] `agent-browser snapshot --json` confirmed all 4 requested section headlines are rendered
+- [x] `agent-browser get count "[data-testid='kpi-card']" --json` returned `0`
+- [x] `agent-browser get count "[data-testid='z-pattern-mock']" --json` returned `4`
+- [x] `agent-browser screenshot temp/sprint29-z-pattern.png --full`
+
+#### Next Sprint Prerequisites
+- If stakeholders request stronger visual hierarchy, tune per-section spacing/typography without reintroducing dense card clustering
+
+### Sprint 30 - Watermark Crop Hardening And Z-Pattern Infographic Upgrade
+- Date: 2026-03-12
+- Status: completed
+
+#### Goal
+Keep approved hero/trust behavior intact while applying strict watermark crop rules on the mic image and upgrading the 4-section Z-pattern area with fixed Korean line breaks and infographic visuals.
+
+#### Files Created
+- `temp/sprint30-zpattern-infographic.png`
+
+#### Files Modified
+- `src/components/sections/HeroSection.tsx`
+- `src/components/sections/BentoGridSection.tsx`
+- `src/shared/styles/globals.css`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Applied top-left anchored mic crop using `origin-top-left` + `scale-[1.15]` while preserving parent `overflow-hidden`
+- Converted all four body sections to fixed 2-line title + fixed 2-line paragraph copy with explicit `<br />` placement
+- Preserved responsive Z-pattern structure with mobile `flex-col` and desktop `md:grid-cols-2` alternation
+- Replaced generic mock blocks with four dedicated infographic renderers:
+  - multi-color waveform + typing line
+  - dummy text to neon-mint bullet conversion
+  - neon wire links from mic core to Kakao/Notion/Google pills
+  - speech bubbles stacking into a lower grid block
+- Added dedicated animation classes/keyframes in global styles for infographic motion
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The CLI terminal still shows occasional mojibake for Korean literals, but browser rendering/snapshot output confirms the copy is correct
+- Additional micro-polish (animation pacing, icon detail) may be requested after visual stakeholder pass
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `agent-browser open http://localhost:3000 --headed`
+- [x] `agent-browser snapshot --json` verified all four updated section headlines and bodies
+- [x] `agent-browser get count "[data-testid='z-pattern-mock']" --json` returned `4`
+- [x] `agent-browser get count "[data-testid='kpi-card']" --json` returned `0`
+- [x] `agent-browser screenshot temp/sprint30-zpattern-infographic.png --full`
+
+#### Next Sprint Prerequisites
+- If requested, tune only infographic detail polish without changing approved text breaks or hero/trust alignment

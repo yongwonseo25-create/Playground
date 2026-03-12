@@ -1,0 +1,4 @@
+interface:
+  display_name: "V-DD 랜딩페이지 렌더링"
+  short_description: "아이디어를 S.T.R.U.C.T와 SVG 블루프린트로 역설계한 뒤 Voxera 스타일 랜딩을 구현합니다."
+  default_prompt: "아이디어를 주면 S.T.R.U.C.T 6단계 명세와 SVG 블루프린트를 먼저 만들고, max-width 고정과 break-keep 규칙을 지키며 랜딩페이지를 구현합니다."

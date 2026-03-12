@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Voxera B2B Voice Landing Page</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1349ec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0a0c10",
+                        "surface-dark": "#161b22",
+                        "border-dark": "#30363d"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(22, 27, 34, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .grid-bg {
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .text-gradient {
+            background: linear-gradient(to right, #ffffff, #a0aec0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glow-effect {
+            box-shadow: 0 0 80px -20px var(--tw-colors-primary);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen relative overflow-x-hidden selection:bg-primary selection:text-white">
+<!-- Background Grid -->
+<div class="fixed inset-0 grid-bg pointer-events-none z-0"></div>
+<!-- Top Gradient Glow -->
+<div class="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-primary/20 blur-[120px] rounded-full pointer-events-none z-0"></div>
+<div class="relative z-10 flex flex-col min-h-screen">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between px-8 py-5 max-w-[1600px] mx-auto w-full glass-panel sticky top-0 z-50 rounded-b-2xl border-t-0">
+<div class="flex items-center gap-3 cursor-pointer group">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white transition-transform group-hover:scale-105">
+<span class="material-symbols-outlined text-[20px]">graphic_eq</span>
+</div>
+<span class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Voxera</span>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" href="#">Product</a>
+<a class="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" href="#">Solutions</a>
+<a class="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" href="#">Pricing</a>
+<a class="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" href="#">Resources</a>
+</nav>
+<div class="flex items-center gap-4">
+<a class="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-white transition-colors hidden sm:block" href="#">Log In</a>
+<button class="bg-primary hover:bg-primary/90 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-[0_0_20px_-5px_var(--tw-colors-primary)]">
+                    Get Started
+                </button>
+</div>
+</header>
+<main class="flex-grow flex flex-col items-center max-w-[1600px] mx-auto w-full px-6">
+<!-- Hero Section -->
+<section class="flex flex-col items-center text-center mt-32 mb-24 w-full relative">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-panel mb-8 border border-white/10">
+<span class="flex w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+<span class="text-xs font-medium text-slate-300">Voxera 2.0 is now live</span>
+</div>
+<h1 class="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6 max-w-4xl text-gradient">
+                    말하기. 듣기. 쓰기.<br/>이 모든 것을 하나로.
+                </h1>
+<p class="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl font-light">
+                    비즈니스 음성 혁명, 지금 시작하세요. 고도화된 AI 음성 인식 기술로 당신의 업무 효율을 극대화합니다.
+                </p>
+<div class="flex flex-col sm:flex-row items-center gap-4 mb-32 z-20">
+<button class="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-base font-semibold transition-all w-full sm:w-auto shadow-[0_0_30px_-5px_var(--tw-colors-primary)] flex items-center justify-center gap-2">
+                        무료로 시작하기
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+<button class="glass-panel hover:bg-white/5 text-white px-8 py-4 rounded-full text-base font-semibold transition-all w-full sm:w-auto border border-white/10">
+                        데모 신청하기
+                    </button>
+</div>
+<!-- Microphone & Waveforms Visual -->
+<div class="relative w-full max-w-4xl mx-auto h-[400px] flex items-center justify-center -mt-16">
+<!-- Left Waveform -->
+<div class="absolute left-0 w-1/3 h-full bg-gradient-to-r from-transparent via-primary/20 to-transparent blur-2xl opacity-50 mix-blend-screen"></div>
+<div class="absolute left-10 w-48 h-24 bg-[url('https://placeholder.pics/svg/200x100/101522-101522/1349ec')] bg-no-repeat bg-contain opacity-70" data-alt="Abstract aurora neon waveform left"></div>
+<!-- Center Microphone -->
+<div class="relative z-10 w-64 h-96 flex items-center justify-center">
+<div class="absolute inset-0 bg-primary/20 blur-[60px] rounded-full"></div>
+<img alt="Premium Glass Microphone" class="w-full h-full object-cover rounded-3xl border border-white/20 shadow-[0_0_50px_rgba(19,73,236,0.3)] z-10 filter brightness-110 contrast-125" data-alt="High-end professional studio microphone" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdwBp6kgozaYPxKR_KOZ0b_ZaVE0sD1ssSoZ41QVqgrUOvt8wFgff85Q0CzIFWnMUXQsvvGthay8guyLPPEGzWl1sEkuhkyPlDh_ZYDtaUGT7pNULk7_5W9Ejffg4w3t5OJbo8iAUt3v50hD2j4DwU1zaeShZked5o8mDqzL5Puwvh46M_hggvlgFqQxrHQ-I-n86ySOplS7Dmbln7mZp5NkZxWA4i6DQhENW_-07JaeGLuBiITzlMWeDwmPdmnpK8but_7z4xhPeZ"/>
+</div>
+<!-- Right Waveform -->
+<div class="absolute right-0 w-1/3 h-full bg-gradient-to-l from-transparent via-primary/20 to-transparent blur-2xl opacity-50 mix-blend-screen"></div>
+<div class="absolute right-10 w-48 h-24 bg-[url('https://placeholder.pics/svg/200x100/101522-101522/1349ec')] bg-no-repeat bg-contain opacity-70" data-alt="Abstract aurora neon waveform right"></div>
+</div>
+</section>
+<!-- Trust Bar -->
+<section class="w-full max-w-5xl mx-auto mb-32 border-y border-white/5 py-8">
+<p class="text-center text-sm font-medium text-slate-500 mb-8 uppercase tracking-widest">Trusted by innovative teams</p>
+<div class="flex flex-wrap items-center justify-center gap-12 md:gap-24 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+<!-- Placeholder Logos -->
+<div class="text-xl font-bold tracking-tighter flex items-center gap-2"><span class="material-symbols-outlined">chat_bubble</span> KAKAO</div>
+<div class="text-xl font-bold tracking-tighter flex items-center gap-2"><span class="material-symbols-outlined">description</span> NOTION</div>
+<div class="text-xl font-bold tracking-tighter flex items-center gap-2"><span class="material-symbols-outlined">search</span> GOOGLE</div>
+<div class="text-xl font-bold tracking-tighter flex items-center gap-2"><span class="material-symbols-outlined">edit_note</span> NAVER MEMO</div>
+</div>
+</section>
+<!-- Bento Grid Features -->
+<section class="w-full mb-32">
+<div class="text-center mb-16">
+<h2 class="text-3xl md:text-5xl font-bold mb-4 text-gradient">강력한 성능, 직관적인 경험</h2>
+<p class="text-slate-400">복잡한 업무를 단순하게 만드는 혁신적인 기능들</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
+<!-- Featured KPI Card (Spans 2 columns) -->
+<div class="md:col-span-2 glass-panel rounded-2xl p-8 relative overflow-hidden group flex flex-col justify-between">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+<div class="relative z-10">
+<h3 class="text-3xl font-bold mb-2">업무 처리 속도 92% 향상</h3>
+<p class="text-slate-400 max-w-md">실시간 음성 인식 및 자동화된 문서화로 반복적인 수작업을 제거합니다.</p>
+</div>
+<div class="relative z-10 w-full h-32 mt-auto bg-[url('https://placeholder.pics/svg/600x200/101522-101522/1349ec')] bg-no-repeat bg-bottom bg-contain opacity-80" data-alt="Upward trending line chart graph"></div>
+</div>
+<!-- Feature Card 1 -->
+<div class="glass-panel rounded-2xl p-8 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 text-primary">
+<span class="material-symbols-outlined">translate</span>
+</div>
+<h3 class="text-xl font-semibold mb-2">자동 요약 및 번역</h3>
+<p class="text-sm text-slate-400">다국어 회의도 실시간으로 번역하고 핵심 내용만 완벽하게 요약합니다.</p>
+</div>
+<!-- Feature Card 2 -->
+<div class="glass-panel rounded-2xl p-8 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 text-primary">
+<span class="material-symbols-outlined">lock</span>
+</div>
+<h3 class="text-xl font-semibold mb-2">엔터프라이즈급 보안</h3>
+<p class="text-sm text-slate-400">종단간 암호화로 기업의 민감한 음성 데이터와 문서를 안전하게 보호합니다.</p>
+</div>
+<!-- Feature Card 3 (Spans 2 columns) -->
+<div class="md:col-span-2 glass-panel rounded-2xl p-8 relative overflow-hidden group flex items-center">
+<div class="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+<div class="flex-1 pr-8">
+<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 text-primary">
+<span class="material-symbols-outlined">hub</span>
+</div>
+<h3 class="text-2xl font-bold mb-2">다양한 플랫폼 완벽 연동</h3>
+<p class="text-slate-400">기존에 사용 중인 업무 도구들과의 매끄러운 통합 환경을 제공합니다.</p>
+</div>
+<div class="w-1/3 h-full rounded-xl bg-[url('https://placeholder.pics/svg/300x200/161b22-161b22/30363d')] border border-white/5 bg-center bg-cover" data-alt="App integration ecosystem diagram"></div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full border-t border-white/10 glass-panel mt-auto py-12 px-6">
+<div class="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[14px]">graphic_eq</span>
+</div>
+<span class="font-bold text-slate-300">Voxera</span>
+</div>
+<div class="flex flex-wrap gap-6 text-sm text-slate-500">
+<a class="hover:text-slate-300 transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-slate-300 transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-slate-300 transition-colors" href="#">Contact Us</a>
+</div>
+<p class="text-sm text-slate-600">© 2024 Voxera. All rights reserved.</p>
+</div>
+</footer>
+</div>
+</body></html>

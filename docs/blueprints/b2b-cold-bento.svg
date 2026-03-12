@@ -1,0 +1,85 @@
+<svg width="1600" height="2200" viewBox="0 0 1600 2200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="coldBg" x1="800" y1="0" x2="800" y2="2200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07111F"/>
+      <stop offset="1" stop-color="#0D1830"/>
+    </linearGradient>
+    <radialGradient id="meshA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(420 280) rotate(40) scale(620 320)">
+      <stop stop-color="#1D5FFF" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#1D5FFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="meshB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1230 460) rotate(140) scale(580 320)">
+      <stop stop-color="#8B5CF6" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="cardGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0.5 0.2) scale(1 1)">
+      <stop stop-color="#FFFFFF" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="2200" fill="url(#coldBg)"/>
+  <ellipse cx="420" cy="280" rx="520" ry="260" fill="url(#meshA)"/>
+  <ellipse cx="1230" cy="460" rx="500" ry="260" fill="url(#meshB)"/>
+
+  <rect x="160" y="90" width="1280" height="1860" rx="36" stroke="#2A3957" stroke-dasharray="12 12"/>
+  <text x="188" y="132" fill="#7A8BAF" font-family="Arial, sans-serif" font-size="24">max-w-6xl centered shell / 6-column bento grid</text>
+
+  <rect x="220" y="150" width="1160" height="92" rx="22" fill="#0D1628" stroke="#FFFFFF" stroke-opacity="0.16"/>
+  <text x="270" y="206" fill="#F7FAFF" font-family="Arial, sans-serif" font-size="26">Top Nav Bar</text>
+  <text x="1140" y="206" fill="#B3C0DA" font-family="Arial, sans-serif" font-size="24">CTA</text>
+
+  <rect x="220" y="300" width="1160" height="470" rx="28" fill="#0A1528" stroke="#FFFFFF" stroke-opacity="0.18"/>
+  <rect x="270" y="350" width="260" height="42" rx="21" fill="#14284B" stroke="#59D0FF" stroke-opacity="0.66"/>
+  <text x="304" y="378" fill="#7DE2FF" font-family="Arial, sans-serif" font-size="20">Neon Badge</text>
+  <rect x="270" y="426" width="620" height="158" rx="20" fill="#0D1930" stroke="#203456"/>
+  <text x="306" y="490" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="46" font-weight="700">음성 비서가 아닙니다.</text>
+  <text x="306" y="546" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="46" font-weight="700">업무 자동화의 완벽한 솔루션입니다!</text>
+  <text x="306" y="604" fill="#A8B5D0" font-family="Arial, sans-serif" font-size="24">Hero headline / break-keep / enterprise proof-first</text>
+  <rect x="270" y="650" width="220" height="58" rx="20" fill="#1B63FF" fill-opacity="0.16" stroke="#7AC8FF" stroke-opacity="0.58"/>
+  <rect x="512" y="650" width="220" height="58" rx="20" fill="#101C34" stroke="#FFFFFF" stroke-opacity="0.2"/>
+  <text x="334" y="686" fill="#F7FBFF" font-family="Arial, sans-serif" font-size="22">Book Demo</text>
+  <text x="576" y="686" fill="#D6E0F3" font-family="Arial, sans-serif" font-size="22">See ROI</text>
+  <rect x="980" y="390" width="300" height="250" rx="24" fill="#0E1C35" stroke="#FFFFFF" stroke-opacity="0.2"/>
+  <text x="1038" y="444" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="28">Stat Rail</text>
+  <text x="1022" y="496" fill="#95A7C8" font-family="Arial, sans-serif" font-size="20">Ops lift / SLA / team velocity</text>
+
+  <rect x="220" y="830" width="1160" height="86" rx="22" fill="#0F1C33" stroke="#FFFFFF" stroke-opacity="0.14"/>
+  <text x="314" y="883" fill="#C7D3EA" font-family="Arial, sans-serif" font-size="26">Marquee Trust Bar / customer logos / compliance claims</text>
+
+  <rect x="220" y="980" width="1160" height="790" rx="28" fill="#091426" stroke="#FFFFFF" stroke-opacity="0.16"/>
+  <text x="258" y="1030" fill="#7B8BAA" font-family="Arial, sans-serif" font-size="22">6-column bento grid</text>
+
+  <rect x="260" y="1068" width="560" height="420" rx="28" fill="#10203C" stroke="#FFFFFF" stroke-opacity="0.38"/>
+  <text x="302" y="1122" fill="#F8FBFF" font-family="Arial, sans-serif" font-size="30">Largest KPI Card</text>
+  <text x="302" y="1168" fill="#9FB0CD" font-family="Arial, sans-serif" font-size="22">"이메일 작성 시간 92% 감소"</text>
+  <polyline points="322,1380 410,1320 500,1288 610,1206 736,1140" stroke="#86D9FF" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="322" cy="1380" r="8" fill="#86D9FF"/>
+  <circle cx="410" cy="1320" r="8" fill="#86D9FF"/>
+  <circle cx="500" cy="1288" r="8" fill="#86D9FF"/>
+  <circle cx="610" cy="1206" r="8" fill="#86D9FF"/>
+  <circle cx="736" cy="1140" r="8" fill="#86D9FF"/>
+  <text x="636" y="1116" fill="#86D9FF" font-family="Arial, sans-serif" font-size="20">up-right chart mock</text>
+
+  <rect x="850" y="1068" width="240" height="250" rx="24" fill="#10203B" stroke="#FFFFFF" stroke-opacity="0.24"/>
+  <rect x="1120" y="1068" width="220" height="250" rx="24" fill="#10203B" stroke="#FFFFFF" stroke-opacity="0.24"/>
+  <rect x="850" y="1348" width="220" height="180" rx="24" fill="#10203B" stroke="#FFFFFF" stroke-opacity="0.24"/>
+  <rect x="1100" y="1348" width="240" height="180" rx="24" fill="#10203B" stroke="#FFFFFF" stroke-opacity="0.24"/>
+  <rect x="260" y="1520" width="420" height="200" rx="24" fill="#10203B" stroke="#FFFFFF" stroke-opacity="0.24"/>
+  <rect x="710" y="1520" width="630" height="200" rx="24" fill="#10203B" stroke="#FFFFFF" stroke-opacity="0.24"/>
+
+  <text x="895" y="1134" fill="#F7FAFF" font-family="Arial, sans-serif" font-size="24">Automation Flow</text>
+  <text x="1150" y="1134" fill="#F7FAFF" font-family="Arial, sans-serif" font-size="24">Governance</text>
+  <text x="882" y="1412" fill="#F7FAFF" font-family="Arial, sans-serif" font-size="24">Integrations</text>
+  <text x="1150" y="1412" fill="#F7FAFF" font-family="Arial, sans-serif" font-size="24">Team Velocity</text>
+  <text x="304" y="1590" fill="#F7FAFF" font-family="Arial, sans-serif" font-size="24">ROI Summary</text>
+  <text x="752" y="1590" fill="#F7FAFF" font-family="Arial, sans-serif" font-size="24">Closing Proof / CTA Support</text>
+
+  <rect x="380" y="1830" width="860" height="100" rx="28" fill="#0E1A30" stroke="#FFFFFF" stroke-opacity="0.2"/>
+  <text x="640" y="1890" fill="#F8FBFF" font-family="Arial, sans-serif" font-size="28">Closing CTA Strip</text>
+
+  <line x1="800" y1="242" x2="800" y2="300" stroke="#526480" stroke-dasharray="8 8"/>
+  <line x1="800" y1="770" x2="800" y2="830" stroke="#526480" stroke-dasharray="8 8"/>
+  <line x1="800" y1="916" x2="800" y2="980" stroke="#526480" stroke-dasharray="8 8"/>
+  <text x="74" y="2100" fill="#6E83A8" font-family="Arial, sans-serif" font-size="26">V-DD Blueprint: B2B cold landing / Linear-Vercel style / 6-column enterprise bento / no code</text>
+</svg>
