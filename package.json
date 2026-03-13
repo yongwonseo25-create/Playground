@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test tests/e2e/env-core.spec.ts -c tests/playwright.env-core.config.ts",
+    "test": "playwright test tests/e2e/env-core.spec.ts tests/e2e/backend-reliability.spec.ts -c tests/playwright.env-core.config.ts",
     "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts -c tests/playwright.config.ts"
   },
   "dependencies": {

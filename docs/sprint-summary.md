@@ -84,16 +84,16 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Secure context requirement: mandatory
 
 ### Transport
-- Status: env and secure transport policy prepared
+- Status: env and secure transport policy prepared, webhook reliability contract mock-verified
 - WSS endpoint strategy: env-driven
-- Webhook adapter strategy: planned for Sprint 2
+- Webhook adapter strategy: backend sender contract published and validated against a signature-checking mock receiver
 - Env validation status: implemented for secure endpoint handling
 
 ### Submission / Cost Defense
-- Status: UI-integrated placeholder flow active, live transport integration pending
+- Status: UI-integrated placeholder flow active, backend reliability path mock-verified
 - 15-second cutoff status: reducer timer remains the source of truth and auto-stops at the hard limit
 - `clientRequestId` lock status: generated synchronously before placeholder upload begins
-- Duplicate prevention strategy: upload button disables during `uploading`, reducer lock preserved for real transport wiring
+- Duplicate prevention strategy: upload button disables during `uploading`, reducer lock preserved for real transport wiring, webhook idempotency is mock-verified server-side
 
 ### Mobile UX
 - Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
@@ -449,11 +449,62 @@ Extract the exact webhook payload/header/signature contract from the implemented
 
 ---
 
+### Sprint 7 - Make.com Mock Reliability Verification
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Replace manual Make.com validation risk with automated mock-receiver verification for HMAC signature handling, retry/backoff, circuit breaker behavior, duplicate blocking, and failure queue recovery.
+
+#### Files Created
+- `tests/e2e/helpers/make-webhook-mock-server.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `package.json`
+- `tests/e2e/backend-reliability.spec.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+
+#### Architecture Changes
+- Added a reusable Make.com mock receiver that validates `X-Webhook-Signature` against the raw JSON body and can emit `200`, `500`, or timeout behavior per request
+- Promoted backend reliability verification into the default `pnpm test` path so webhook contract regressions fail CI-level local verification immediately
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without restructuring
+
+#### Audio / Transport Changes
+- No audio pipeline change
+- AudioWorklet + PCM over WSS-only architecture preserved
+- Webhook sender contract is now exercised against a real HTTP mock instead of transport stubs
+
+#### Submission / Cost Defense Changes
+- No reducer or upload-lock runtime behavior changed
+- Added automated proof that duplicate webhook sends are blocked by idempotency key before a second outbound request is made
+- Added automated proof that failure queue items persist, back off, and flush after receiver recovery
+
+#### Known Risks
+- Real Make.com module wiring can still differ from the mock in raw-body access or scenario configuration despite matching the documented contract
+- Front-end live upload flow is still backed by placeholder transport, so browser-to-backend submission remains separately pending
+
+#### Manual QA
+- [x] `corepack pnpm install`
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+
+#### Next Sprint Prerequisites
+- Run one staging smoke test against a real Make.com scenario using the documented raw-body and HMAC mapping
+- Replace placeholder upload transport with live backend submission while preserving the reducer-owned 15-second cutoff and duplicate lock
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - AudioWorklet runtime path is not yet implemented
 - WSS runtime path is not yet implemented
-- backend / Make.com integration not yet tested end-to-end
+- real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now mock-verified
 - duplicate lock must be verified again once webhook upload is added
 - timeout and upload flow must be verified together once live network flow exists
 - current premium UI is validated against placeholder upload timing, not live backend latency
@@ -473,6 +524,7 @@ Extract the exact webhook payload/header/signature contract from the implemented
 - [x] No permission popup infinite loop exists in current shell logic
 - [x] UI supports one-handed mobile use
 - [x] Step 1 -> Step 2 -> Step 3 -> Step 1 loop is Playwright-verified
+- [x] Make.com webhook signature, retry/backoff, timeout circuit breaker, duplicate block, and failure queue replay are mock-server verified
 
 ---
 
