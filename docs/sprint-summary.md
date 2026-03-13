@@ -1237,7 +1237,7 @@ Tighten the headline box to the actual copy width and restore the original short
 - None
 
 #### Manual QA
-- [x] Opened `docs/blueprints/파형 레퍼런스.jpg` and restored the short multi-color EQ cluster based on it
+- [x] Opened `docs/blueprints/?뚰삎 ?덊띁?곗뒪.jpg` and restored the short multi-color EQ cluster based on it
 - [x] Reduced the headline box width and kept its text centered on the mic axis
 - [x] Re-opened the SVG through VS Code native file opening
 
@@ -1424,7 +1424,7 @@ Remove blueprint instruction leakage from the marketing UI and polish the hero C
 
 #### Manual QA
 - [x] Confirmed the hero badge was removed and the subcopy now renders as two intentional lines
-- [x] Confirmed the workflow instruction text was replaced with `Voice OS 핵심 기능`
+- [x] Confirmed the workflow instruction text was replaced with `Voice OS ?듭떖 湲곕뒫`
 - [x] Confirmed the closing strip badge was removed and the closing line is forced onto one line
 - [x] Re-verified the page in the headed local browser session at `http://localhost:3000`
 
@@ -1448,9 +1448,9 @@ Execute the second-round UI surgery by replacing blueprint-like text with produc
 - `docs/sprint-summary.md`
 
 #### Architecture Changes
-- Updated hero subcopy into two intentional lines split after `음성 실행 플랫폼을,`
+- Updated hero subcopy into two intentional lines split after `?뚯꽦 ?ㅽ뻾 ?뚮옯?쇱쓣,`
 - Upgraded EQ bars from mild motion to stronger CSS keyframe rhythm with per-bar duration and delay variance
-- Replaced bento top label/headline with production copy: `VOICE-FIRST WORKFLOW` and `복잡한 입력 과정을, 한 번의 음성으로`
+- Replaced bento top label/headline with production copy: `VOICE-FIRST WORKFLOW` and `蹂듭옟???낅젰 怨쇱젙?? ??踰덉쓽 ?뚯꽦?쇰줈`
 - Replaced all four workflow card title/body pairs with the approved killer copy set
 - Removed residual instructional workflow heading text from the right bento block
 
@@ -1470,8 +1470,8 @@ Execute the second-round UI surgery by replacing blueprint-like text with produc
 - Agent Browser viewport screenshots in this environment continue to include gray padded areas outside the rendered page; DOM inspection and text assertions were used alongside screenshots
 
 #### Manual QA
-- [x] Confirmed hero subcopy line break appears exactly after `음성 실행 플랫폼을,`
-- [x] Confirmed old bento texts (`6-Column Bento Grid`, `실행 지표와 운영 설계를...`, workflow instruction copy) are removed
+- [x] Confirmed hero subcopy line break appears exactly after `?뚯꽦 ?ㅽ뻾 ?뚮옯?쇱쓣,`
+- [x] Confirmed old bento texts (`6-Column Bento Grid`, `?ㅽ뻾 吏?쒖? ?댁쁺 ?ㅺ퀎瑜?..`, workflow instruction copy) are removed
 - [x] Confirmed new killer-copy card titles and bodies are rendered
 - [x] Confirmed EQ bars now render with per-bar animation duration/delay and dynamic height variance in browser inspection
 
@@ -1634,3 +1634,363 @@ Keep approved hero/trust behavior intact while applying strict watermark crop ru
 
 #### Next Sprint Prerequisites
 - If requested, tune only infographic detail polish without changing approved text breaks or hero/trust alignment
+
+### Sprint 31 - Pure-Code Hero Mic And Reference-Matched Z-Pattern Refinement
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Match the provided `1.jpg` direction by replacing image-based mic rendering with a pure-code hologram component, tightening hero CTA/trust details, and enforcing fixed copy line breaks plus responsive Z-pattern section behavior.
+
+#### Files Created
+- `src/components/sections/VoiceHologramMic.tsx`
+- `temp/sprint31-hero-zpattern-final.png`
+
+#### Files Modified
+- `src/components/sections/HeroSection.tsx`
+- `src/components/sections/TrustRailSection.tsx`
+- `src/components/sections/BentoGridSection.tsx`
+- `src/shared/styles/globals.css`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Replaced hero mic image usage with a pure SVG/CSS `VoiceHologramMic` component including neon `VOICE` hologram text and bilateral EQ bars
+- Preserved solid-gradient primary CTA and converted secondary CTA to transparent outline style
+- Refined trust rail into a thin white rounded outline marquee with evenly spaced `KAKAO / NOTION / GOOGLE / NAVER MEMO`
+- Rebuilt lower body sections with fixed line-break copy and responsive behavior:
+  - mobile: `flex-col-reverse` (`?대?吏 -> ?띿뒪??)
+  - desktop: `md:grid-cols-2` zigzag alternation
+- Kept four infographic motifs and upgraded animation primitives in global CSS (`voxera-mic-eq`, wire flow, stacking glow, typing, waveform)
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Visual parity is tuned to the provided static screenshot direction; additional pixel tweaks may still be requested per device viewport
+- Terminal output may still show Korean mojibake while browser-rendered copy remains correct
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `agent-browser open http://localhost:3000 --headed`
+- [x] `agent-browser snapshot --json` verified updated hero/CTA/trust/section copy rendering
+- [x] `agent-browser get count "[data-testid='z-pattern-mock']" --json` returned `4`
+- [x] `agent-browser get count "img[alt='Voxera microphone core']" --json` returned `0`
+- [x] `agent-browser screenshot temp/sprint31-hero-zpattern-final.png --full`
+
+#### Next Sprint Prerequisites
+- If requested, run one more contrast/spacing pass at target viewport(s) while preserving fixed copy breaks and pure-code mic architecture
+
+### Sprint 32 - 3.jpg Blueprint-Only SVG Draft And File Popup
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Pause production UI coding and generate a single SVG blueprint artifact that captures the requested hero/mic/trust/Z-pattern card details from the latest reference, then force-open it for visual confirmation.
+
+#### Files Created
+- `docs/blueprints/landing_blueprint.svg`
+- `temp/landing_blueprint-svg-popup.png`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a blueprint-only SVG artifact (no Next.js component wiring) with:
+  - two-line hero headline and fixed subcopy line break
+  - gradient primary CTA + outlined secondary CTA
+  - rounded mic container with internal mic + side waveform depiction
+  - rounded trust rail with spaced brand sequence
+  - four large horizontal neon-stroked cards arranged in alternating Z-pattern composition
+  - card-internal mock text/diagram details for waveform, checklist conversion, network wireframe, and tag-stack UI
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- This sprint intentionally stops at static SVG blueprint output; production motion/interaction parity still requires later React implementation
+- Agent Browser full-page screenshot on local SVG timed out once; non-full screenshot succeeded
+
+#### Manual QA
+- [x] Created `docs/blueprints/landing_blueprint.svg`
+- [x] Opened `file:///C:/Users/Master/Documents/Playground/docs/blueprints/landing_blueprint.svg` with Agent Browser
+- [x] `agent-browser snapshot --json` confirmed `file://` origin and expected blueprint text coverage
+- [x] Captured popup proof screenshot at `temp/landing_blueprint-svg-popup.png`
+
+#### Next Sprint Prerequisites
+- Await visual sign-off on the blueprint before converting to production TSX/Next.js code
+
+### Sprint 33 - Separate 2D Diagram Landing Route
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Create a brand-new landing page from the provided 2D diagram brief in a separate file/route so it is isolated from the existing marketing landing work and immediately previewable.
+
+#### Files Created
+- `src/features/marketing/components/landing-2d-diagram.tsx`
+- `src/app/(marketing)/landing-2d/page.tsx`
+- `temp/landing-2d-preview.png`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added an isolated marketing route at `/landing-2d`
+- Implemented a dedicated 2D-diagram-styled landing component containing:
+  - Hero container + mic center visual + dual CTA
+  - Problems 2x2 grid cards
+  - How-It-Works 3-step flow with arrows
+  - Impact metric split cards + partner block + footer
+- Left existing landing implementations untouched
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The source diagram text file showed mojibake in this shell, so Korean copy was normalized from readable intent where necessary
+- This route is an isolated draft surface and is not yet linked from the main landing entry
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `agent-browser open http://localhost:3000/landing-2d --headed`
+- [x] `agent-browser snapshot --json` confirmed expected section/heading content
+- [x] Captured preview screenshot at `temp/landing-2d-preview.png`
+
+#### Next Sprint Prerequisites
+- After stakeholder review, either keep `/landing-2d` as standalone campaign route or promote selected sections into reusable shared components
+
+### Sprint 34 - Fixed Blueprint Reset (Wireframe Mic + Zero Overflow)
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Stop production coding, reset the previous broken visual layout direction, and deliver a corrected single SVG blueprint focused on high-end wireframe mic rendering and strict text overflow control.
+
+#### Files Created
+- `docs/blueprints/landing_fixed_blueprint.svg`
+- `temp/landing_fixed_blueprint-popup.png`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a blueprint-only SVG with:
+  - Minimal wireframe microphone replacing bulky 3D style
+  - Neon mint/cyber-purple EQ cluster around mic
+  - Four large rounded Z-pattern cards with explicit inner safe padding and overflow-safe text layout intent
+  - Reset notes block codifying `overflow-hidden`, `p-8/p-10`, `flex-col`, `justify-center`, `break-keep`, `text-balance`, `leading-relaxed`
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- This output is static SVG blueprint only; motion and runtime behavior still require later implementation in real UI code
+
+#### Manual QA
+- [x] Opened `file:///C:/Users/Master/Documents/Playground/docs/blueprints/landing_fixed_blueprint.svg` in Agent Browser
+- [x] Verified file-origin snapshot content with hero/trust/mic/Z-pattern/reset notes present
+- [x] Captured popup proof screenshot at `temp/landing_fixed_blueprint-popup.png`
+
+#### Next Sprint Prerequisites
+- Await visual sign-off on `landing_fixed_blueprint.svg` before converting to production React/Next implementation
+
+### Sprint 3A - AudioWorklet + WSS + Server STT Bridge
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Implement constitutional audio path (AudioWorklet PCM over WSS), then bridge transcript + routing ids to Make.com via Next.js API route.
+
+#### Files Created
+- `public/audio/pcm-worklet-processor.js`
+- `src/app/api/voice/submit/route.ts`
+- `scripts/voice-wss-server.mjs`
+- `scripts/dev-test-server.mjs`
+
+#### Files Modified
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `src/features/voice-capture/state/voice-capture-reducer.ts`
+- `src/features/voice-capture/types/voice-types.ts`
+- `tests/playwright.config.ts`
+- `.env.local`
+- `package.json`
+- `package-lock.json`
+
+#### Architecture Changes
+- Client now captures microphone PCM frames via AudioWorklet and streams them to WSS in real time.
+- Added WS server ingestion + Whisper transcription step.
+- Added Next API route `/api/voice/submit` for server-side webhook forwarding.
+
+#### State Machine Changes
+- Fixed 8-state model preserved.
+- Added reducer events for transcript and routing metadata updates.
+
+#### Submission / Cost Defense Changes
+- 15-second stop remains reducer/timer source of truth.
+- Submit still uses synchronous lock (`clientRequestId`) before async request.
+
+#### Known Risks
+- In local/development mode, webhook and STT include mocked fallback behavior when keys/endpoints are unavailable.
+- Production requires valid `OPENAI_API_KEY` and reachable `MAKE_WEBHOOK_URL`.
+
+#### Manual QA
+- [x] Step1 start/stop triggers live WSS session commands
+- [x] Transcript lands in Step2 preview via server message
+- [x] Submit button waits for server ACK and transitions to success
+- [x] E2E voice flow passes with WSS test stack
+
+---
+
+### Sprint 3B - HMAC + Circuit Breaker + Failure Queue Hardening
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Add webhook signing, retry/circuit protections, and durable failure queueing without touching voice UI components.
+
+#### Files Created
+- `.agents/skills/retry-break-handler-template/SKILL.md`
+- `src/server/webhook/WebhookSigner.ts`
+- `src/server/reliability/circuitBreaker.ts`
+- `src/server/reliability/WebhookClient.ts`
+- `src/server/queue/failureQueue.ts`
+- `tests/e2e/backend-reliability.spec.ts`
+
+#### Files Modified
+- `src/app/api/voice/submit/route.ts`
+- `.env.local`
+- `.env.local.example`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added server-side HMAC-SHA256 generation for webhook calls (`X-Webhook-Signature` + timestamp header).
+- Added retry client with exponential backoff and circuit breaker integration.
+- Added file-durable JSONL failure queue with 1s polling worker.
+- Refactored `/api/voice/submit` to:
+  - try immediate webhook send first
+  - enqueue on failure
+  - return `acceptedForRetry: true` when queued
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- Submission flow now includes backend reliability fallback (queue) while retaining existing client-side duplicate lock (`clientRequestId`).
+
+#### Known Risks
+- Queue durability currently uses local filesystem JSONL; distributed/multi-instance production requires shared durable store (e.g., DB/Redis).
+- In local/dev, missing webhook secret/url still returns mocked success path by existing route policy.
+- Existing unrelated lint warning remains in `use-voice-capture-machine.ts` (missing hook dependency).
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm exec playwright test tests/e2e/backend-reliability.spec.ts -c tests/playwright.env-core.config.ts`
+- [x] `corepack pnpm test:e2e`
+
+#### Next Sprint Prerequisites
+- Promote queue storage from local JSONL to centralized persistent store for horizontal scale.
+- Add replay protection window validation on receiver side for timestamp/signature.
+
+---
+
+### Sprint 3C - Mobile Feedback Compatibility Hardening
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Guarantee backend-response feedback UI safety on mobile and desktop while preserving the backend reliability stack.
+
+#### Files Created
+- `tests/e2e/mobile-feedback-ui.spec.ts`
+
+#### Files Modified
+- `.agents/skills/retry-break-handler-template/SKILL.md`
+- `scripts/voice-wss-server.mjs`
+- `src/app/layout.tsx`
+- `src/features/voice-capture/components/voice-capture-screen.tsx`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `tests/e2e/backend-reliability.spec.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+- `tests/playwright.config.ts`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- WS submit ack now carries `acceptedForRetry` and `reason` from `/api/voice/submit`.
+- Client now shows a background-processing toast when queue fallback is used.
+- Added bounded/balanced feedback UI classes for alert/notice containers:
+  - `max-w-md`
+  - `break-keep`
+  - `text-balance`
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- Queue fallback metadata is now propagated to UX feedback without weakening duplicate lock behavior.
+
+#### Known Risks
+- Mobile full-mic flow remains intentionally scoped to desktop test project; mobile projects validate feedback container safety path.
+- Existing unrelated lint warning remains in `use-voice-capture-machine.ts` (`react-hooks/exhaustive-deps`).
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm exec playwright test tests/e2e/backend-reliability.spec.ts -c tests/playwright.env-core.config.ts`
+- [x] `corepack pnpm exec playwright test tests/e2e/mobile-feedback-ui.spec.ts -c tests/playwright.config.ts`
+- [x] `corepack pnpm test:e2e`
+
+#### Next Sprint Prerequisites
+- If required, add a dedicated mobile real-microphone hardware runbook for non-fake-device environments.
