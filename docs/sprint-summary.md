@@ -404,6 +404,51 @@ Restore the lost Step 1 waveform styling without touching the Step 2 / Step 3 ce
 
 ---
 
+### Sprint 6 - Make.com Webhook Contract Extraction
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Extract the exact webhook payload/header/signature contract from the implemented `POST /api/voice/submit` route and publish an integration guide for Make.com verification and GPT handoff.
+
+#### Files Created
+- `references/make-webhook-contract.md`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- No runtime architecture change
+- Added explicit integration reference for Make.com receiver contract and signature verification flow
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without restructuring
+
+#### Audio / Transport Changes
+- No audio pipeline change
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- No reducer/upload lock implementation change
+- Documented webhook-side idempotency handling using `X-Idempotency-Key` for downstream duplicate prevention
+
+#### Known Risks
+- Make.com module/runtime differences may require minor mapping adjustments for raw body extraction and JS code module inputs
+- End-to-end validation with real Make scenario remains pending
+
+#### Manual QA
+- [x] Contract values cross-checked against:
+  - `src/app/api/voice/submit/route.ts`
+  - `src/server/reliability/WebhookClient.ts`
+  - `src/server/webhook/WebhookSigner.ts`
+
+#### Next Sprint Prerequisites
+- Run live Make.com scenario test with production-like secret and replay-window policy
+- Add receiver-side duplicate handling to Make Data Store or equivalent
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - AudioWorklet runtime path is not yet implemented
