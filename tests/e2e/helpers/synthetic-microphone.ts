@@ -1,7 +1,29 @@
 import type { Page } from '@playwright/test';
 
-export async function installSyntheticMicrophone(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+type SyntheticMicrophoneOptions = {
+  language?: string;
+  languages?: string[];
+};
+
+export async function installSyntheticMicrophone(
+  page: Page,
+  options: SyntheticMicrophoneOptions = {}
+): Promise<void> {
+  await page.addInitScript((input: SyntheticMicrophoneOptions) => {
+    if (input.language) {
+      Object.defineProperty(navigator, 'language', {
+        configurable: true,
+        get: () => input.language
+      });
+    }
+
+    if (Array.isArray(input.languages) && input.languages.length > 0) {
+      Object.defineProperty(navigator, 'languages', {
+        configurable: true,
+        get: () => input.languages
+      });
+    }
+
     const mediaDevices = navigator.mediaDevices;
     if (!mediaDevices || !mediaDevices.getUserMedia) {
       return;
@@ -32,5 +54,5 @@ export async function installSyntheticMicrophone(page: Page): Promise<void> {
 
       return destination.stream;
     };
-  });
+  }, options);
 }

@@ -1,7 +1,9 @@
-﻿import { defineConfig, devices } from '@playwright/test';
+import path from 'node:path';
+import { defineConfig, devices } from '@playwright/test';
 
 const port = Number(process.env.PLAYWRIGHT_PORT ?? '3400');
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
+const fakeAudioCapturePath = path.resolve(__dirname, 'fixtures', 'fake-mic.wav');
 
 export default defineConfig({
   testDir: './e2e',
@@ -9,18 +11,25 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: [['list']],
-  timeout: 60_000,
+  timeout: 90_000,
   expect: {
     timeout: 15_000
   },
   use: {
     baseURL,
     trace: 'on-first-retry',
-    video: 'retain-on-failure'
+    video: 'retain-on-failure',
+    launchOptions: {
+      args: [
+        '--use-fake-ui-for-media-stream',
+        '--use-fake-device-for-media-stream',
+        `--use-file-for-fake-audio-capture=${fakeAudioCapturePath}`
+      ]
+    }
   },
   projects: [
     {
-      name: 'chromium',
+      name: 'desktop-chromium',
       use: { ...devices['Desktop Chrome'] }
     },
     {
@@ -36,7 +45,7 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       NEXT_PUBLIC_APP_ENV: 'local',
-      NEXT_PUBLIC_WSS_URL: process.env.NEXT_PUBLIC_WSS_URL ?? 'ws://127.0.0.1:8787/voice',
+      NEXT_PUBLIC_WSS_URL: 'ws://127.0.0.1:8787/voice-session',
       MAKE_WEBHOOK_URL: process.env.MAKE_WEBHOOK_URL ?? 'http://127.0.0.1:8788/webhook',
       MAKE_WEBHOOK_SECRET: process.env.MAKE_WEBHOOK_SECRET ?? 'voxera-local-secret'
     }

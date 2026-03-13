@@ -89,6 +89,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - STT routing strategy: OpenAI Whisper is the default provider for all sessions, while Return Zero is used only for Korean sessions that opt into premium accuracy or high-risk workflows such as `sales_call` and `medical_note`
 - Webhook adapter strategy: `/api/voice/submit` safeParses the inbound request and outbound Make.com payload before `WebhookClient` send/queue handling
 - Env validation status: public and Next server envs fail fast at startup, while the standalone WSS server loads `.env.local`, keeps Whisper available as the safe default, and warns when Return Zero premium overrides cannot be honored
+- Automated routing QA status: a dedicated Playwright stack now boots Next dev plus the standalone WSS server, injects a synthetic microphone with fake media flags, and proves Whisper default versus Return Zero premium routing through captured webhook payloads
 
 ### Submission / Cost Defense
 - Status: live `/api/voice/submit` fetch flow active and placeholder upload path removed
@@ -696,6 +697,62 @@ Rollback the always-Korean Return Zero policy to a Whisper-default router, keep 
 
 ---
 
+### Sprint 11 - Synthetic Microphone Routing Automation
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Automate the dual-STT routing proof without any physical microphone or manual operator input by booting a local dev stack, injecting a synthetic microphone, and verifying Whisper-default versus Return Zero premium routing end-to-end.
+
+#### Files Created
+- `tests/fixtures/fake-mic.wav`
+- `tests/e2e/voice-cutoff-ui.spec.ts`
+- `tests/e2e/helpers/live-stt-routing-stack.ts`
+- `tests/e2e/helpers/mock-stt-wss-server.mjs`
+- `tests/e2e/voice-stt-routing-live.spec.ts`
+- `tests/playwright.routing.config.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `package.json`
+- `tests/e2e/helpers/synthetic-microphone.ts`
+
+#### Architecture Changes
+- Added a test-only runtime stack that starts the real standalone WSS server behind mocked upstream STT fetches and captures downstream webhook payloads for assertion
+- Added a dedicated Playwright routing config that boots Next dev, enables Chrome fake-media flags, feeds a deterministic WAV file through `--use-file-for-fake-audio-capture`, and points the browser runtime at the standalone `/voice-session` WSS server
+- Extended the synthetic microphone helper so tests can also force browser locale/language and exercise Korean premium routing without physical hardware
+- Added desktop plus Pixel 5 projects so routing and UI delivery can be proven under touch/mobile viewport conditions as well as desktop
+- Added a separate harness-backed UI cutoff test that uses the stable `/voice` runtime harness to prove the reducer-owned 15-second stop and Make.com delivery on both desktop and mobile
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved during automated testing
+- Synthetic browser audio now feeds the real WSS control/audio protocol while mocked upstream STT providers emit deterministic Whisper and Return Zero transcripts
+
+#### Submission / Cost Defense Changes
+- No reducer or duplicate-lock behavior changed
+- Automated routing verification now asserts `stt_provider`, `audio_duration_sec`, and full dummy transcript text in the real `/api/voice/submit` response and downstream webhook payload
+- Added a mobile-capable UI test that waits for the reducer-owned 15-second auto-stop before sending and verifies the Make.com webhook still receives the transcript without UI collapse
+
+#### Known Risks
+- The new routing automation still uses mocked upstream Whisper/Return Zero HTTP responses, so one final staging smoke test against real providers remains necessary
+- The dedicated 15-second full-duration soak and repeated-send duplicate regression are still pending against the live backend
+
+#### Manual QA
+- [x] `corepack pnpm test:e2e:routing`
+- [x] Verified desktop and Pixel 5 logs plus webhook payloads preserve dummy transcript text and show `stt_provider=whisper` / `return-zero`
+- [x] Verified the UI automation path auto-stops after the 15-second cutoff window and still reaches the Make.com webhook
+
+#### Next Sprint Prerequisites
+- Replace the upstream HTTP mocks with a staging smoke test when provider credentials and quota windows are ready
+- Add the pending 15-second soak and repeated-send duplicate regression in the live runtime path
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
@@ -717,6 +774,8 @@ Rollback the always-Korean Return Zero policy to a Whisper-default router, keep 
 - [x] Return Zero auth/result payloads remain Zod-validated before transcript use
 - [x] Return Zero override failures fall back to Whisper and Whisper retries once before fail-fast
 - [x] `stt_provider` and `audio_duration_sec` persist through `/api/voice/submit` and the downstream webhook payload
+- [x] Synthetic microphone automation can prove Whisper default and Return Zero premium routing without physical microphone hardware
+- [x] Desktop and mobile automation both prove the dummy transcript reaches the Make.com webhook without field loss
 - [ ] Recording cannot exceed 15 seconds in runtime flow
 - [ ] Submission locks before async upload in live flow
 - [ ] Duplicate `clientRequestId` upload is blocked in live flow
