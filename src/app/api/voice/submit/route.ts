@@ -1,21 +1,26 @@
 import { NextResponse } from 'next/server';
+import { formatZodIssues } from '@/shared/contracts/common';
+import {
+  makeWebhookPayloadSchema,
+  voiceSubmitRequestSchema,
+  voiceSubmitSuccessResponseSchema
+} from '@/shared/contracts/voice-submit';
+import { env } from '@/shared/config/env';
 import { CircuitBreaker } from '@/server/reliability/circuitBreaker';
 import { WebhookClient, type WebhookPayload } from '@/server/reliability/WebhookClient';
 import { FailureQueue } from '@/server/queue/failureQueue';
 
 export const runtime = 'nodejs';
 
-type VoiceSubmitBody = {
-  clientRequestId: string;
-  transcriptText: string;
-  spreadsheetId?: string;
-  slackChannelId?: string;
-  sessionId?: string;
-  pcmFrameCount?: number;
-};
-
-function badRequest(message: string) {
-  return NextResponse.json({ ok: false, error: message }, { status: 400 });
+function contractError(status: number, error: string, issues: ReturnType<typeof formatZodIssues> = []) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error,
+      issues
+    },
+    { status }
+  );
 }
 
 const circuitBreaker = new CircuitBreaker({
@@ -27,21 +32,10 @@ let sharedQueue: FailureQueue | null = null;
 let sharedWebhookClient: WebhookClient | null = null;
 
 function getQueueClient(): { webhookClient: WebhookClient; queue: FailureQueue } {
-  const webhookUrl = process.env.MAKE_WEBHOOK_URL || process.env.NEXT_PUBLIC_WEBHOOK_URL;
-  const webhookSecret = process.env.MAKE_WEBHOOK_SECRET;
-
-  if (!webhookUrl) {
-    throw new Error('Missing MAKE_WEBHOOK_URL environment variable.');
-  }
-
-  if (!webhookSecret) {
-    throw new Error('Missing MAKE_WEBHOOK_SECRET environment variable.');
-  }
-
   if (!sharedWebhookClient) {
     sharedWebhookClient = new WebhookClient({
-      webhookUrl,
-      webhookSecret,
+      webhookUrl: env.MAKE_WEBHOOK_URL,
+      webhookSecret: env.MAKE_WEBHOOK_SECRET,
       maxRetries: 3,
       retryBaseMs: 250,
       timeoutMs: 2_500,
@@ -61,72 +55,72 @@ function getQueueClient(): { webhookClient: WebhookClient; queue: FailureQueue }
 }
 
 export async function POST(request: Request) {
-  const appEnv = process.env.NEXT_PUBLIC_APP_ENV ?? 'local';
-
-  let body: VoiceSubmitBody;
+  let rawBody: unknown;
   try {
-    body = (await request.json()) as VoiceSubmitBody;
+    rawBody = await request.json();
   } catch {
-    return badRequest('Invalid JSON body.');
+    return contractError(400, 'Invalid JSON body.');
   }
 
-  if (!body.clientRequestId || !body.transcriptText) {
-    return badRequest('clientRequestId and transcriptText are required.');
+  const parsedBody = voiceSubmitRequestSchema.safeParse(rawBody);
+  if (!parsedBody.success) {
+    return contractError(400, 'Invalid voice submit request contract.', formatZodIssues(parsedBody.error));
   }
 
-  const payload: WebhookPayload = {
-    clientRequestId: body.clientRequestId,
-    transcriptText: body.transcriptText,
-    spreadsheetId: body.spreadsheetId ?? '',
-    slackChannelId: body.slackChannelId ?? '',
-    sessionId: body.sessionId ?? '',
-    pcmFrameCount: body.pcmFrameCount ?? 0,
+  const parsedPayload = makeWebhookPayloadSchema.safeParse({
+    ...parsedBody.data,
     createdAt: new Date().toISOString()
-  };
+  });
+
+  if (!parsedPayload.success) {
+    return contractError(
+      500,
+      'Invalid Make.com payload contract.',
+      formatZodIssues(parsedPayload.error)
+    );
+  }
+
+  const payload: WebhookPayload = parsedPayload.data;
 
   try {
     const { webhookClient } = getQueueClient();
 
-    await webhookClient.send(payload, body.clientRequestId);
+    await webhookClient.send(payload, parsedBody.data.clientRequestId);
 
-    return NextResponse.json({
-      ok: true,
-      acceptedForRetry: false,
-      circuitState: webhookClient.circuitBreaker.snapshot().state
-    });
+    return NextResponse.json(
+      voiceSubmitSuccessResponseSchema.parse({
+        ok: true,
+        acceptedForRetry: false,
+        circuitState: webhookClient.circuitBreaker.snapshot().state
+      })
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown submit error.';
 
     try {
       const { queue, webhookClient } = getQueueClient();
-      await queue.enqueue(body.clientRequestId, payload);
+      await queue.enqueue(parsedBody.data.clientRequestId, payload);
 
-      return NextResponse.json({
-        ok: true,
-        acceptedForRetry: true,
-        reason: message,
-        circuitState: webhookClient.circuitBreaker.snapshot().state
-      });
+      return NextResponse.json(
+        voiceSubmitSuccessResponseSchema.parse({
+          ok: true,
+          acceptedForRetry: true,
+          reason: message,
+          circuitState: webhookClient.circuitBreaker.snapshot().state
+        })
+      );
     } catch (queueError) {
       const queueMessage =
         queueError instanceof Error ? queueError.message : 'Unknown queue enqueue error.';
-
-      if (appEnv === 'local' || appEnv === 'development') {
-        return NextResponse.json({
-          ok: true,
-          mocked: true,
-          acceptedForRetry: false,
-          reason: `${message} | ${queueMessage}`
-        });
-      }
 
       return NextResponse.json(
         {
           ok: false,
           error: message,
-          queueError: queueMessage
+          queueError: queueMessage,
+          issues: []
         },
-        { status: 500 }
+        { status: env.NEXT_PUBLIC_APP_ENV === 'local' || env.NEXT_PUBLIC_APP_ENV === 'development' ? 500 : 500 }
       );
     }
   }

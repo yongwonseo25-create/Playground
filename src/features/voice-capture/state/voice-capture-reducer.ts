@@ -1,6 +1,8 @@
-﻿import {
+import type { BackendConnectionState } from '@/shared/contracts/voice';
+import {
   type VoiceCaptureMachineState,
   type VoiceReducerState,
+  DEFAULT_TRANSCRIPT_PREVIEW,
   initialVoiceCaptureState
 } from '@/features/voice-capture/types/voice-types';
 
@@ -8,13 +10,22 @@ export type VoiceCaptureAction =
   | { type: 'REQUEST_PERMISSION' }
   | { type: 'PERMISSION_GRANTED' }
   | { type: 'PERMISSION_DENIED'; reason: string }
-  | { type: 'START_RECORDING'; startedAt: number }
+  | { type: 'START_RECORDING'; startedAt: number; sessionId: string }
   | { type: 'TICK'; now: number }
   | { type: 'STOP_RECORDING'; stoppedAt: number }
   | { type: 'AUTO_STOP_AT_LIMIT' }
   | { type: 'LOCK_SUBMISSION'; clientRequestId: string }
   | { type: 'UPLOAD_SUCCESS' }
   | { type: 'UPLOAD_ERROR'; reason: string }
+  | { type: 'SET_CONNECTION_STATE'; connection: BackendConnectionState }
+  | {
+      type: 'SYNC_TRANSCRIPT';
+      transcriptPreview: string;
+      finalized: boolean;
+      pcmFrameCount?: number;
+    }
+  | { type: 'SYNC_PCM_FRAME_COUNT'; pcmFrameCount: number }
+  | { type: 'RUNTIME_ERROR'; reason: string }
   | { type: 'RESET' };
 
 function ensureValidStatus(status: VoiceReducerState): VoiceReducerState {
@@ -44,20 +55,30 @@ export function voiceCaptureReducer(
       return {
         ...state,
         status: ensureValidStatus('error'),
+        connection: 'disconnected',
+        sessionId: null,
+        pcmFrameCount: 0,
         lastError: action.reason,
         submissionLocked: false,
-        clientRequestId: null
+        clientRequestId: null,
+        transcriptPreview: DEFAULT_TRANSCRIPT_PREVIEW,
+        transcriptFinalized: false
       };
     }
     case 'START_RECORDING': {
       return {
         ...state,
         status: ensureValidStatus('recording'),
+        connection: 'connecting',
         recordingStartedAt: action.startedAt,
         elapsedMs: 0,
+        sessionId: action.sessionId,
+        pcmFrameCount: 0,
         clientRequestId: null,
         submissionLocked: false,
-        lastError: null
+        lastError: null,
+        transcriptPreview: DEFAULT_TRANSCRIPT_PREVIEW,
+        transcriptFinalized: false
       };
     }
     case 'TICK': {
@@ -130,11 +151,38 @@ export function voiceCaptureReducer(
         lastError: action.reason
       };
     }
-    case 'RESET': {
+    case 'SET_CONNECTION_STATE': {
       return {
-        ...initialVoiceCaptureState,
-        connection: state.connection
+        ...state,
+        connection: action.connection
       };
+    }
+    case 'SYNC_TRANSCRIPT': {
+      return {
+        ...state,
+        transcriptPreview: action.transcriptPreview,
+        transcriptFinalized: action.finalized,
+        pcmFrameCount: action.pcmFrameCount ?? state.pcmFrameCount
+      };
+    }
+    case 'SYNC_PCM_FRAME_COUNT': {
+      return {
+        ...state,
+        pcmFrameCount: action.pcmFrameCount
+      };
+    }
+    case 'RUNTIME_ERROR': {
+      return {
+        ...state,
+        status: ensureValidStatus('error'),
+        connection: 'error',
+        submissionLocked: false,
+        clientRequestId: null,
+        lastError: action.reason
+      };
+    }
+    case 'RESET': {
+      return initialVoiceCaptureState;
     }
     default: {
       return state;

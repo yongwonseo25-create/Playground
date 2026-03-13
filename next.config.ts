@@ -1,14 +1,15 @@
 import type { NextConfig } from 'next';
-import { buildConnectSrc, parsePublicEnv } from './src/shared/config/env-core';
+import { buildConnectSrc, parseServerEnv } from './src/shared/config/env-core';
 
-const publicEnv = parsePublicEnv({
+const serverEnv = parseServerEnv({
   NEXT_PUBLIC_WSS_URL: process.env.NEXT_PUBLIC_WSS_URL,
-  NEXT_PUBLIC_WEBHOOK_URL: process.env.NEXT_PUBLIC_WEBHOOK_URL,
-  NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV
+  NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,
+  MAKE_WEBHOOK_URL: process.env.MAKE_WEBHOOK_URL,
+  MAKE_WEBHOOK_SECRET: process.env.MAKE_WEBHOOK_SECRET
 });
 
-const connectSrc = buildConnectSrc(publicEnv).join(' ');
-const isLocalMode = publicEnv.NEXT_PUBLIC_APP_ENV === 'local';
+const connectSrc = buildConnectSrc(serverEnv).join(' ');
+const isLocalMode = serverEnv.NEXT_PUBLIC_APP_ENV === 'local';
 
 const scriptSrc = isLocalMode
   ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
