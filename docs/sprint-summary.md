@@ -77,30 +77,30 @@ The following 8 states are fixed and must not be arbitrarily restructured:
   - reducer remains pure and side effects are externalized
 
 ### Audio Engine
-- Status: architecture fixed, implementation not yet started in code
-- Audio input approach: AudioWorklet + PCM only
-- Audio transport approach: secure WSS only
-- Audio cleanup strategy: planned, not yet implemented
-- Secure context requirement: mandatory
+- Status: live browser runtime implemented and Playwright-verified against a local WSS harness
+- Audio input approach: explicit `getUserMedia` -> `AudioWorklet` -> PCM16 frames
+- Audio transport approach: env-driven websocket control events plus raw PCM frames over WS/WSS
+- Audio cleanup strategy: tracks, worklet graph, and audio context are torn down on stop/reset/unmount
+- Secure context requirement: mandatory and runtime-enforced
 
 ### Transport
-- Status: env and secure transport policy prepared, webhook reliability contract mock-verified
-- WSS endpoint strategy: env-driven
-- Webhook adapter strategy: backend sender contract published and validated against a signature-checking mock receiver
-- Env validation status: implemented for secure endpoint handling
+- Status: live browser-to-WSS runtime flow implemented and local harness verified end-to-end
+- WSS endpoint strategy: `NEXT_PUBLIC_WSS_URL` is startup-validated and only allows `ws://` or `wss://`, with `wss://` enforced outside local
+- Webhook adapter strategy: `/api/voice/submit` safeParses the inbound request and outbound Make.com payload before `WebhookClient` send/queue handling
+- Env validation status: public and server envs now fail fast at startup, including `MAKE_WEBHOOK_URL`
 
 ### Submission / Cost Defense
-- Status: UI-integrated placeholder flow active, backend reliability path mock-verified
+- Status: live `/api/voice/submit` fetch flow active and placeholder upload path removed
 - 15-second cutoff status: reducer timer remains the source of truth and auto-stops at the hard limit
-- `clientRequestId` lock status: generated synchronously before placeholder upload begins
-- Duplicate prevention strategy: upload button disables during `uploading`, reducer lock preserved for real transport wiring, webhook idempotency is mock-verified server-side
+- `clientRequestId` lock status: generated synchronously before async submit begins
+- Duplicate prevention strategy: reducer upload lock gates browser submit attempts and backend idempotency continues through `X-Idempotency-Key`
 
 ### Mobile UX
 - Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
 - One-handed usage support: yes
 - Safe-area support: baseline implemented
 - Accessibility status: touch targets, labels, and Playwright test ids applied
-- Error messaging status: inline Step 2 retry/cancel feedback available
+- Error messaging status: inline Step 2 retry/cancel feedback available and transcript view now shows live runtime text only
 
 ---
 
@@ -500,14 +500,86 @@ Replace manual Make.com validation risk with automated mock-receiver verificatio
 
 ---
 
+### Sprint 8 - Live WSS Runtime and Zod Contract Hardening
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Replace the placeholder browser submission path with a real AudioWorklet + PCM over WSS runtime, harden env startup validation, and unify `/api/voice/submit` plus Make.com payload handling behind shared Zod contracts.
+
+#### Files Created
+- `public/audio/voxera-pcm16-capture.worklet.js`
+- `src/features/voice-capture/services/realtime-voice-session.ts`
+- `src/features/voice-capture/services/submit-voice-capture.ts`
+- `src/shared/contracts/common.ts`
+- `src/shared/contracts/voice-submit.ts`
+- `tests/e2e/helpers/live-voice-runtime.ts`
+- `tests/e2e/helpers/synthetic-microphone.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `next.config.ts`
+- `package.json`
+- `src/app/api/voice/submit/route.ts`
+- `src/features/voice-capture/components/voice-capture-screen.tsx`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `src/features/voice-capture/state/voice-capture-reducer.ts`
+- `src/features/voice-capture/types/voice-types.ts`
+- `src/shared/config/env-core.ts`
+- `src/shared/config/env.client.ts`
+- `src/shared/config/env.ts`
+- `src/shared/contracts/voice.ts`
+- `tests/e2e/env-core.spec.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+- `tests/playwright.config.ts`
+- `src/features/voice-capture/services/upload-placeholder.ts` (removed)
+
+#### Architecture Changes
+- Added shared Zod contracts for submit request/response, Make.com payloads, websocket control events, websocket transcript events, and standard error issue formatting
+- Split env parsing into public/server fail-fast paths so invalid `NEXT_PUBLIC_WSS_URL`, `MAKE_WEBHOOK_URL`, or missing webhook secret stop startup immediately
+- Replaced the browser placeholder path with a real `AudioWorklet` capture service that opens the configured websocket, streams PCM16 frames, receives transcript events, and posts the final transcript through `/api/voice/submit`
+
+#### State Machine Changes
+- Preserved all 8 constitutional states without renaming or merging
+- Added reducer-managed runtime metadata (`connection`, `sessionId`, `pcmFrameCount`, `transcriptFinalized`) without bypassing the reducer with UI-only flags
+- Kept reducer-driven 15-second stop truth while runtime shutdown remains an externalized side effect
+
+#### Audio / Transport Changes
+- Added the production code path for `AudioWorklet` capture and PCM16 websocket streaming
+- Added validated `session.start` / `session.stop` control events and validated `session.ready` / transcript server events
+- Added a live Playwright harness that accepts websocket audio and webhook submit traffic end-to-end
+
+#### Submission / Cost Defense Changes
+- Removed the fake upload delay placeholder service
+- `/api/voice/submit` now rejects invalid JSON/request bodies with Zod issue details and validates the outbound Make.com payload before send/queue
+- `clientRequestId` is still created synchronously before async submit and the webhook idempotency key remains intact
+
+#### Known Risks
+- The production/staging WSS backend must implement the same JSON control and transcript event schema as the local harness
+- The current stop flow waits up to 1.5 seconds for a final transcript event; slower runtimes may need an explicit backend ack or longer drain policy
+- A dedicated 15-second full-duration soak test against the real backend is still pending
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified a live browser session connects to the local WSS harness, streams PCM frames, receives `transcript.final`, and submits the Make.com payload through `/api/voice/submit`
+
+#### Next Sprint Prerequisites
+- Run a staging smoke test against the real WSS backend and confirm transcript finalization latency
+- Add a dedicated live duplicate-submit regression around repeated Step 2 send taps
+- Add a 15-second full-duration soak that proves no capture leaks past the reducer cutoff
+
+---
+
 ## Current Known Risks (Rolling Section)
 
-- AudioWorklet runtime path is not yet implemented
-- WSS runtime path is not yet implemented
-- real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now mock-verified
-- duplicate lock must be verified again once webhook upload is added
-- timeout and upload flow must be verified together once live network flow exists
-- current premium UI is validated against placeholder upload timing, not live backend latency
+- Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
+- The real WSS backend must match the shared websocket event schema now enforced in the browser runtime
+- The 1.5-second final-transcript drain window may need tuning against real backend latency
+- A dedicated 15-second live soak and repeated-send duplicate regression are still pending
 
 ---
 
@@ -516,6 +588,8 @@ Replace manual Make.com validation risk with automated mock-receiver verificatio
 - [x] No MediaRecorder exists anywhere in the codebase
 - [x] No blob/timeslice recording exists
 - [x] Audio architecture remains AudioWorklet + PCM over WSS only
+- [x] Browser runtime streams PCM to a live WSS harness and receives `transcript.final`
+- [x] `/api/voice/submit` and Make.com payloads are Zod `safeParse`-guarded in the live path
 - [ ] Recording cannot exceed 15 seconds in runtime flow
 - [ ] Submission locks before async upload in live flow
 - [ ] Duplicate `clientRequestId` upload is blocked in live flow

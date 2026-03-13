@@ -1,4 +1,8 @@
-﻿import type { BackendConnectionState, VoiceSessionContract } from '@/shared/contracts/voice';
+import {
+  voiceSessionContract,
+  type BackendConnectionState,
+  type VoiceSessionContract
+} from '@/shared/contracts/voice';
 
 export const FIXED_VOICE_STATES = [
   'idle',
@@ -16,7 +20,7 @@ export type VoiceReducerState = (typeof FIXED_VOICE_STATES)[number];
 export const MAX_RECORDING_MS = 15000;
 
 export const DEFAULT_TRANSCRIPT_PREVIEW =
-  'Your captured voice transcript will appear here.\nEdit-free confirmation flow starts immediately.';
+  'Your captured voice transcript will appear here.\nTranscript updates only from the live WSS runtime.';
 
 export interface VoiceCaptureMachineState {
   status: VoiceReducerState;
@@ -24,9 +28,12 @@ export interface VoiceCaptureMachineState {
   elapsedMs: number;
   maxRecordingMs: number;
   recordingStartedAt: number | null;
+  sessionId: string | null;
+  pcmFrameCount: number;
   clientRequestId: string | null;
   submissionLocked: boolean;
   transcriptPreview: string;
+  transcriptFinalized: boolean;
   lastError: string | null;
 }
 
@@ -36,25 +43,13 @@ export const initialVoiceCaptureState: VoiceCaptureMachineState = {
   elapsedMs: 0,
   maxRecordingMs: MAX_RECORDING_MS,
   recordingStartedAt: null,
+  sessionId: null,
+  pcmFrameCount: 0,
   clientRequestId: null,
   submissionLocked: false,
   transcriptPreview: DEFAULT_TRANSCRIPT_PREVIEW,
+  transcriptFinalized: false,
   lastError: null
 };
 
-export const voiceSessionPlaceholder: VoiceSessionContract = {
-  transport: {
-    protocol: 'wss',
-    endpoint: '/api/voice/session',
-    auth: 'unknown'
-  },
-  audio: {
-    inputFormat: 'pcm16',
-    sampleRateHz: null,
-    channelCount: null
-  },
-  events: {
-    clientToServer: [],
-    serverToClient: []
-  }
-};
+export const liveVoiceSessionContract: VoiceSessionContract = voiceSessionContract;

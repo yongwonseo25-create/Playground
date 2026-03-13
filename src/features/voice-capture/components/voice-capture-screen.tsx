@@ -386,11 +386,6 @@ function Step2Confirm({
   const shouldFollowLatestRef = useRef(true);
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const debugKoreanDummy = Array.from(
-    { length: 52 },
-    (_, idx) => `더미 한글 테스트 ${idx + 1}번 줄입니다. 스크롤 가시성 확인용 문장.`
-  ).join('\n');
-  const transcriptForView = `${transcript}\n\n${debugKoreanDummy}`;
 
   const updateScrollState = () => {
     const el = transcriptBoxRef.current;
@@ -478,7 +473,7 @@ function Step2Confirm({
                 data-testid="voice-transcript-box"
                 className="voxera-scroll relative z-10 h-[276px] w-full overflow-y-scroll touch-pan-y overscroll-contain scroll-smooth pr-5 pb-14 select-none"
               >
-                <p className="whitespace-pre-wrap break-words cursor-default text-[16px] leading-8 text-white/92">{transcriptForView}</p>
+                <p className="whitespace-pre-wrap break-words cursor-default text-[16px] leading-8 text-white/92">{transcript}</p>
               </div>
 
               <div

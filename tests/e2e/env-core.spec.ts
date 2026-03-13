@@ -13,7 +13,8 @@ test.describe('env-core fail-fast', () => {
       env: {
         NEXT_PUBLIC_APP_ENV: 'production',
         NEXT_PUBLIC_WSS_URL: 'ws://example.com/voice',
-        NEXT_PUBLIC_WEBHOOK_URL: 'https://api.example.com/webhook'
+        MAKE_WEBHOOK_URL: 'https://api.example.com/webhook',
+        MAKE_WEBHOOK_SECRET: 'env-core-secret'
       }
     });
 
@@ -21,7 +22,7 @@ test.describe('env-core fail-fast', () => {
     expect(result.output).toContain('Insecure WebSocket (ws://) is not allowed outside local environment');
   });
 
-  test('rejects non-http(s) webhook URL schemes', async () => {
+  test('rejects non-http(s) MAKE_WEBHOOK_URL schemes', async () => {
     const result = await runNextDevOnce({
       cwd: repoRoot,
       port: 3302,
@@ -29,12 +30,13 @@ test.describe('env-core fail-fast', () => {
       env: {
         NEXT_PUBLIC_APP_ENV: 'staging',
         NEXT_PUBLIC_WSS_URL: 'wss://example.com/voice',
-        NEXT_PUBLIC_WEBHOOK_URL: 'ftp://example.com/webhook'
+        MAKE_WEBHOOK_URL: 'ftp://example.com/webhook',
+        MAKE_WEBHOOK_SECRET: 'env-core-secret'
       }
     });
 
     expect(result.ready).toBe(false);
-    expect(result.output).toContain('NEXT_PUBLIC_WEBHOOK_URL must use https:// outside local environment.');
+    expect(result.output).toContain('MAKE_WEBHOOK_URL must use http:// or https://.');
   });
 
   test('accepts local loopback ws/http exceptions', async () => {
@@ -45,7 +47,8 @@ test.describe('env-core fail-fast', () => {
       env: {
         NEXT_PUBLIC_APP_ENV: 'local',
         NEXT_PUBLIC_WSS_URL: 'ws://127.0.0.1:8787/voice',
-        NEXT_PUBLIC_WEBHOOK_URL: 'http://localhost:8788/webhook'
+        MAKE_WEBHOOK_URL: 'http://localhost:8788/webhook',
+        MAKE_WEBHOOK_SECRET: 'env-core-secret'
       }
     });
 
