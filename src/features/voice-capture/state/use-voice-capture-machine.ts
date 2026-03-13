@@ -236,7 +236,9 @@ export function useVoiceCaptureMachine() {
         clientRequestId,
         transcriptText,
         sessionId: state.sessionId ?? snapshot?.sessionId ?? undefined,
-        pcmFrameCount: state.pcmFrameCount || snapshot?.pcmFrameCount || 0
+        pcmFrameCount: state.pcmFrameCount || snapshot?.pcmFrameCount || 0,
+        stt_provider: snapshot?.sttProvider ?? 'whisper',
+        audio_duration_sec: snapshot?.audioDurationSec ?? 0
       });
       dispatch({ type: 'UPLOAD_SUCCESS' });
     } catch (error) {

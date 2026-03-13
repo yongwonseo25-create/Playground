@@ -8,6 +8,19 @@ export const backendConnectionStateSchema = z.enum([
 ]);
 
 export type BackendConnectionState = z.infer<typeof backendConnectionStateSchema>;
+export const voiceLanguageSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(35)
+  .regex(/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/);
+export const voiceWorkflowSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z0-9_:-]+$/);
+export const voiceSttProviderSchema = z.enum(['whisper', 'return-zero']);
 
 export const voiceTransportProtocolSchema = z.enum(['ws', 'wss']);
 export const voiceInputFormatSchema = z.literal('pcm16');
@@ -67,6 +80,9 @@ export const voiceSessionStartEventSchema = z
   .object({
     type: z.literal('session.start'),
     sessionId: z.string().trim().min(1).max(128),
+    language: voiceLanguageSchema,
+    premium_ko_accuracy: z.boolean().optional(),
+    workflow: voiceWorkflowSchema.optional(),
     sentAt: z.string().datetime({ offset: true }),
     audio: z
       .object({
@@ -117,7 +133,9 @@ export const voiceTranscriptFinalEventSchema = z
     sessionId: z.string().trim().min(1).max(128),
     text: z.string().trim().min(1),
     isFinal: z.literal(true),
-    pcmFrameCount: z.number().int().nonnegative().optional()
+    pcmFrameCount: z.number().int().nonnegative().optional(),
+    stt_provider: voiceSttProviderSchema.optional(),
+    audio_duration_sec: z.number().nonnegative().optional()
   })
   .strict();
 

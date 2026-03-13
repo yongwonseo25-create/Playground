@@ -69,6 +69,8 @@ export async function POST(request: Request) {
 
   const parsedPayload = makeWebhookPayloadSchema.safeParse({
     ...parsedBody.data,
+    stt_provider: parsedBody.data.stt_provider ?? 'whisper',
+    audio_duration_sec: parsedBody.data.audio_duration_sec ?? 0,
     createdAt: new Date().toISOString()
   });
 
@@ -91,6 +93,8 @@ export async function POST(request: Request) {
       voiceSubmitSuccessResponseSchema.parse({
         ok: true,
         acceptedForRetry: false,
+        stt_provider: payload.stt_provider,
+        audio_duration_sec: payload.audio_duration_sec,
         circuitState: webhookClient.circuitBreaker.snapshot().state
       })
     );
@@ -105,6 +109,8 @@ export async function POST(request: Request) {
         voiceSubmitSuccessResponseSchema.parse({
           ok: true,
           acceptedForRetry: true,
+          stt_provider: payload.stt_provider,
+          audio_duration_sec: payload.audio_duration_sec,
           reason: message,
           circuitState: webhookClient.circuitBreaker.snapshot().state
         })

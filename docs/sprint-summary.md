@@ -79,21 +79,23 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 ### Audio Engine
 - Status: live browser runtime implemented and Playwright-verified against a local WSS harness
 - Audio input approach: explicit `getUserMedia` -> `AudioWorklet` -> PCM16 frames
-- Audio transport approach: env-driven websocket control events plus raw PCM frames over WS/WSS
+- Audio transport approach: env-driven websocket control events plus raw PCM frames over WS/WSS, with `session.start.language` propagated to the backend STT router
 - Audio cleanup strategy: tracks, worklet graph, and audio context are torn down on stop/reset/unmount
 - Secure context requirement: mandatory and runtime-enforced
 
 ### Transport
-- Status: live browser-to-WSS runtime flow implemented and local harness verified end-to-end
+- Status: live browser-to-WSS runtime flow implemented, with Whisper-default STT routing plus conditional Return Zero overrides on the WSS server
 - WSS endpoint strategy: `NEXT_PUBLIC_WSS_URL` is startup-validated and only allows `ws://` or `wss://`, with `wss://` enforced outside local
+- STT routing strategy: OpenAI Whisper is the default provider for all sessions, while Return Zero is used only for Korean sessions that opt into premium accuracy or high-risk workflows such as `sales_call` and `medical_note`
 - Webhook adapter strategy: `/api/voice/submit` safeParses the inbound request and outbound Make.com payload before `WebhookClient` send/queue handling
-- Env validation status: public and server envs now fail fast at startup, including `MAKE_WEBHOOK_URL`
+- Env validation status: public and Next server envs fail fast at startup, while the standalone WSS server loads `.env.local`, keeps Whisper available as the safe default, and warns when Return Zero premium overrides cannot be honored
 
 ### Submission / Cost Defense
 - Status: live `/api/voice/submit` fetch flow active and placeholder upload path removed
 - 15-second cutoff status: reducer timer remains the source of truth and auto-stops at the hard limit
 - `clientRequestId` lock status: generated synchronously before async submit begins
 - Duplicate prevention strategy: reducer upload lock gates browser submit attempts and backend idempotency continues through `X-Idempotency-Key`
+- Cost telemetry status: `stt_provider` and `audio_duration_sec` now flow from the WSS transcript result into `/api/voice/submit` and the downstream webhook payload
 
 ### Mobile UX
 - Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
@@ -574,10 +576,131 @@ Replace the placeholder browser submission path with a real AudioWorklet + PCM o
 
 ---
 
+### Sprint 9 - Dual STT Routing Fortress
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Route live WSS PCM sessions to Return Zero for Korean traffic and OpenAI Whisper for other languages, while hardening the WSS server with Return Zero Zod contracts, startup fail-fast rules, and timeout-driven circuit breaking.
+
+#### Files Created
+- `.env.local`
+- `scripts/lib/dual-stt-router.mjs`
+- `tests/e2e/dual-stt-router.spec.ts`
+
+#### Files Modified
+- `.env.local.example`
+- `docs/sprint-summary.md`
+- `package.json`
+- `scripts/voice-wss-server.mjs`
+- `src/features/voice-capture/services/realtime-voice-session.ts`
+- `src/shared/contracts/voice.ts`
+
+#### Architecture Changes
+- Added a standalone dual STT router module for the WSS server that prefers Return Zero for `ko-KR`/`ko-*` traffic and falls back to Whisper on provider failure
+- Added Zod validation for Return Zero JWT auth responses, job submission responses, and transcription result payloads, plus normalized router error formatting
+- Added `.env.local` loading in the WSS server so local Return Zero credentials are available without extra boot flags
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- `session.start` now carries a validated `language` field from the browser runtime to the WSS backend
+- The standalone WSS server now emits `session.ready` with `acceptedAt` plus schema-aligned `transcript.final` and `session.error` events
+- Return Zero timeouts now feed a dedicated circuit breaker so repeated upstream failures fall back to Whisper instead of hammering the Korean STT provider
+
+#### Submission / Cost Defense Changes
+- No reducer or submission-lock behavior changed
+- Exact 15-second cutoff and synchronous `clientRequestId` locking remain reducer-owned and untouched
+
+#### Known Risks
+- Return Zero staging behavior still needs one live smoke run to tune polling cadence and confirm no 429 pressure under real latency
+- The production WSS server must keep honoring the `session.start.language` contract or Korean traffic will drop to Whisper fallback
+- Dedicated live duplicate-submit and 15-second full-duration soak coverage are still pending against the real backend
+
+#### Manual QA
+- [x] `corepack pnpm install`
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] `node --check scripts/lib/dual-stt-router.mjs`
+- [x] `node --check scripts/voice-wss-server.mjs`
+
+#### Next Sprint Prerequisites
+- Run one staging smoke test against the real Return Zero credentials and confirm Korean transcripts complete without repeated fallback
+- Add a live regression that hits the standalone WSS server directly instead of only the local harness
+- Add the pending 15-second soak and repeated-send duplicate regression in the live runtime path
+
+---
+
+### Sprint 10 - Whisper Default Cost Rollback
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Rollback the always-Korean Return Zero policy to a Whisper-default router, keep Return Zero as an opt-in premium override, and add provider/duration cost metrics without disturbing the reducer-owned runtime rules.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `scripts/lib/dual-stt-router.mjs`
+- `scripts/voice-wss-server.mjs`
+- `src/app/api/voice/submit/route.ts`
+- `src/features/voice-capture/services/realtime-voice-session.ts`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `src/shared/contracts/voice.ts`
+- `src/shared/contracts/voice-submit.ts`
+- `tests/e2e/dual-stt-router.spec.ts`
+- `tests/e2e/helpers/live-voice-runtime.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+
+#### Architecture Changes
+- Inserted a provider-interface layer plus a single router decision point in the standalone STT module so Whisper remains the default and Return Zero is only selected for Korean premium/high-risk overrides
+- Added WSS routing hints (`premium_ko_accuracy`, `workflow`) and downstream cost telemetry (`stt_provider`, `audio_duration_sec`) across transcript events and `/api/voice/submit`
+- Added Whisper retry-once behavior before fail-fast, while Return Zero override failures now fall back safely to Whisper
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- Browser `session.start` events now optionally carry premium-accuracy and workflow hints sourced from URL query params
+- `transcript.final` now carries provider and duration telemetry so the browser submit path can forward cost metrics without moving business truth into the UI
+- Return Zero no longer owns Korean traffic by default; only explicit premium/high-risk Korean sessions route there
+
+#### Submission / Cost Defense Changes
+- No reducer or duplicate-lock behavior changed
+- `/api/voice/submit` and the Make.com payload now persist `stt_provider` and `audio_duration_sec` for downstream cost analysis
+
+#### Known Risks
+- Premium/high-risk override inputs currently come from WSS payload/query hints and still need a dedicated product-surface control if operators should toggle them from the UI
+- Return Zero premium routing still needs one staging smoke test with real credentials to confirm polling cadence under real load
+- Dedicated live duplicate-submit and 15-second full-duration soak coverage remain pending against the real backend
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] `corepack pnpm exec playwright test tests/e2e/dual-stt-router.spec.ts tests/e2e/env-core.spec.ts -c tests/playwright.env-core.config.ts` in an isolated Git worktree
+- [x] `corepack pnpm exec playwright test tests/e2e/voice-runtime-live.spec.ts tests/e2e/voice-capture-flow.spec.ts -c tests/playwright.config.ts` in an isolated Git worktree
+
+#### Next Sprint Prerequisites
+- Decide where premium/high-risk override controls should live in the operator UX
+- Run one staging smoke test on a real premium Korean session and confirm `stt_provider` / `audio_duration_sec` persistence downstream
+- Add the pending 15-second soak and repeated-send duplicate regression in the live runtime path
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
 - The real WSS backend must match the shared websocket event schema now enforced in the browser runtime
+- Return Zero polling cadence and timeout thresholds still need staging calibration for premium/high-risk override traffic
 - The 1.5-second final-transcript drain window may need tuning against real backend latency
 - A dedicated 15-second live soak and repeated-send duplicate regression are still pending
 
@@ -590,6 +713,10 @@ Replace the placeholder browser submission path with a real AudioWorklet + PCM o
 - [x] Audio architecture remains AudioWorklet + PCM over WSS only
 - [x] Browser runtime streams PCM to a live WSS harness and receives `transcript.final`
 - [x] `/api/voice/submit` and Make.com payloads are Zod `safeParse`-guarded in the live path
+- [x] Whisper is the default STT provider and Korean traffic uses Return Zero only for premium/high-risk overrides
+- [x] Return Zero auth/result payloads remain Zod-validated before transcript use
+- [x] Return Zero override failures fall back to Whisper and Whisper retries once before fail-fast
+- [x] `stt_provider` and `audio_duration_sec` persist through `/api/voice/submit` and the downstream webhook payload
 - [ ] Recording cannot exceed 15 seconds in runtime flow
 - [ ] Submission locks before async upload in live flow
 - [ ] Duplicate `clientRequestId` upload is blocked in live flow

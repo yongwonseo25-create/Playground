@@ -19,6 +19,8 @@ export interface VoiceRuntimeSnapshot {
   transcriptText: string;
   transcriptFinalized: boolean;
   pcmFrameCount: number;
+  sttProvider: 'whisper' | 'return-zero' | null;
+  audioDurationSec: number;
   connection: BackendConnectionState;
 }
 
@@ -54,6 +56,29 @@ function createSessionId(): string {
   }
 
   return `voxera-session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function resolveSessionLanguage(): string {
+  if (typeof navigator === 'undefined') {
+    return 'en-US';
+  }
+
+  return navigator.languages?.find((language) => language.trim().length > 0) ?? navigator.language ?? 'en-US';
+}
+
+function resolveSessionRoutingHints(): { premiumKoAccuracy: boolean; workflow?: string } {
+  if (typeof window === 'undefined') {
+    return { premiumKoAccuracy: false };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const premiumFlag = searchParams.get('premium_ko_accuracy');
+  const workflow = searchParams.get('workflow')?.trim();
+
+  return {
+    premiumKoAccuracy: premiumFlag === 'true',
+    workflow: workflow && workflow.length > 0 ? workflow : undefined
+  };
 }
 
 function formatContractIssues(issues: ReturnType<typeof formatZodIssues>): string {
@@ -124,10 +149,14 @@ export async function createRealtimeVoiceSession(
   }
 
   const sessionId = createSessionId();
+  const sessionLanguage = resolveSessionLanguage();
+  const sessionRoutingHints = resolveSessionRoutingHints();
   let connection: BackendConnectionState = 'connecting';
   let transcriptText = '';
   let transcriptFinalized = false;
   let pcmFrameCount = 0;
+  let sttProvider: 'whisper' | 'return-zero' | null = null;
+  let audioDurationSec = 0;
   let serverReady = false;
   let audioStopped = false;
   let socketClosedByClient = false;
@@ -226,6 +255,8 @@ export async function createRealtimeVoiceSession(
     transcriptText,
     transcriptFinalized,
     pcmFrameCount,
+    sttProvider,
+    audioDurationSec,
     connection
   });
 
@@ -325,6 +356,8 @@ export async function createRealtimeVoiceSession(
           transcriptText = message.text;
           transcriptFinalized = true;
           pcmFrameCount = message.pcmFrameCount ?? pcmFrameCount;
+          sttProvider = message.stt_provider ?? sttProvider;
+          audioDurationSec = message.audio_duration_sec ?? audioDurationSec;
           callbacks.onTranscript({
             text: transcriptText,
             finalized: true,
@@ -400,6 +433,9 @@ export async function createRealtimeVoiceSession(
     pushControlEvent({
       type: 'session.start',
       sessionId,
+      language: sessionLanguage,
+      premium_ko_accuracy: sessionRoutingHints.premiumKoAccuracy,
+      workflow: sessionRoutingHints.workflow,
       sentAt: new Date().toISOString(),
       audio: {
         format: 'pcm16',

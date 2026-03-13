@@ -48,6 +48,8 @@ test.describe('voice runtime live integration', () => {
     expect(webhookRequest?.body.transcriptText).toBe('대표님, WSS 런타임 정상 연결 확인 완료.');
     expect(webhookRequest?.body.sessionId).toBe(startEvent?.sessionId);
     expect(webhookRequest?.body.pcmFrameCount).toBeGreaterThan(0);
+    expect(webhookRequest?.body.stt_provider).toBe('whisper');
+    expect(webhookRequest?.body.audio_duration_sec).toBeGreaterThan(0);
     expect(webhookRequest?.headers['x-idempotency-key']).toBeTruthy();
   });
 });

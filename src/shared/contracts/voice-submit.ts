@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { contractErrorResponseSchema } from '@/shared/contracts/common';
 
 const optionalLooseStringSchema = z.string().trim().max(512).optional();
+const sttProviderSchema = z.enum(['whisper', 'return-zero']);
 
 export const voiceSubmitRequestSchema = z
   .object({
@@ -10,7 +11,9 @@ export const voiceSubmitRequestSchema = z
     spreadsheetId: optionalLooseStringSchema,
     slackChannelId: optionalLooseStringSchema,
     sessionId: optionalLooseStringSchema,
-    pcmFrameCount: z.number().int().nonnegative().optional()
+    pcmFrameCount: z.number().int().nonnegative().optional(),
+    stt_provider: sttProviderSchema.optional(),
+    audio_duration_sec: z.number().nonnegative().optional()
   })
   .strict();
 
@@ -24,6 +27,8 @@ export const makeWebhookPayloadSchema = z
     slackChannelId: z.string().trim().max(512).default(''),
     sessionId: z.string().trim().max(512).default(''),
     pcmFrameCount: z.number().int().nonnegative().default(0),
+    stt_provider: sttProviderSchema.default('whisper'),
+    audio_duration_sec: z.number().nonnegative().default(0),
     createdAt: z.string().datetime({ offset: true })
   })
   .strict();
@@ -34,6 +39,8 @@ export const voiceSubmitSuccessResponseSchema = z
   .object({
     ok: z.literal(true),
     acceptedForRetry: z.boolean(),
+    stt_provider: sttProviderSchema,
+    audio_duration_sec: z.number().nonnegative(),
     circuitState: z.enum(['CLOSED', 'OPEN', 'HALF_OPEN']).optional(),
     mocked: z.boolean().optional(),
     reason: z.string().min(1).optional()

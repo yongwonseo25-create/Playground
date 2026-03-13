@@ -205,7 +205,9 @@ export class LiveVoiceRuntimeHarness {
               sessionId: resolvedSessionId,
               text: '대표님, WSS 런타임 정상 연결 확인 완료.',
               isFinal: true,
-              pcmFrameCount: sessionPcmFrames
+              pcmFrameCount: sessionPcmFrames,
+              stt_provider: 'whisper',
+              audio_duration_sec: Math.round((sessionPcmFrames / 48_000) * 1000) / 1000
             })
           );
         }
