@@ -11,8 +11,9 @@
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "playwright test tests/e2e/env-core.spec.ts tests/e2e/backend-reliability.spec.ts tests/e2e/dual-stt-router.spec.ts -c tests/playwright.env-core.config.ts",
-    "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts tests/e2e/voice-runtime-live.spec.ts tests/e2e/voice-cutoff-ui.spec.ts -c tests/playwright.config.ts",
-    "test:e2e:routing": "playwright test tests/e2e/voice-stt-routing-live.spec.ts -c tests/playwright.routing.config.ts"
+    "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts tests/e2e/voice-runtime-live.spec.ts tests/e2e/voice-cutoff-ui.spec.ts tests/e2e/voice-microphone-guard.spec.ts tests/e2e/voice-transcript-interactions.spec.ts -c tests/playwright.config.ts",
+    "test:e2e:routing": "playwright test tests/e2e/voice-stt-routing-live.spec.ts -c tests/playwright.routing.config.ts",
+    "test:e2e:demo": "playwright test tests/e2e/voice-ui-live-demo.spec.ts -c tests/playwright.demo.config.ts --headed"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.2",
@@ -30,6 +31,7 @@
     "react-dom": "^19.0.0",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
+    "ws": "^8.19.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -43,7 +45,6 @@
     "eslint-config-next": "^16.0.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
-    "typescript": "^5.7.2",
-    "ws": "^8.19.0"
+    "typescript": "^5.7.2"
   }
 }

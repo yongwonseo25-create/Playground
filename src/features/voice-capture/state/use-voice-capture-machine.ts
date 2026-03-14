@@ -1,11 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import { toast } from 'sonner';
 import {
   createRealtimeVoiceSession,
+  releaseRetainedMicrophoneStream,
   type RealtimeVoiceSession,
   type VoiceRuntimeSnapshot,
-  VoicePermissionError
+  VoiceEntryError,
+  VoicePermissionError,
+  WSS_READY_TIMEOUT_ERROR_MESSAGE
 } from '@/features/voice-capture/services/realtime-voice-session';
 import { submitVoiceCapture } from '@/features/voice-capture/services/submit-voice-capture';
 import { voiceCaptureReducer } from '@/features/voice-capture/state/voice-capture-reducer';
@@ -23,6 +27,21 @@ function createClientRequestId(): string {
   return `voxera-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+const MICROPHONE_ACCESS_ERROR_MESSAGE =
+  '마이크에 접근할 수 없습니다. 기기와 권한 상태를 확인해 주세요.';
+const ENTRY_ERROR_TOAST_ID = 'voice-entry-error';
+
+function isMicrophoneEntryFailure(error: unknown): boolean {
+  return error instanceof VoicePermissionError || error instanceof VoiceEntryError;
+}
+
+function isServerConnectionDelayFailure(error: unknown): boolean {
+  return (
+    (error instanceof VoiceEntryError && error.code === 'server-connection-delayed') ||
+    (error instanceof Error && error.message === WSS_READY_TIMEOUT_ERROR_MESSAGE)
+  );
+}
+
 async function requestMicrophonePermission(): Promise<void> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('This browser does not support microphone capture.');
@@ -35,19 +54,47 @@ async function requestMicrophonePermission(): Promise<void> {
 export function useVoiceCaptureMachine() {
   const [state, dispatch] = useReducer(voiceCaptureReducer, initialVoiceCaptureState);
   const activeSessionRef = useRef<RealtimeVoiceSession | null>(null);
+  const submissionLockRef = useRef(false);
 
-  const handleRuntimeFailure = (error: unknown) => {
+  const resetToIdleWithEntryError = (error: unknown) => {
+    const activeSession = activeSessionRef.current;
+    activeSessionRef.current = null;
+    submissionLockRef.current = false;
+
+    if (activeSession) {
+      void activeSession.close('reset');
+    }
+
+    const message =
+      error instanceof Error && error.message.trim().length > 0
+        ? error.message
+        : MICROPHONE_ACCESS_ERROR_MESSAGE;
+
+    toast.error(message, {
+      id: ENTRY_ERROR_TOAST_ID
+    });
+    dispatch({ type: 'RESET' });
+  };
+
+  const handleRuntimeFailure = useCallback((error: unknown) => {
     const message = error instanceof Error ? error.message : 'Voice runtime failed.';
+
+    if (isServerConnectionDelayFailure(error) || isMicrophoneEntryFailure(error)) {
+      resetToIdleWithEntryError(error);
+      return;
+    }
+
     dispatch({ type: 'RUNTIME_ERROR', reason: message });
 
     const activeSession = activeSessionRef.current;
     activeSessionRef.current = null;
+    submissionLockRef.current = false;
     if (activeSession) {
       void activeSession.close('runtime-error');
     }
-  };
+  }, []);
 
-  const syncSnapshot = (snapshot: VoiceRuntimeSnapshot) => {
+  const syncSnapshot = useCallback((snapshot: VoiceRuntimeSnapshot) => {
     dispatch({ type: 'SYNC_PCM_FRAME_COUNT', pcmFrameCount: snapshot.pcmFrameCount });
 
     if (snapshot.transcriptText.trim().length > 0) {
@@ -58,7 +105,7 @@ export function useVoiceCaptureMachine() {
         pcmFrameCount: snapshot.pcmFrameCount
       });
     }
-  };
+  }, []);
 
   const stopActiveSession = (reason: 'manual' | 'timeout' | 'reset' | 'submit' | 'unmount') => {
     const activeSession = activeSessionRef.current;
@@ -109,16 +156,19 @@ export function useVoiceCaptureMachine() {
       window.clearTimeout(stopTimer);
       window.clearInterval(tickTimer);
     };
-  }, [state.status, state.recordingStartedAt, state.elapsedMs]);
+  }, [handleRuntimeFailure, state.elapsedMs, state.recordingStartedAt, state.status, syncSnapshot]);
 
   useEffect(() => {
     return () => {
       const activeSession = activeSessionRef.current;
       activeSessionRef.current = null;
+      submissionLockRef.current = false;
 
       if (activeSession) {
         void activeSession.close('unmount');
       }
+
+      releaseRetainedMicrophoneStream();
     };
   }, []);
 
@@ -139,6 +189,11 @@ export function useVoiceCaptureMachine() {
       await requestMicrophonePermission();
       dispatch({ type: 'PERMISSION_GRANTED' });
     } catch (error) {
+      if (isMicrophoneEntryFailure(error)) {
+        resetToIdleWithEntryError(error);
+        return;
+      }
+
       dispatch({
         type: 'PERMISSION_DENIED',
         reason: error instanceof Error ? error.message : 'Microphone permission was denied.'
@@ -156,6 +211,7 @@ export function useVoiceCaptureMachine() {
     try {
       const previousSession = activeSessionRef.current;
       activeSessionRef.current = null;
+      submissionLockRef.current = false;
       if (previousSession) {
         await previousSession.close('reset');
       }
@@ -188,8 +244,8 @@ export function useVoiceCaptureMachine() {
         sessionId: session.sessionId
       });
     } catch (error) {
-      if (error instanceof VoicePermissionError) {
-        dispatch({ type: 'PERMISSION_DENIED', reason: error.message });
+      if (isMicrophoneEntryFailure(error)) {
+        resetToIdleWithEntryError(error);
         return;
       }
 
@@ -207,7 +263,11 @@ export function useVoiceCaptureMachine() {
   };
 
   const submitRecording = async () => {
-    if ((state.status !== 'stopping' && state.status !== 'error') || state.submissionLocked) {
+    if (
+      (state.status !== 'stopping' && state.status !== 'error') ||
+      state.submissionLocked ||
+      submissionLockRef.current
+    ) {
       return;
     }
 
@@ -221,6 +281,7 @@ export function useVoiceCaptureMachine() {
     }
 
     const clientRequestId = createClientRequestId();
+    submissionLockRef.current = true;
     dispatch({ type: 'LOCK_SUBMISSION', clientRequestId });
 
     try {
@@ -242,6 +303,7 @@ export function useVoiceCaptureMachine() {
       });
       dispatch({ type: 'UPLOAD_SUCCESS' });
     } catch (error) {
+      submissionLockRef.current = false;
       dispatch({
         type: 'UPLOAD_ERROR',
         reason: error instanceof Error ? error.message : 'Upload failed.'
@@ -252,6 +314,7 @@ export function useVoiceCaptureMachine() {
   const reset = () => {
     const activeSession = activeSessionRef.current;
     activeSessionRef.current = null;
+    submissionLockRef.current = false;
     if (activeSession) {
       void activeSession.close('reset');
     }

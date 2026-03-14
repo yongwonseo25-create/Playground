@@ -29,7 +29,15 @@ export async function installSyntheticMicrophone(
       return;
     }
 
+    const windowWithCounter = window as typeof window & {
+      __voxeraGetUserMediaCallCount?: number;
+    };
+    windowWithCounter.__voxeraGetUserMediaCallCount = 0;
+
     mediaDevices.getUserMedia = async () => {
+      windowWithCounter.__voxeraGetUserMediaCallCount =
+        (windowWithCounter.__voxeraGetUserMediaCallCount ?? 0) + 1;
+
       const audioContext = new window.AudioContext();
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();

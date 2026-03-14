@@ -11,6 +11,42 @@ import {
 const WORKLET_MODULE_PATH = '/audio/voxera-pcm16-capture.worklet.js';
 const FINAL_TRANSCRIPT_WAIT_MS = 1500;
 const SOCKET_CLOSE_WAIT_MS = 750;
+const SERVER_READY_TIMEOUT_MS = 5000;
+const MICROPHONE_CONSTRAINTS = {
+  audio: {
+    channelCount: { ideal: 1 },
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true
+  }
+} as const;
+
+export const WSS_READY_TIMEOUT_ERROR_MESSAGE =
+  '서버 연결이 지연되고 있습니다. 잠시 후 다시 시도해주세요.';
+
+let retainedMicrophoneStream: MediaStream | null = null;
+
+export type VoiceEntryErrorCode =
+  | 'secure-context-required'
+  | 'browser-microphone-unsupported'
+  | 'browser-audio-worklet-unsupported'
+  | 'microphone-not-found'
+  | 'browser-permission-denied'
+  | 'os-permission-denied'
+  | 'microphone-busy'
+  | 'microphone-unavailable'
+  | 'audio-worklet-init-failed'
+  | 'server-connection-delayed';
+
+export class VoiceEntryError extends Error {
+  readonly code: VoiceEntryErrorCode;
+
+  constructor(code: VoiceEntryErrorCode, message: string) {
+    super(message);
+    this.name = 'VoiceEntryError';
+    this.code = code;
+  }
+}
 
 type StopReason = 'manual' | 'timeout' | 'reset' | 'submit' | 'unmount' | 'runtime-error';
 
@@ -48,6 +84,130 @@ export class VoicePermissionError extends Error {
     super(message);
     this.name = 'VoicePermissionError';
   }
+}
+
+function stopMediaStreamTracks(stream: MediaStream | null): void {
+  stream?.getTracks().forEach((track) => {
+    track.stop();
+  });
+}
+
+function clearRetainedMicrophoneStream(stream?: MediaStream | null): void {
+  if (stream && retainedMicrophoneStream !== stream) {
+    return;
+  }
+
+  stopMediaStreamTracks(retainedMicrophoneStream);
+  retainedMicrophoneStream = null;
+}
+
+function getRetainedMicrophoneStreamClone(): MediaStream | null {
+  if (!retainedMicrophoneStream) {
+    return null;
+  }
+
+  const hasLiveAudioTrack = retainedMicrophoneStream
+    .getAudioTracks()
+    .some((track) => track.readyState === 'live');
+
+  if (!hasLiveAudioTrack) {
+    clearRetainedMicrophoneStream(retainedMicrophoneStream);
+    return null;
+  }
+
+  return retainedMicrophoneStream.clone();
+}
+
+function retainMicrophoneStream(stream: MediaStream): void {
+  clearRetainedMicrophoneStream();
+  retainedMicrophoneStream = stream;
+
+  stream.getAudioTracks().forEach((track) => {
+    track.addEventListener('ended', () => {
+      if (
+        retainedMicrophoneStream === stream &&
+        !stream.getAudioTracks().some((audioTrack) => audioTrack.readyState === 'live')
+      ) {
+        clearRetainedMicrophoneStream(stream);
+      }
+    });
+  });
+}
+
+async function getOrCreateMicrophoneStream(): Promise<MediaStream> {
+  const retainedClone = getRetainedMicrophoneStreamClone();
+  if (retainedClone) {
+    return retainedClone;
+  }
+
+  const grantedStream = await navigator.mediaDevices.getUserMedia(MICROPHONE_CONSTRAINTS);
+  retainMicrophoneStream(grantedStream);
+  return grantedStream.clone();
+}
+
+export function releaseRetainedMicrophoneStream(): void {
+  clearRetainedMicrophoneStream();
+}
+
+async function classifyGetUserMediaError(error: unknown): Promise<VoiceEntryError> {
+  const typedError = error as DOMException | Error | undefined;
+  const name = typedError?.name ?? '';
+  const message = typedError?.message?.toLowerCase() ?? '';
+
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+    return new VoiceEntryError(
+      'microphone-not-found',
+      '마이크 장치를 찾을 수 없습니다. 마이크를 연결해 주세요.'
+    );
+  }
+
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    if (
+      message.includes('system') ||
+      message.includes('operating system') ||
+      message.includes('permission denied by system')
+    ) {
+      return new VoiceEntryError(
+        'os-permission-denied',
+        '운영체제에서 마이크 접근이 차단되었습니다. 시스템 설정을 확인해 주세요.'
+      );
+    }
+
+    return new VoiceEntryError(
+      'browser-permission-denied',
+      '브라우저에서 마이크 권한이 차단되었습니다. 주소창 권한 설정에서 허용해 주세요.'
+    );
+  }
+
+  if (name === 'SecurityError') {
+    return new VoiceEntryError(
+      'os-permission-denied',
+      '운영체제 또는 브라우저 보안 설정으로 마이크 접근이 차단되었습니다.'
+    );
+  }
+
+  if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') {
+    if (
+      message.includes('system') ||
+      message.includes('permission denied') ||
+      message.includes('denied by system')
+    ) {
+      return new VoiceEntryError(
+        'os-permission-denied',
+        '운영체제에서 마이크 접근이 차단되었습니다. 시스템 설정을 확인해 주세요.'
+      );
+    }
+
+    return new VoiceEntryError(
+      'microphone-busy',
+      '다른 앱이 마이크를 사용 중입니다. 사용 중인 앱을 종료해 주세요.'
+    );
+  }
+
+  return new VoiceEntryError(
+    'microphone-unavailable',
+    '마이크에 접근할 수 없습니다. 기기와 권한 상태를 확인해 주세요.'
+  );
 }
 
 function createSessionId(): string {
@@ -137,15 +297,24 @@ export async function createRealtimeVoiceSession(
   }
 
   if (!window.isSecureContext) {
-    throw new Error('Voice runtime requires a secure context for microphone capture.');
+    throw new VoiceEntryError(
+      'secure-context-required',
+      'HTTPS 환경에서만 마이크를 사용할 수 있습니다.'
+    );
   }
 
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error('This browser does not support microphone capture.');
+    throw new VoiceEntryError(
+      'browser-microphone-unsupported',
+      '이 브라우저는 마이크 녹음을 지원하지 않습니다.'
+    );
   }
 
   if (typeof window.AudioContext === 'undefined') {
-    throw new Error('This browser does not support AudioWorklet capture.');
+    throw new VoiceEntryError(
+      'browser-audio-worklet-unsupported',
+      '이 브라우저는 실시간 음성 캡처를 지원하지 않습니다. 최신 브라우저를 사용해 주세요.'
+    );
   }
 
   const sessionId = createSessionId();
@@ -160,11 +329,19 @@ export async function createRealtimeVoiceSession(
   let serverReady = false;
   let audioStopped = false;
   let socketClosedByClient = false;
+  let startupSettled = false;
   let stopPromise: Promise<VoiceRuntimeSnapshot> | null = null;
   let closePromise: Promise<void> | null = null;
   let resolveFinalTranscriptWait: (() => void) | null = null;
+  let resolveServerReady: (() => void) | null = null;
+  let rejectServerReady: ((error: Error) => void) | null = null;
+  let serverReadyTimeoutId: number | null = null;
   const finalTranscriptWait = new Promise<void>((resolve) => {
     resolveFinalTranscriptWait = resolve;
+  });
+  const serverReadyPromise = new Promise<void>((resolve, reject) => {
+    resolveServerReady = resolve;
+    rejectServerReady = reject;
   });
   const pendingChunks: ArrayBuffer[] = [];
 
@@ -172,21 +349,14 @@ export async function createRealtimeVoiceSession(
 
   let stream: MediaStream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: { ideal: 1 },
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-    });
+    stream = await getOrCreateMicrophoneStream();
   } catch (error) {
-    const typedError = error as DOMException | undefined;
-    if (typedError?.name === 'NotAllowedError' || typedError?.name === 'SecurityError') {
-      throw new VoicePermissionError('Microphone permission was denied.');
+    const classifiedError = await classifyGetUserMediaError(error);
+    if (classifiedError.code === 'browser-permission-denied') {
+      throw new VoicePermissionError(classifiedError.message);
     }
 
-    throw new Error('Unable to access the microphone for AudioWorklet capture.');
+    throw classifiedError;
   }
 
   const audioContext = new window.AudioContext({
@@ -197,10 +367,13 @@ export async function createRealtimeVoiceSession(
     await audioContext.audioWorklet.addModule(WORKLET_MODULE_PATH);
     await audioContext.resume();
   } catch (error) {
-    stream.getTracks().forEach((track) => track.stop());
+    stopMediaStreamTracks(stream);
     await audioContext.close().catch(() => undefined);
-    throw new Error(
-      error instanceof Error ? error.message : 'Failed to initialize the AudioWorklet runtime.'
+    throw new VoiceEntryError(
+      'audio-worklet-init-failed',
+      error instanceof Error
+        ? `AudioWorklet 초기화에 실패했습니다. ${error.message}`
+        : 'AudioWorklet 초기화에 실패했습니다.'
     );
   }
 
@@ -236,7 +409,7 @@ export async function createRealtimeVoiceSession(
       nextSocket.addEventListener('close', handleCloseBeforeOpen);
     });
   } catch (error) {
-    stream.getTracks().forEach((track) => track.stop());
+    stopMediaStreamTracks(stream);
     await audioContext.close().catch(() => undefined);
     throw error instanceof Error ? error : new Error('Failed to connect to the WSS voice runtime.');
   }
@@ -263,6 +436,35 @@ export async function createRealtimeVoiceSession(
   const resolveTranscriptWait = () => {
     resolveFinalTranscriptWait?.();
     resolveFinalTranscriptWait = null;
+  };
+
+  const clearServerReadyTimeout = () => {
+    if (serverReadyTimeoutId === null) {
+      return;
+    }
+
+    window.clearTimeout(serverReadyTimeoutId);
+    serverReadyTimeoutId = null;
+  };
+
+  const settleServerReady = (error?: Error) => {
+    if (startupSettled) {
+      return;
+    }
+
+    startupSettled = true;
+    clearServerReadyTimeout();
+
+    if (error) {
+      rejectServerReady?.(error);
+      rejectServerReady = null;
+      resolveServerReady = null;
+      return;
+    }
+
+    resolveServerReady?.();
+    resolveServerReady = null;
+    rejectServerReady = null;
   };
 
   const flushPendingChunks = () => {
@@ -299,7 +501,7 @@ export async function createRealtimeVoiceSession(
     sourceNode.disconnect();
     workletNode.disconnect();
     muteNode.disconnect();
-    stream.getTracks().forEach((track) => track.stop());
+    stopMediaStreamTracks(stream);
     await audioContext.close().catch(() => undefined);
   };
 
@@ -314,15 +516,29 @@ export async function createRealtimeVoiceSession(
       try {
         payload = JSON.parse(text);
       } catch {
-        callbacks.onRuntimeError('Received non-JSON data from the WSS voice runtime.');
+        const runtimeError = new Error('Received non-JSON data from the WSS voice runtime.');
+        if (!startupSettled) {
+          settleServerReady(runtimeError);
+          resolveTranscriptWait();
+          return;
+        }
+
+        callbacks.onRuntimeError(runtimeError.message);
         return;
       }
 
       const parsedMessage = voiceServerEventSchema.safeParse(payload);
       if (!parsedMessage.success) {
-        callbacks.onRuntimeError(
+        const runtimeError = new Error(
           `Invalid incoming WSS contract. ${formatContractIssues(formatZodIssues(parsedMessage.error))}`
         );
+        if (!startupSettled) {
+          settleServerReady(runtimeError);
+          resolveTranscriptWait();
+          return;
+        }
+
+        callbacks.onRuntimeError(runtimeError.message);
         return;
       }
 
@@ -339,6 +555,7 @@ export async function createRealtimeVoiceSession(
           connection = 'connected';
           callbacks.onConnectionChange(connection);
           flushPendingChunks();
+          settleServerReady();
           break;
         }
         case 'transcript.partial': {
@@ -369,9 +586,16 @@ export async function createRealtimeVoiceSession(
           break;
         }
         case 'session.error': {
+          const runtimeError = new Error(message.error);
+          if (!startupSettled) {
+            settleServerReady(runtimeError);
+            resolveTranscriptWait();
+            break;
+          }
+
           connection = 'error';
           callbacks.onConnectionChange(connection);
-          callbacks.onRuntimeError(message.error);
+          callbacks.onRuntimeError(runtimeError.message);
           resolveTranscriptWait();
           break;
         }
@@ -384,9 +608,16 @@ export async function createRealtimeVoiceSession(
       return;
     }
 
+    const runtimeError = new Error('The WSS voice runtime reported a transport error.');
+    if (!startupSettled) {
+      settleServerReady(runtimeError);
+      resolveTranscriptWait();
+      return;
+    }
+
     connection = 'error';
     callbacks.onConnectionChange(connection);
-    callbacks.onRuntimeError('The WSS voice runtime reported a transport error.');
+    callbacks.onRuntimeError(runtimeError.message);
     resolveTranscriptWait();
   });
 
@@ -398,11 +629,18 @@ export async function createRealtimeVoiceSession(
       return;
     }
 
+    const closeError = new Error(event.reason || 'The WSS voice runtime closed unexpectedly.');
+    if (!startupSettled) {
+      settleServerReady(closeError);
+      resolveTranscriptWait();
+      return;
+    }
+
     connection = event.code === 1000 ? 'disconnected' : 'error';
     callbacks.onConnectionChange(connection);
 
     if (event.code !== 1000) {
-      callbacks.onRuntimeError(event.reason || 'The WSS voice runtime closed unexpectedly.');
+      callbacks.onRuntimeError(closeError.message);
     }
 
     resolveTranscriptWait();
@@ -443,7 +681,16 @@ export async function createRealtimeVoiceSession(
         channelCount: 1
       }
     });
+
+    serverReadyTimeoutId = window.setTimeout(() => {
+      settleServerReady(
+        new VoiceEntryError('server-connection-delayed', WSS_READY_TIMEOUT_ERROR_MESSAGE)
+      );
+    }, SERVER_READY_TIMEOUT_MS);
+
+    await serverReadyPromise;
   } catch (error) {
+    pendingChunks.length = 0;
     socketClosedByClient = true;
     await stopAudioGraph();
     await closeSocket(socket, 'runtime-error');
@@ -484,6 +731,7 @@ export async function createRealtimeVoiceSession(
 
     closePromise = (async () => {
       await stopCapture(reason).catch(() => undefined);
+      clearServerReadyTimeout();
       pendingChunks.length = 0;
       socketClosedByClient = true;
       await closeSocket(socket, reason).catch(() => undefined);

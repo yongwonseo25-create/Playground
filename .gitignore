@@ -5,3 +5,7 @@ dist
 pnpm-lock.yaml
 .env.local
 .env.*.local
+.vercel
+.runtime
+test-results
+tsconfig.tsbuildinfo

@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import { LiveVoiceRuntimeHarness } from './helpers/live-voice-runtime';
 import { installSyntheticMicrophone } from './helpers/synthetic-microphone';
 
+const FINAL_TRANSCRIPT_PREFIX = 'Voice transcript received from the live WSS runtime.';
+
 test.describe('voice runtime live integration', () => {
   let harness: LiveVoiceRuntimeHarness;
 
@@ -9,7 +11,7 @@ test.describe('voice runtime live integration', () => {
     harness = new LiveVoiceRuntimeHarness();
     await harness.start();
     await installSyntheticMicrophone(page);
-});
+  });
 
   test.afterEach(async () => {
     await harness.close();
@@ -29,10 +31,7 @@ test.describe('voice runtime live integration', () => {
     await page.waitForTimeout(800);
     await micButton.click({ force: true });
 
-    await expect(page.getByTestId('voice-transcript-box')).toContainText(
-      '대표님, WSS 런타임 정상 연결 확인 완료.'
-    );
-
+    await expect(page.getByTestId('voice-transcript-box')).toContainText(FINAL_TRANSCRIPT_PREFIX);
     await expect.poll(() => harness.getTotalPcmFrameCount()).toBeGreaterThan(0);
 
     await page.getByTestId('voice-send-button').click();
@@ -45,7 +44,7 @@ test.describe('voice runtime live integration', () => {
 
     expect(startEvent?.type).toBe('session.start');
     expect(stopEvent?.type).toBe('session.stop');
-    expect(webhookRequest?.body.transcriptText).toBe('대표님, WSS 런타임 정상 연결 확인 완료.');
+    expect(webhookRequest?.body.transcriptText).toContain(FINAL_TRANSCRIPT_PREFIX);
     expect(webhookRequest?.body.sessionId).toBe(startEvent?.sessionId);
     expect(webhookRequest?.body.pcmFrameCount).toBeGreaterThan(0);
     expect(webhookRequest?.body.stt_provider).toBe('whisper');

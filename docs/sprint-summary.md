@@ -103,7 +103,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - One-handed usage support: yes
 - Safe-area support: baseline implemented
 - Accessibility status: touch targets, labels, and Playwright test ids applied
-- Error messaging status: inline Step 2 retry/cancel feedback available and transcript view now shows live runtime text only
+- Error messaging status: inline Step 2 retry/cancel feedback remains available, microphone-entry failures now bounce users back to Step 1 with a Korean toast, and transcript view shows live runtime text only
 
 ---
 
@@ -753,12 +753,115 @@ Automate the dual-STT routing proof without any physical microphone or manual op
 
 ---
 
+### Sprint 12 - Microphone Entry Guard and Empty Submit Lock
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Prevent microphone-access failures from trapping users in the Step 2 screen, show an explicit Korean warning, and keep the send action hard-disabled whenever no finalized transcript exists.
+
+#### Files Created
+- `tests/e2e/voice-microphone-guard.spec.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `package.json`
+- `src/features/voice-capture/components/voice-capture-screen.tsx`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `tests/e2e/helpers/live-voice-runtime.ts`
+
+#### Architecture Changes
+- Microphone-entry failures that happen before recording starts are now normalized in the voice machine hook, surfaced through a Korean Sonner toast, and immediately reset back to the Step 1 idle shell instead of dropping the user into the Step 2 error screen
+- Step 2 send availability now depends on a finalized non-placeholder transcript so empty or partial runtime text cannot be submitted even if the UI reaches the confirmation screen
+- Added E2E coverage for both no-microphone rejection and runtime-no-final-transcript behavior across desktop and mobile emulation
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- No transport contract changes; this sprint only hardened the client-side entry/error guard
+
+#### Submission / Cost Defense Changes
+- No reducer-owned 15-second cutoff change
+- No `clientRequestId` locking change
+- Send CTA is now disabled until `transcript.final` is present, preventing zero-byte or partial-transcript submits
+
+#### Known Risks
+- The Korean microphone toast intentionally buckets secure-context, permission, and missing-device entry failures into one operator-facing message; if finer diagnosis is needed later, that should be added without reopening the Step 2 trap
+- A real physical-device smoke run is still pending even though synthetic no-mic and runtime-error paths are now automated
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified Playwright no-microphone rejection stays on Step 1 and shows `마이크를 찾을 수 없거나 권한이 없습니다. 기기를 확인해 주세요.`
+- [x] Verified Step 2 send stays disabled when the WSS runtime emits `session.error` without a finalized transcript
+
+#### Next Sprint Prerequisites
+- Run one physical-device localhost smoke test to confirm the same Korean guardrail appears on actual missing/blocked microphone hardware
+- Keep the pending 15-second soak and repeated-send duplicate regression work on the live backend path
+
+---
+
+### Sprint 13 - VIP Headed UI Demo Automation
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Provide a commander-visible headed Playwright demonstration that opens a real Chrome window, slows interactions down for observation, and walks the capture UI from recording through green success without any manual clicks.
+
+#### Files Created
+- `tests/e2e/voice-ui-live-demo.spec.ts`
+- `tests/playwright.demo.config.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `package.json`
+
+#### Architecture Changes
+- No product runtime architecture change
+- Added a dedicated headed Playwright config that launches real Chrome with fake-media flags, a large window, and `slowMo` for operator-visible demonstrations
+- Added a demo-only E2E that boots an isolated live voice harness on separate ports and walks the Step 1 -> Step 2 -> Step 3 UI path with observation pauses between stages
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- The demo path uses the same synthetic microphone helper and WSS runtime harness contracts already used by automated E2E coverage
+
+#### Submission / Cost Defense Changes
+- No reducer-owned 15-second cutoff change
+- No `clientRequestId` locking change
+- Demonstration coverage now visually proves the existing recording -> transcript -> upload -> success path without adding any manual test burden
+
+#### Known Risks
+- The headed demo still depends on local Chrome availability and desktop focus, so CI/headless environments should keep using the standard non-demo suites
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test:e2e:demo`
+- [x] Verified a visible Chrome window auto-played mic start, 3-second recording view, transcript transition, send click, and green success state with no operator input
+
+#### Next Sprint Prerequisites
+- If executives want repeated live demos, keep the demo spec pinned to a stable Chrome channel and periodically verify fake-media flags still behave the same after browser upgrades
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
 - The real WSS backend must match the shared websocket event schema now enforced in the browser runtime
 - Return Zero polling cadence and timeout thresholds still need staging calibration for premium/high-risk override traffic
 - The 1.5-second final-transcript drain window may need tuning against real backend latency
+- Physical-device microphone rejection behavior is still only synthetic-E2E verified; one localhost smoke run on real blocked/missing hardware remains desirable
 - A dedicated 15-second live soak and repeated-send duplicate regression are still pending
 
 ---
@@ -776,6 +879,9 @@ Automate the dual-STT routing proof without any physical microphone or manual op
 - [x] `stt_provider` and `audio_duration_sec` persist through `/api/voice/submit` and the downstream webhook payload
 - [x] Synthetic microphone automation can prove Whisper default and Return Zero premium routing without physical microphone hardware
 - [x] Desktop and mobile automation both prove the dummy transcript reaches the Make.com webhook without field loss
+- [x] Missing or blocked microphone access no longer traps the user in Step 2 and instead returns to Step 1 with a Korean toast
+- [x] Step 2 send stays disabled when no finalized transcript exists
+- [x] A headed Chrome demo can visibly replay Step 1 recording, transcript transition, send, and green success without operator clicks
 - [ ] Recording cannot exceed 15 seconds in runtime flow
 - [ ] Submission locks before async upload in live flow
 - [ ] Duplicate `clientRequestId` upload is blocked in live flow
@@ -807,5 +913,110 @@ After finishing a sprint, Codex must:
 2. Update Current Architecture Snapshot.
 3. Update Current Known Risks.
 4. Update Current Manual Regression Checklist if needed.
+
+---
+
+## 2026-03-14 - Permanent Railway WSS + Ready Timeout Guard
+
+### Files Changed
+- `src/features/voice-capture/services/realtime-voice-session.ts`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `src/features/voice-capture/components/voice-capture-screen.tsx`
+- `src/shared/styles/globals.css`
+- `tests/e2e/helpers/live-voice-runtime.ts`
+- `tests/e2e/voice-microphone-guard.spec.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+- `tests/e2e/voice-transcript-interactions.spec.ts`
+- `scripts/voice-wss-server.mjs`
+- `package.json`
+- `eslint.config.mjs`
+- `Dockerfile`
+- `.dockerignore`
+
+### Architecture Changes
+- Browser voice runtime now waits for `session.ready` before entering the live recording state.
+- A 5-second WSS startup timeout now hard-fails to a Korean toast and returns the reducer to `idle` instead of leaving the UI stuck after microphone approval.
+- Entry failures are now split into user-visible Korean messages for missing microphone, browser permission block, OS permission block, busy device, browser unsupported, and delayed server connection.
+- Step 2 transcript now uses native scrollbars again, supports touch scrolling, and keeps a `최신으로 이동` affordance when the user scrolls away from the latest text.
+- Send animation now performs a single light rotation before transition, Step 3 auto-returns to Step 1 after roughly 2 seconds, and duplicate submit is synchronously locked with a ref before async upload begins.
+- The permanent WSS backend is now deployed on Railway at `wss://voiceguard-backend-production.up.railway.app/voice-session`.
+- The Railway WSS server now listens on `PORT`, exposes `/healthz`, and emits `session.ready` only after `session.start`, matching the browser/runtime contract.
+- Production deployment now uses a dedicated container image for the WSS server, with `ws` moved into runtime dependencies.
+- Vercel production now points `NEXT_PUBLIC_WSS_URL` at the Railway WSS origin.
+
+### Known Risks
+- Vercel production `MAKE_WEBHOOK_URL` is currently a placeholder `https://httpbin.org/post`, so final submit delivery is production-stable but not yet wired to a real Make.com endpoint.
+- Live browser smoke currently proves microphone approval no longer hangs and WSS enters recording, but it does not yet assert a non-empty final transcript against real speech input.
+
+### Manual QA / Verification
+- `corepack pnpm typecheck`
+- `corepack pnpm lint`
+- `corepack pnpm test`
+- `corepack pnpm test:e2e`
+- `corepack pnpm build`
+- Railway health check: `https://voiceguard-backend-production.up.railway.app/healthz`
+- Railway websocket smoke: verified `session.ready` from `wss://voiceguard-backend-production.up.railway.app/voice-session`
+- Vercel capture smoke: `https://voxera-voice-live.vercel.app/capture`
+- Vercel submit smoke: `POST https://voxera-voice-live.vercel.app/api/voice/submit -> 200`
+- Live browser smoke: synthetic microphone on the public capture page transitions `Start recording -> Stop recording and continue -> Step 2`
+- Desktop/mobile E2E now prove transcript overflow scroll, latest-jump recovery, and duplicate submit lock in the live reducer flow
+
+### Next Sprint Prerequisites
+- Replace the temporary production webhook target with the real Make.com webhook URL and secret.
+- Add one real-speech production smoke test on the public domain to validate `transcript.final` end-to-end against Whisper and Return Zero.
+
+---
+
+## 2026-03-14 - Repeated Microphone Prompt Suppression
+
+### Files Changed
+- `src/features/voice-capture/services/realtime-voice-session.ts`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `tests/e2e/helpers/synthetic-microphone.ts`
+- `tests/e2e/voice-transcript-interactions.spec.ts`
+
+### Architecture Changes
+- The browser runtime now retains the originally granted microphone input stream after the first explicit user gesture and reuses cloned tracks for later recordings in the same open capture session.
+- Repeat recordings no longer re-enter `getUserMedia()` while the capture screen remains mounted, so the browser is not asked to show another permission prompt for each new recording cycle.
+- The retained microphone stream is explicitly released on capture-page unmount so the device is not held beyond the active Voxera session lifecycle.
+
+### Known Risks
+- Browser-level permission persistence across full reloads, private browsing, or host app WebView policies still depends on the browser/vendor; the app-side guarantee is that the same open Voxera capture session will not re-request microphone access after the first grant.
+- Keeping the original granted input alive until page exit is the tradeoff that avoids repeat permission prompts inside the same session.
+
+### Manual QA / Verification
+- `corepack pnpm typecheck`
+- `corepack pnpm lint`
+- `corepack pnpm test`
+- `corepack pnpm test:e2e`
+- Verified new Playwright regression: two complete record-stop cycles in the same page session still produce `window.__voxeraGetUserMediaCallCount === 1`
+
+### Next Sprint Prerequisites
+- Validate one real physical microphone session on the public production URL to confirm the target mobile browser persists site-level permission after the first grant as expected.
+
+---
+
+## 2026-03-14 - Make.com Production Webhook Cutover
+
+### Files Changed
+- `docs/sprint-summary.md`
+
+### Architecture Changes
+- Vercel production `MAKE_WEBHOOK_URL` now targets the live Make EU1 webhook instead of the temporary placeholder endpoint.
+- Vercel production `MAKE_WEBHOOK_SECRET` remains enabled so `X-Webhook-Signature` and `X-Idempotency-Key` protection stay intact on the live Make ingress path.
+- Production `/api/voice/submit` now returns a direct live send result from the real Make.com pipeline when the webhook accepts the payload.
+
+### Known Risks
+- Public production still needs one real microphone business-flow smoke on a physical device to validate the final user transcript quality after Make routing, even though the submit pipeline is now live and returning success.
+
+### Manual QA / Verification
+- Verified `GET https://voxera-voice-live.vercel.app/capture -> 200`
+- Verified `POST https://voxera-voice-live.vercel.app/api/voice/submit -> {"ok":true,"acceptedForRetry":false,"stt_provider":"whisper","audio_duration_sec":1,"circuitState":"CLOSED"}`
+- Verified Vercel production env now contains encrypted `MAKE_WEBHOOK_URL` and `MAKE_WEBHOOK_SECRET`
+- Verified production redeploy completed and re-aliased to `https://voxera-voice-live.vercel.app`
+
+### Next Sprint Prerequisites
+- Run one real spoken production capture on a phone to verify final transcript content and downstream Notion/Sheets/Slack/Telegram routing in the live Make scenario.
 ```
 

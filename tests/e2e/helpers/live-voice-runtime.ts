@@ -11,6 +11,13 @@ type WebhookRequest = {
   headers: http.IncomingHttpHeaders;
 };
 
+type LiveVoiceRuntimeHarnessOptions = {
+  websocketPort?: number;
+  webhookPort?: number;
+  responseMode?: 'final' | 'error' | 'no-ready';
+  finalTranscript?: string;
+};
+
 function rawDataByteLength(rawData: RawData): number {
   if (typeof rawData === 'string') {
     return Buffer.byteLength(rawData);
@@ -46,15 +53,27 @@ function rawDataToString(rawData: RawData): string {
 export class LiveVoiceRuntimeHarness {
   private readonly websocketPort: number;
   private readonly webhookPort: number;
+  private readonly responseMode: LiveVoiceRuntimeHarnessOptions['responseMode'];
+  private readonly finalTranscript: string;
   private websocketServer: WebSocketServer | null = null;
   private webhookServer: http.Server | null = null;
   private readonly websocketEvents: VoiceClientEvent[] = [];
   private readonly webhookRequests: WebhookRequest[] = [];
   private totalPcmFrameCount = 0;
 
-  constructor(options: { websocketPort?: number; webhookPort?: number } = {}) {
+  constructor(options: LiveVoiceRuntimeHarnessOptions = {}) {
     this.websocketPort = options.websocketPort ?? 8787;
     this.webhookPort = options.webhookPort ?? 8788;
+    this.responseMode = options.responseMode ?? 'final';
+    this.finalTranscript =
+      options.finalTranscript ??
+      Array.from({ length: 18 }, (_, index) => {
+        if (index === 0) {
+          return 'Voice transcript received from the live WSS runtime.';
+        }
+
+        return `Scroll verification line ${index}. This transcript must remain vertically scrollable on touch devices.`;
+      }).join('\n');
   }
 
   async start(): Promise<void> {
@@ -151,7 +170,7 @@ export class LiveVoiceRuntimeHarness {
               JSON.stringify({
                 type: 'transcript.partial',
                 sessionId,
-                text: '실시간 PCM 스트림 수신 중',
+                text: 'Streaming live PCM audio...',
                 isFinal: false
               })
             );
@@ -187,6 +206,10 @@ export class LiveVoiceRuntimeHarness {
 
         if (parsedEvent.data.type === 'session.start') {
           sessionId = parsedEvent.data.sessionId;
+          if (this.responseMode === 'no-ready') {
+            return;
+          }
+
           socket.send(
             JSON.stringify({
               type: 'session.ready',
@@ -199,11 +222,23 @@ export class LiveVoiceRuntimeHarness {
 
         if (parsedEvent.data.type === 'session.stop') {
           const resolvedSessionId = sessionId ?? parsedEvent.data.sessionId;
+          if (this.responseMode === 'error') {
+            socket.send(
+              JSON.stringify({
+                type: 'session.error',
+                sessionId: resolvedSessionId,
+                error: 'Runtime transcript final was not produced.',
+                retryable: false
+              })
+            );
+            return;
+          }
+
           socket.send(
             JSON.stringify({
               type: 'transcript.final',
               sessionId: resolvedSessionId,
-              text: '대표님, WSS 런타임 정상 연결 확인 완료.',
+              text: this.finalTranscript,
               isFinal: true,
               pcmFrameCount: sessionPcmFrames,
               stt_provider: 'whisper',

@@ -11,7 +11,7 @@ if (typeof process.loadEnvFile === 'function' && existsSync(localEnvPath)) {
 }
 
 const wssUrl = new URL(process.env.NEXT_PUBLIC_WSS_URL ?? 'ws://127.0.0.1:8787/voice-session')
-const port = Number(wssUrl.port || '8787')
+const port = Number(process.env.PORT ?? (wssUrl.port || '8787'))
 const path = wssUrl.pathname || '/voice-session'
 const internalApiBase = process.env.INTERNAL_APP_BASE_URL ?? 'http://127.0.0.1:3000'
 const sttRouter = createDualSttRouter(process.env, { logger: console })
@@ -60,7 +60,22 @@ async function transcribeSession(session) {
   return result
 }
 
-const server = createServer()
+const server = createServer((request, response) => {
+  if (request.url === '/' || request.url === '/healthz') {
+    response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+    response.end(
+      JSON.stringify({
+        ok: true,
+        service: 'voice-wss-server',
+        websocketPath: path
+      })
+    )
+    return
+  }
+
+  response.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
+  response.end(JSON.stringify({ ok: false, error: 'Not Found' }))
+})
 const wss = new WebSocketServer({ server, path })
 
 wss.on('connection', (socket, request) => {
@@ -80,14 +95,6 @@ wss.on('connection', (socket, request) => {
     sttProvider: 'whisper',
     audioDurationSec: 0
   }
-
-  socket.send(
-    JSON.stringify({
-      type: 'session.ready',
-      sessionId: session.sessionId,
-      acceptedAt: new Date().toISOString()
-    })
-  )
 
   socket.on('message', async (message, isBinary) => {
     try {
@@ -112,6 +119,13 @@ wss.on('connection', (socket, request) => {
           session.pcmFrameCount = 0
           session.sttProvider = 'whisper'
           session.audioDurationSec = 0
+          socket.send(
+            JSON.stringify({
+              type: 'session.ready',
+              sessionId: session.sessionId,
+              acceptedAt: new Date().toISOString()
+            })
+          )
           break
         }
         case 'session.stop': {
@@ -187,6 +201,6 @@ wss.on('connection', (socket, request) => {
   })
 })
 
-server.listen(port, () => {
-  console.log(`[voice-wss] listening on ws://127.0.0.1:${port}${path}`)
+server.listen(port, '0.0.0.0', () => {
+  console.log(`[voice-wss] listening on 0.0.0.0:${port}${path}`)
 })

@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useVoiceCaptureMachine } from '@/features/voice-capture/state/use-voice-capture-machine';
-import type { VoiceReducerState } from '@/features/voice-capture/types/voice-types';
+import {
+  DEFAULT_TRANSCRIPT_PREVIEW,
+  type VoiceReducerState
+} from '@/features/voice-capture/types/voice-types';
 
 type Step = 'step1' | 'step2' | 'step3';
 
-const STEP3_CIRCLE_DURATION_MS = 700;
-const STEP3_RETURN_DELAY_AFTER_TEXT_MS = 2000;
+const STEP3_CIRCLE_DURATION_MS = 620;
+const STEP3_TOTAL_DURATION_MS = 2000;
 
 function getUiStep(status: VoiceReducerState): Step {
   if (status === 'success') {
@@ -112,17 +115,11 @@ const sendRingVariants: Variants = {
     rotate: 0
   },
   sending: {
-    opacity: 1,
-    rotate: 360,
+    opacity: [0, 1, 1, 0],
+    rotate: [0, 360],
     transition: {
-      rotate: {
-        duration: 1.2,
-        repeat: Infinity,
-        ease: 'linear'
-      },
-      opacity: {
-        duration: 0.16
-      }
+      duration: 0.96,
+      ease: [0.22, 1, 0.36, 1]
     }
   }
 };
@@ -172,16 +169,19 @@ export function VoiceCaptureScreen() {
   const step = getUiStep(state.status);
   const isRecording = state.status === 'recording';
   const isSending = state.status === 'uploading';
+  const canSend =
+    state.transcriptFinalized &&
+    state.transcriptPreview.trim().length > 0 &&
+    state.transcriptPreview !== DEFAULT_TRANSCRIPT_PREVIEW;
 
   useEffect(() => {
     if (step !== 'step3') {
       return;
     }
 
-    const totalMs = STEP3_CIRCLE_DURATION_MS + STEP3_RETURN_DELAY_AFTER_TEXT_MS;
     const timeout = window.setTimeout(() => {
       actions.reset();
-    }, totalMs);
+    }, STEP3_TOTAL_DURATION_MS);
 
     return () => window.clearTimeout(timeout);
   }, [actions, step]);
@@ -247,6 +247,7 @@ export function VoiceCaptureScreen() {
                 key="step2"
                 transcript={state.transcriptPreview}
                 isSending={isSending}
+                canSend={canSend}
                 errorMessage={state.lastError}
                 onCancel={handleCancel}
                 onSend={handleSend}
@@ -372,12 +373,14 @@ function Step1Main({
 function Step2Confirm({
   transcript,
   isSending,
+  canSend,
   errorMessage,
   onCancel,
   onSend
 }: {
   transcript: string;
   isSending: boolean;
+  canSend: boolean;
   errorMessage: string | null;
   onCancel: () => void;
   onSend: () => void;
@@ -385,7 +388,6 @@ function Step2Confirm({
   const transcriptBoxRef = useRef<HTMLDivElement | null>(null);
   const shouldFollowLatestRef = useRef(true);
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
 
   const updateScrollState = () => {
     const el = transcriptBoxRef.current;
@@ -397,11 +399,9 @@ function Step2Confirm({
     const hasOverflow = maxScrollTop > 8;
     const distanceFromBottom = maxScrollTop - el.scrollTop;
     const isNearBottom = distanceFromBottom <= 24;
-    const progress = hasOverflow ? Math.min(1, Math.max(0, el.scrollTop / maxScrollTop)) : 0;
 
     shouldFollowLatestRef.current = isNearBottom;
     setShowScrollToLatest(hasOverflow && !isNearBottom);
-    setScrollProgress(progress);
   };
 
   useEffect(() => {
@@ -434,15 +434,6 @@ function Step2Confirm({
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   };
 
-  const handleScrollBy = (delta: number) => {
-    const el = transcriptBoxRef.current;
-    if (!el) {
-      return;
-    }
-
-    el.scrollBy({ top: delta, behavior: 'smooth' });
-  };
-
   return (
     <motion.section
       variants={step2ScreenFade}
@@ -471,37 +462,12 @@ function Step2Confirm({
                 ref={transcriptBoxRef}
                 onScroll={updateScrollState}
                 data-testid="voice-transcript-box"
-                className="voxera-scroll relative z-10 h-[276px] w-full overflow-y-scroll touch-pan-y overscroll-contain scroll-smooth pr-5 pb-14 select-none"
+                className="voxera-scroll relative z-10 h-[276px] w-full overflow-y-auto touch-pan-y overscroll-y-contain scroll-smooth pr-4 pb-14 select-text"
+                style={{ WebkitOverflowScrolling: 'touch' }}
               >
-                <p className="whitespace-pre-wrap break-words cursor-default text-[16px] leading-8 text-white/92">{transcript}</p>
-              </div>
-
-              <div
-                data-testid="voice-scroll-indicator"
-                className="absolute right-3 top-1/2 z-20 flex h-[72%] w-[10px] -translate-y-1/2 flex-col items-center justify-between"
-              >
-                <button
-                  type="button"
-                  onClick={() => handleScrollBy(-72)}
-                  tabIndex={-1}
-                  className="pointer-events-auto h-3 w-3"
-                >
-                  <span className="block h-0 w-0 border-x-[5px] border-x-transparent border-b-[7px] border-b-cyan-300/95" />
-                </button>
-                <span className="relative block h-full w-[4px] rounded-full bg-cyan-300/18">
-                  <span
-                    className="absolute left-1/2 block h-[74%] w-[4px] -translate-x-1/2 rounded-full bg-gradient-to-b from-cyan-400 via-sky-400 to-cyan-300 shadow-[0_0_12px_rgba(56,189,248,0.52)]"
-                    style={{ top: `${scrollProgress * 26}%` }}
-                  />
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleScrollBy(72)}
-                  tabIndex={-1}
-                  className="pointer-events-auto h-3 w-3"
-                >
-                  <span className="block h-0 w-0 border-x-[5px] border-x-transparent border-t-[7px] border-t-cyan-300/95" />
-                </button>
+                <p className="whitespace-pre-wrap break-words text-[16px] leading-8 text-white/92">
+                  {transcript}
+                </p>
               </div>
 
               {showScrollToLatest ? (
@@ -537,9 +503,9 @@ function Step2Confirm({
           <button
             type="button"
             onClick={onSend}
-            disabled={isSending}
+            disabled={isSending || !canSend}
             data-testid="voice-send-button"
-            className="h-14 flex-1 rounded-2xl bg-gradient-to-r from-cyan-400 to-sky-400 text-[15px] font-semibold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.18)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+            className="h-14 flex-1 rounded-2xl bg-gradient-to-r from-cyan-400 to-sky-400 text-[15px] font-semibold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.18)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:from-slate-600 disabled:to-slate-600 disabled:text-slate-300 disabled:shadow-none disabled:hover:brightness-100 disabled:opacity-100"
           >
             {isSending ? '전송 중...' : '전송'}
           </button>

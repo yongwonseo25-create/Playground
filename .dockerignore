@@ -1,0 +1,14 @@
+node_modules
+.next
+.runtime
+test-results
+.git
+.gitignore
+.env.local
+.env.*.local
+docs
+public
+references
+src
+tests
+.vercel
