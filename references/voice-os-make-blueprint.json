@@ -1,0 +1,534 @@
+{
+  "name": "3-Layer Voice OS Pipeline",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": 999999,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0,
+          "name": "Voice Input Webhook"
+        },
+        "restore": {
+          "parameters": {
+            "hook": {
+              "data": {
+                "editable": "true"
+              },
+              "label": "My Webhook"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hook",
+            "type": "hook:gateway-webhook",
+            "label": "Webhook",
+            "required": true
+          },
+          {
+            "name": "maxResults",
+            "type": "number",
+            "label": "Maximum number of results"
+          }
+        ],
+        "interface": [
+          {
+            "name": "voice_input",
+            "type": "text"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "module": "openai-gpt-3:CreateCompletion",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": 999999
+      },
+      "mapper": {
+        "select": "chat",
+        "model": "gpt-4o",
+        "messages": [
+          {
+            "role": "system",
+            "content": "Classify the voice command into one of: notion_task, calendar_event, http_request. Return ONLY the label."
+          },
+          {
+            "role": "user",
+            "content": "{{1.voice_input}}"
+          }
+        ],
+        "max_tokens": "50",
+        "temperature": "0.3",
+        "top_p": "1",
+        "n_completions": "1",
+        "response_format": "text"
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0,
+          "name": "GPT Intent Classifier"
+        },
+        "restore": {
+          "expect": {
+            "model": {
+              "mode": "chose",
+              "label": "gpt-4o (system)"
+            },
+            "select": {
+              "label": "Create a Chat Completion (GPT Models)"
+            },
+            "messages": {
+              "mode": "chose",
+              "items": [
+                {
+                  "role": {
+                    "mode": "chose",
+                    "label": "System"
+                  }
+                },
+                {
+                  "role": {
+                    "mode": "chose",
+                    "label": "User"
+                  }
+                }
+              ]
+            },
+            "response_format": {
+              "mode": "chose",
+              "label": "Text"
+            },
+            "stop": {
+              "mode": "chose"
+            },
+            "logit_bias": {
+              "mode": "chose"
+            },
+            "additionalParameters": {
+              "mode": "chose"
+            }
+          },
+          "parameters": {
+            "__IMTCONN__": {
+              "data": {
+                "scoped": "true",
+                "connection": "openai-gpt-3"
+              },
+              "label": "My OpenAI Connection"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "__IMTCONN__",
+            "type": "account:openai-gpt-3",
+            "label": "Connection",
+            "required": true
+          }
+        ],
+        "expect": [
+          {
+            "name": "select",
+            "type": "select",
+            "label": "Select Method",
+            "required": true,
+            "validate": {
+              "enum": [
+                "chat",
+                "prompt"
+              ]
+            }
+          },
+          {
+            "name": "model",
+            "type": "select",
+            "label": "Model",
+            "required": true
+          },
+          {
+            "name": "messages",
+            "spec": {
+              "name": "value",
+              "spec": [
+                {
+                  "name": "role",
+                  "type": "select",
+                  "label": "Role",
+                  "options": [
+                    {
+                      "label": "System",
+                      "value": "system"
+                    },
+                    {
+                      "label": "User",
+                      "value": "user"
+                    },
+                    {
+                      "label": "Assistant",
+                      "value": "assistant"
+                    }
+                  ],
+                  "required": true
+                },
+                {
+                  "name": "content",
+                  "type": "text",
+                  "label": "Message Content"
+                }
+              ],
+              "type": "collection",
+              "label": "Message"
+            },
+            "type": "array",
+            "label": "Messages",
+            "required": true
+          },
+          {
+            "name": "max_tokens",
+            "type": "number",
+            "label": "Max Tokens",
+            "required": true
+          },
+          {
+            "name": "temperature",
+            "type": "number",
+            "label": "Temperature",
+            "validate": {
+              "max": 2,
+              "min": 0
+            }
+          },
+          {
+            "name": "response_format",
+            "type": "select",
+            "label": "Response Format",
+            "validate": {
+              "enum": [
+                "text",
+                "json_object"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0,
+          "name": "Intent Router"
+        }
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 4,
+              "module": "notion:createADatabaseItem",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": 999998
+              },
+              "filter": {
+                "name": "Route to Notion",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{2.result}}",
+                      "b": "notion_task",
+                      "o": "text:equal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "databaseId": "YOUR_NOTION_DATABASE_ID",
+                "properties": {
+                  "title": [
+                    {
+                      "text": {
+                        "content": "{{1.voice_input}}"
+                      }
+                    }
+                  ]
+                }
+              },
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": -300,
+                  "name": "Create Notion Task"
+                },
+                "restore": {
+                  "parameters": {
+                    "__IMTCONN__": {
+                      "data": {
+                        "scoped": "true",
+                        "connection": "notion"
+                      },
+                      "label": "My Notion Connection"
+                    }
+                  }
+                },
+                "parameters": [
+                  {
+                    "name": "__IMTCONN__",
+                    "type": "account:notion",
+                    "label": "Connection",
+                    "required": true
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 5,
+              "module": "google-calendar:createAnEvent",
+              "version": 5,
+              "parameters": {
+                "__IMTCONN__": 999997
+              },
+              "filter": {
+                "name": "Route to Google Calendar",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{2.result}}",
+                      "b": "calendar_event",
+                      "o": "text:equal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "select": "detail",
+                "calendar": "primary",
+                "summary": "{{1.voice_input}}",
+                "start": "{{now}}",
+                "end": "{{addHours(now; 1)}}",
+                "allDayEvent": false,
+                "description": "Voice OS Auto-created",
+                "transparency": "opaque",
+                "visibility": "default",
+                "conferenceDate": false,
+                "guestsCanModify": false
+              },
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": 0,
+                  "name": "Create Calendar Event"
+                },
+                "restore": {
+                  "expect": {
+                    "select": {
+                      "label": "In Detail"
+                    },
+                    "calendar": {
+                      "mode": "chose",
+                      "label": "Primary Calendar"
+                    },
+                    "allDayEvent": {
+                      "mode": "chose"
+                    },
+                    "visibility": {
+                      "mode": "chose",
+                      "label": "Default"
+                    },
+                    "transparency": {
+                      "mode": "chose",
+                      "label": "Busy"
+                    },
+                    "conferenceDate": {
+                      "mode": "chose"
+                    },
+                    "sendUpdates": {
+                      "mode": "chose",
+                      "label": "Empty"
+                    }
+                  },
+                  "parameters": {
+                    "__IMTCONN__": {
+                      "data": {
+                        "scoped": "true",
+                        "connection": "google"
+                      },
+                      "label": "My Google Connection"
+                    }
+                  }
+                },
+                "parameters": [
+                  {
+                    "name": "__IMTCONN__",
+                    "type": "account:google",
+                    "label": "Connection",
+                    "required": true
+                  }
+                ],
+                "expect": [
+                  {
+                    "name": "select",
+                    "type": "select",
+                    "label": "Create an Event",
+                    "required": true,
+                    "validate": {
+                      "enum": [
+                        "quick",
+                        "detail"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "calendar",
+                    "type": "select",
+                    "label": "Calendar ID",
+                    "required": true
+                  },
+                  {
+                    "name": "summary",
+                    "type": "text",
+                    "label": "Event Name",
+                    "required": true
+                  },
+                  {
+                    "name": "allDayEvent",
+                    "type": "boolean",
+                    "label": "All Day Event",
+                    "required": true
+                  },
+                  {
+                    "name": "start",
+                    "type": "date",
+                    "time": true,
+                    "label": "Start Date",
+                    "required": true
+                  },
+                  {
+                    "name": "end",
+                    "type": "date",
+                    "time": true,
+                    "label": "End Date",
+                    "required": true
+                  }
+                ],
+                "advanced": true
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 6,
+              "module": "http:ActionSendData",
+              "version": 3,
+              "parameters": {
+                "handleErrors": true,
+                "useNewZLibDeCompress": true
+              },
+              "filter": {
+                "name": "Route to HTTP",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{2.result}}",
+                      "b": "http_request",
+                      "o": "text:equal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "url": "https://your-api-endpoint.com/v1/action",
+                "method": "post",
+                "headers": [
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "name": "Authorization",
+                    "value": "Bearer YOUR_API_KEY"
+                  }
+                ],
+                "bodyType": "raw",
+                "contentType": "application/json",
+                "data": "{\"voice_input\": \"{{1.voice_input}}\", \"timestamp\": \"{{now}}\"}",
+                "qs": [],
+                "serializeUrl": false,
+                "shareCookies": false,
+                "parseResponse": true,
+                "followRedirect": true,
+                "followAllRedirects": false,
+                "rejectUnauthorized": true,
+                "timeout": "",
+                "gzip": true,
+                "useMtls": false,
+                "authUser": "",
+                "authPass": "",
+                "ca": ""
+              },
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": 300,
+                  "name": "HTTP API Request"
+                },
+                "parameters": [
+                  {
+                    "name": "handleErrors",
+                    "type": "boolean",
+                    "label": "Evaluate all states as errors (except for 2xx and 3xx)",
+                    "required": true
+                  },
+                  {
+                    "name": "useNewZLibDeCompress",
+                    "type": "hidden"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "designer": {
+      "orphans": []
+    },
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "slots": null,
+      "freshVariables": false
+    }
+  }
+}

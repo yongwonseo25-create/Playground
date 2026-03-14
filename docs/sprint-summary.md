@@ -53,6 +53,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Current routing approach: Next.js App Router with route groups
 - Current feature folder approach: feature-first structure centered on `features/voice-capture`
 - Current UI shell status: premium 3-step voice capture flow implemented and Playwright-verified with Step 1 neon trace waveform restored
+- Standalone automation helper status: root-level `notion-clone-bot.js` now provides a separate Playwright automation path for duplicating a public Notion template with a reused Chrome profile, without touching the voice capture runtime
 
 ### Voice State Machine
 - Status: implemented and stable
@@ -753,6 +754,121 @@ Automate the dual-STT routing proof without any physical microphone or manual op
 
 ---
 
+### Sprint 12 - Notion 4-Core Clone Bot
+- Date: 2026-03-14
+- Status: completed with isolated-profile login blocker on live duplication
+
+#### Goal
+Add a standalone Playwright automation script that reuses the local Chrome profile, opens a public Notion template, clicks the Duplicate UI, waits for login if needed, and prints the cloned page URL after redirect.
+
+#### Files Created
+- `INBOX_AI_SKILL.md`
+- `notion-clone-bot.js`
+- `notion-install-inbox-skill.js`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `Code.gs`
+- `package-lock.json`
+- `package.json`
+
+#### Architecture Changes
+- Added a repo-root Node.js automation entrypoint separate from the Next.js app runtime
+- Added a package script `npm run notion:clone` for repeatable local Notion template duplication attempts
+- Added a package script `npm run notion:install-inbox-skill` for isolated Notion AI skill installation attempts using the same persistent automation profile
+- Replaced OS Chrome profile reuse with a repo-local persistent profile at `chrome-automation-profile/` so the bot no longer touches the operator's main Chrome workspace
+- Added Playwright stealth launch flags (`ignoreDefaultArgs: ['--enable-automation']` and `--disable-blink-features=AutomationControlled`) plus a longer manual login wait for isolated Google/Notion sign-in
+- Added a root-level `INBOX_AI_SKILL.md` prompt document for Notion AI triage behavior across Inbox, Tasks, Projects, and Notes
+- Extended the Notion clone bot to handle official marketplace flows by stepping through `View template` and `Start with this template` before capturing the final workspace URL
+- Added a second isolated Playwright workflow that reads `INBOX_AI_SKILL.md` from disk and attempts to open the Notion agent setup UI, while explicitly stopping at the Notion AI free-trial gate instead of changing workspace billing state
+- Extended the isolated AI-skill installer to click the free-trial gate when authorized, pause for manual card entry if a payment form appears, and continue through the blank-agent builder until the workspace data-source list is available
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` duplicate lock remain untouched
+
+#### Known Risks
+- Live Notion duplication still depends on an authenticated Chrome/Notion session inside the isolated automation profile; if login is not completed within the wait window, duplication cannot proceed
+- Notion DOM labels and workspace-picker flows are third-party UI surfaces and may need selector updates if Notion changes the duplicate flow
+- Notion AI agent creation is currently blocked by a free-trial gate in this workspace, so fully unattended skill installation cannot proceed until AI access is enabled or the workspace plan changes
+- The current cloned workspace URL is still a `To-do List` page rather than the intended 4-core dashboard, so the required `Inbox` database trigger target does not exist for the AI skill installer
+
+#### Manual QA
+- [x] `npm install playwright`
+- [x] `npx playwright install chrome`
+- [x] `node --check notion-clone-bot.js`
+- [x] `npm run notion:clone`
+- [x] Verified the bot launches an isolated Chrome profile at `chrome-automation-profile/`, reaches the Notion login flow, waits 180 seconds for manual authentication, and never touches the main Chrome profile
+- [x] Verified `INBOX_AI_SKILL.md` was rendered at the project root and contains the required Inbox triage rules
+- [x] Verified `npm run notion:clone -- --url "https://www.notion.so/templates/to-do-list"` now traverses the official template gallery flow and prints `https://www.notion.so/3237e2408cc0806096efe56ef3fad5e7`
+- [x] Verified `npm run notion:install-inbox-skill` reaches the Notion AI agent entry flow and exits with a billing-safe blocker message when the workspace is gated behind the Notion AI free trial
+- [x] Verified the AI installer can traverse the free-trial gate into the blank-agent builder, open the `데이터베이스에 페이지 추가됨` trigger flow, and confirm that no `Inbox` data source exists in the current workspace clone
+
+#### Next Sprint Prerequisites
+- Provide the real master template URL for the 4-core workspace schema
+- Complete one successful login inside `chrome-automation-profile/` so the automation can finish the duplicate redirect end-to-end without touching the main Chrome workspace
+
+---
+
+### Sprint 13 - Google CFO Layer and Make Blueprint
+- Date: 2026-03-14
+- Status: completed
+
+#### Goal
+Render the Google Sheets Apps Script backend, design the 3-layer Make.com routing blueprint, and leave the Notion 4-Core clone plus AI installer stack on standby for the real dashboard template URL.
+
+#### Files Created
+- `Code.gs`
+- `references/voice-os-make-blueprint.json`
+- `references/voice-os-make-pipeline.md`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added an Apps Script `doPost(e)` backend that appends CFO dashboard rows into `Dashboard_Data` columns A:E
+- Replaced the earlier Make.com blueprint skeleton with a fact-based import blueprint that follows the deep-research JSON rules for `flow`, top-level `metadata`, `instant: true`, numeric `version`, designer coordinates, `gateway:CustomWebHook`, `openai-gpt-3:CreateCompletion`, `builtin:BasicRouter`, `notion:createADatabaseItem`, `google-calendar:createAnEvent`, and `http:ActionSendData`
+- Added an implementation guide for Google Calendar OAuth 2.0, Apps Script Web App posting, and the handoff back into the pending 4-Core Notion automation flow
+- Wired the provided live Spreadsheet ID into `Code.gs` so the Apps Script backend is ready for deployment without placeholder replacement
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` duplicate lock remain untouched
+
+#### Known Risks
+- `Code.gs` now has the live Spreadsheet ID, but Make.com still needs the deployed Apps Script Web App URL before live appends can begin
+- Google Calendar creation in Make.com still depends on the acquired OAuth 2.0 Client ID and Client Secret being wired into a real Make connection
+- The imported Make blueprint still contains placeholder connection and resource values (`hook`, `__IMTCONN__`, `databaseId`, HTTP URL, HTTP Authorization`) that must be rebound inside Make after import
+- The Notion skill installer remains on standby until a real 4-Core template URL with a live `Inbox` database is supplied
+
+#### Manual QA
+- [x] Verified `Code.gs` exposes `doPost(e)` and normalizes either `row[]` or named fields into the A:E append contract
+- [x] Verified the regenerated Make blueprint JSON parses cleanly and contains the requested Webhook, OpenAI, Router, Notion, Google Calendar, and HTTP modules with the deep-research module names and router/filter structure
+- [x] Verified the pipeline guide documents Apps Script deployment, Calendar OAuth wiring, and the pending Notion 4-Core standby flow
+
+#### Next Sprint Prerequisites
+- Replace `REPLACE_WITH_SPREADSHEET_ID` and deploy `Code.gs` as a Web App
+- Create the Google Calendar OAuth 2.0 connection in Make.com using the acquired credentials
+- Provide the actual 4-Core Notion template URL so the isolated clone/install scripts can resume end-to-end
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
@@ -760,6 +876,8 @@ Automate the dual-STT routing proof without any physical microphone or manual op
 - Return Zero polling cadence and timeout thresholds still need staging calibration for premium/high-risk override traffic
 - The 1.5-second final-transcript drain window may need tuning against real backend latency
 - A dedicated 15-second live soak and repeated-send duplicate regression are still pending
+- The standalone Notion clone bot depends on a live authenticated session inside `chrome-automation-profile/` and may require selector refreshes if Notion changes the `페이지 복제` or workspace picker UI
+- The Google CFO layer is scaffolded but not live until the Apps Script Web App is deployed with the real Spreadsheet ID and the Make.com HTTP module points at that deployment URL
 
 ---
 
