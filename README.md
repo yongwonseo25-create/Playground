@@ -32,7 +32,8 @@ Copy `.env.local.example` to `.env.local` and set values:
 
 - `NEXT_PUBLIC_APP_ENV` = `local | development | staging | production`
 - `NEXT_PUBLIC_WSS_URL`
-- `NEXT_PUBLIC_WEBHOOK_URL`
+- `MAKE_WEBHOOK_URL`
+- `MAKE_WEBHOOK_SECRET`
 
 Validation is fail-fast at app startup/build.
 
@@ -62,7 +63,7 @@ CSP `connect-src` is generated from validated env values and restricted to:
 
 - `'self'`
 - configured `NEXT_PUBLIC_WSS_URL` origin
-- configured `NEXT_PUBLIC_WEBHOOK_URL` origin
+- configured `MAKE_WEBHOOK_URL` origin
 
 ## HTTPS + WSS Architecture Note
 

@@ -946,7 +946,7 @@ After finishing a sprint, Codex must:
 - Vercel production now points `NEXT_PUBLIC_WSS_URL` at the Railway WSS origin.
 
 ### Known Risks
-- Vercel production `MAKE_WEBHOOK_URL` is currently a placeholder `https://httpbin.org/post`, so final submit delivery is production-stable but not yet wired to a real Make.com endpoint.
+- Vercel production `MAKE_WEBHOOK_URL` is currently a temporary placeholder endpoint, so final submit delivery is production-stable but not yet wired to a real Make.com endpoint.
 - Live browser smoke currently proves microphone approval no longer hangs and WSS enters recording, but it does not yet assert a non-empty final transcript against real speech input.
 
 ### Manual QA / Verification
@@ -1018,5 +1018,43 @@ After finishing a sprint, Codex must:
 
 ### Next Sprint Prerequisites
 - Run one real spoken production capture on a phone to verify final transcript content and downstream Notion/Sheets/Slack/Telegram routing in the live Make scenario.
+
+---
+
+## 2026-03-16 - VOXERA Webhook Endpoint Rotation
+
+### Files Changed
+- `.env.local`
+- `.env.local.example`
+- `README.md`
+- `docs/security-architecture.md`
+- `references/make-webhook-contract.md`
+- `docs/sprint-summary.md`
+- `tests/e2e/voice-capture-flow.spec.ts`
+
+### Architecture Changes
+- The only external business webhook path remains `/api/voice/submit -> WebhookClient -> env.MAKE_WEBHOOK_URL`.
+- The runtime Make webhook target has been rotated to the new VOXERA-specific Make EU1 endpoint via environment configuration.
+- Stale tracked references to `NEXT_PUBLIC_WEBHOOK_URL` were removed so the webhook source of truth is now only `MAKE_WEBHOOK_URL`.
+- The Make contract reference now matches the live payload shape, including `stt_provider` and `audio_duration_sec`.
+
+### Known Risks
+- Playwright/local E2E continues to use isolated local mock webhook endpoints on purpose; those test-only URLs are not production webhook addresses and should remain untouched unless the harness strategy changes.
+
+### Manual QA / Verification
+- Search audit confirmed the real outbound business webhook path is `src/server/reliability/WebhookClient.ts`
+- Search audit confirmed the browser submit path remains same-origin `src/features/voice-capture/services/submit-voice-capture.ts`
+- Search audit confirmed the standalone WSS server still submits internally to `/api/voice/submit`
+- `corepack pnpm typecheck`
+- `corepack pnpm lint`
+- `corepack pnpm test`
+- `corepack pnpm test:e2e`
+- `corepack pnpm build`
+- Verified `GET https://voxera-voice-live.vercel.app/capture -> 200`
+- Verified `POST https://voxera-voice-live.vercel.app/api/voice/submit -> {"ok":true,"acceptedForRetry":false,"stt_provider":"whisper","audio_duration_sec":1,"circuitState":"CLOSED"}`
+- Verified Vercel production was redeployed after rotating `MAKE_WEBHOOK_URL`
+
+### Next Sprint Prerequisites
+- Keep Vercel and any nonlocal deployment targets aligned with the same VOXERA Make webhook endpoint when rotating secrets or promoting environments.
 ```
 

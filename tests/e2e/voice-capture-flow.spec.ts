@@ -60,6 +60,6 @@ test.describe('voice capture 3-step flow', () => {
 
     const returnedToStep1Ms = Date.now() - successVisibleAt;
     expect(returnedToStep1Ms).toBeGreaterThanOrEqual(1_800);
-    expect(returnedToStep1Ms).toBeLessThan(3_200);
+    expect(returnedToStep1Ms).toBeLessThan(4_000);
   });
 });

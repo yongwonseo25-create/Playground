@@ -20,7 +20,7 @@ A local-only exception is allowed for `ws://` and `http://` **only** when:
 All non-local environments require:
 
 - `NEXT_PUBLIC_WSS_URL` using `wss://`
-- `NEXT_PUBLIC_WEBHOOK_URL` using `https://`
+- `MAKE_WEBHOOK_URL` using `https://`
 
 These rules are validated at startup and fail fast when violated.
 
