@@ -50,8 +50,8 @@ test.describe('voice capture 3-step flow', () => {
     await expect(page.getByTestId('voice-send-ring')).toHaveAttribute('data-state', 'sending');
     await expect(page.getByTestId('voice-send-button')).toHaveText('전송 중...');
 
-    const successVisibleAt = Date.now();
     await expect(page.getByTestId('voice-success-container')).toBeVisible({ timeout: 10_000 });
+    const successVisibleAt = Date.now();
     await expect(page.getByTestId('voice-success-text')).toHaveText('전송 완료!');
     await expect.poll(() => harness.getWebhookRequests().length).toBe(1);
 

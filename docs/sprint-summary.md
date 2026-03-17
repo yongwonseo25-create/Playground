@@ -1058,3 +1058,215 @@ After finishing a sprint, Codex must:
 - Keep Vercel and any nonlocal deployment targets aligned with the same VOXERA Make webhook endpoint when rotating secrets or promoting environments.
 ```
 
+---
+
+## 2026-03-17 - V3 Local Infra Bootstrap + Stripe Payment Core
+
+### Files Changed
+- `docker-compose.yml`
+- `.env.local.example`
+- `package.json`
+- `db/migrations/0001_v3_core.sql`
+- `scripts/db/run-migrations.mjs`
+- `src/server/config/v3-env.ts`
+- `src/server/db/v3-pg.ts`
+- `src/shared/contracts/stripe-webhook.ts`
+- `src/server/payments/stripe-signature.ts`
+- `src/server/payments/payment-core.ts`
+- `src/app/api/webhooks/stripe/route.ts`
+- `tests/e2e/stripe-payment-core.spec.ts`
+- `docs/sprint-summary.md`
+
+### Architecture Changes
+- Added a local zero-cost V3 bootstrap path with Docker Compose definitions for PostgreSQL 16 and Redis 7 using `volatile-lru` for cache eviction.
+- Added a SQL migration runner and initial V3 core schema for `users`, `payment_log`, `voice_processing_log`, and `stripe_events`.
+- Hotfixed the initial V3 schema to remove `stt_text` from `voice_processing_log` and keep voice-processing persistence metadata-only via `s3_key`.
+- Reworked `stripe_events` to store payment-processing metadata only instead of webhook payload blobs.
+- Added a Node runtime Stripe webhook route at `/api/webhooks/stripe` with raw-body HMAC signature verification, live-mode rejection outside production, supported-event filtering, and Zod contract validation.
+- Added a PostgreSQL payment core that uses `SERIALIZABLE` plus `SELECT ... FOR UPDATE` on `stripe_events`, `payment_log`, and `users` to block duplicate event replay and race conditions.
+
+### Known Risks
+- Docker is not installed in the current Codex environment, so the local Postgres/Redis containers could not be started and `db:migrate` runtime verification remains blocked by `ECONNREFUSED`.
+- The V3 migration now stores only metadata for voice processing and Stripe events, but the rest of the application has not yet been wired to write into these tables.
+- `QUEUE_PROVIDER=local` is scaffolding only; SQS/LocalStack switching logic has not been implemented yet.
+
+### Manual QA / Verification
+- `corepack pnpm install`
+- `corepack pnpm typecheck`
+- `corepack pnpm lint`
+- `corepack pnpm test`
+- `corepack pnpm test:e2e`
+- `corepack pnpm build`
+- `node --check scripts/db/run-migrations.mjs`
+- Attempted `corepack pnpm db:migrate` and confirmed the current environment lacks Docker/Postgres, resulting in `ECONNREFUSED`
+
+### Next Sprint Prerequisites
+- Install Docker locally and verify `corepack pnpm docker:v3:up` plus `corepack pnpm db:migrate`.
+- Implement `/api/payment/checkout`, user credit lookup, and payment-side database writes against the new V3 schema.
+- Add queue provider abstraction for local development versus future AWS SQS production wiring without changing payment semantics.
+
+---
+
+## 2026-03-17 - V3 Checkout, Queue, and Redis Cache
+
+### Files Changed
+- `.env.local.example`
+- `package.json`
+- `src/server/config/v3-env.ts`
+- `src/app/api/webhooks/stripe/route.ts`
+- `src/shared/contracts/payment-checkout.ts`
+- `src/shared/contracts/v3-user-credits.ts`
+- `src/shared/contracts/v3-voice-job.ts`
+- `src/server/payments/stripe-checkout.ts`
+- `src/server/cache/v3-redis.ts`
+- `src/server/cache/credit-cache.ts`
+- `src/server/cache/stt-dedupe-cache.ts`
+- `src/server/queue/v3/types.ts`
+- `src/server/queue/v3/local-voice-job-queue.ts`
+- `src/server/queue/v3/sqs-voice-job-queue.ts`
+- `src/server/queue/v3/index.ts`
+- `src/server/voice/voice-processing-core.ts`
+- `src/app/api/payment/checkout/route.ts`
+- `src/app/api/user/credits/route.ts`
+- `src/app/api/voice/process/route.ts`
+- `tests/e2e/v3-checkout-queue-cache.spec.ts`
+- `docs/sprint-summary.md`
+
+### Architecture Changes
+- Added `/api/payment/checkout` as a Node runtime Stripe Checkout Session endpoint that refuses non-`sk_test_` secret keys and generates test-mode credit purchases only.
+- Added a Redis-backed cache layer for user credit lookups plus STT duplicate request reservation, with TTL-only keys that align with the local `volatile-lru` eviction policy.
+- Added `/api/user/credits` to read credits via cache-first lookup and `/api/voice/process` to persist metadata-only voice jobs and enqueue them without storing transcript payloads.
+- Added a queue provider abstraction that defaults to an in-memory local queue for zero-cost development and can switch to an AWS SQS Standard scaffold when `QUEUE_PROVIDER=sqs`.
+- Synced Stripe webhook processing with the credit cache so successful payment events immediately refresh cached credit totals after the pessimistic-locking transaction completes.
+
+### Known Risks
+- Docker is still unavailable in the current Codex environment, so the new Postgres/Redis-backed routes were validated only through static checks and mocked tests, not with live local containers.
+- The local queue provider is intentionally in-memory only; it will reset on process restart until LocalStack or real SQS is wired during a later step.
+- `/api/payment/checkout` is implemented server-side but not yet connected to a production billing screen in the front-end.
+- `QUEUE_PROVIDER=sqs` is scaffolding only; no real AWS queue was called or runtime-tested in this zero-cost step.
+
+### Manual QA / Verification
+- `corepack pnpm install`
+- `corepack pnpm typecheck`
+- `corepack pnpm lint`
+- `corepack pnpm test`
+- `corepack pnpm test:e2e`
+- `corepack pnpm build`
+- With Docker available: `corepack pnpm docker:v3:up`
+- With Docker available: `corepack pnpm db:migrate`
+- POST a test body to `/api/payment/checkout` and confirm the response contains a Stripe test checkout URL
+- GET `/api/user/credits?userId=<id>` twice and confirm the second response reports `source: "cache"`
+- POST `/api/voice/process` twice with the same `clientRequestId` and confirm the second response returns `deduplicated: true`
+
+### Next Sprint Prerequisites
+- Wire the checkout endpoint into an actual billing UI and success/cancel flow.
+- Replace the local in-memory queue with LocalStack-backed integration testing before any AWS promotion.
+- Add worker-side dequeue/ack processing that consumes `voice_processing_log` jobs and updates status transitions beyond `queued`.
+
+---
+
+## 2026-03-17 - V3 Checkout UI and Local Dequeue Worker
+
+### Files Changed
+- `.env.local.example`
+- `package.json`
+- `src/features/marketing/components/marketing-landing.tsx`
+- `src/features/billing/services/billing-client.ts`
+- `src/features/billing/components/billing-checkout-panel.tsx`
+- `src/app/(marketing)/billing/page.tsx`
+- `src/app/(marketing)/billing/success/page.tsx`
+- `src/app/(marketing)/billing/cancel/page.tsx`
+- `src/app/api/voice/process/route.ts`
+- `src/server/voice/mock-payload-store.ts`
+- `src/server/voice/mock-stt-processor.ts`
+- `src/server/voice/local-dequeue-worker.ts`
+- `tests/e2e/helpers/v3-memory-store.ts`
+- `tests/e2e/v3-ui-worker.spec.ts`
+- `docs/sprint-summary.md`
+
+### Architecture Changes
+- Added a dedicated `/billing` sandbox UI that calls `/api/payment/checkout`, validates `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` against `pk_test_`, and redirects into Stripe Hosted Checkout in test mode only.
+- Added `/billing/success` and `/billing/cancel` return pages so the new checkout flow has explicit completion and rollback landing states.
+- Added a local dequeue worker that consumes the in-memory V3 queue in-process, updates `voice_processing_log` from `queued -> processing -> completed`, and uses a 3-second mock STT processor instead of real Whisper or n8n.
+- Added a staged in-memory mock payload store so local queue jobs can simulate temporary audio objects, then drop them immediately after processing to preserve the zero-retention rule in local development.
+- Updated `/api/voice/process` to stage mock payloads, enqueue metadata-only jobs, auto-start the local worker for `QUEUE_PROVIDER=local`, and purge staged payloads immediately on dedupe or enqueue failure.
+
+### Known Risks
+- The billing UI is wired to Stripe Hosted Checkout test mode, but it is not yet connected to authenticated user context; the sandbox still relies on manually entered `userId`.
+- The local dequeue worker only runs inside the same Next.js process, so it will not simulate multi-process worker behavior until LocalStack/SQS-based worker integration is added.
+- The mock STT worker intentionally discards the generated transcript after processing to honor zero retention, so no transcript artifact is persisted for post-run inspection.
+- Docker remains unavailable in the current Codex environment, so the worker and billing APIs were validated with mocked stores and static builds rather than live Postgres/Redis containers.
+
+### Manual QA / Verification
+- `corepack pnpm install`
+- `corepack pnpm typecheck`
+- `corepack pnpm lint`
+- `corepack pnpm test`
+- `corepack pnpm test:e2e`
+- `corepack pnpm build`
+- Open `/billing`, enter a valid numeric `userId`, verify the balance card loads, and tap `Stripe 테스트 결제`
+- Confirm an invalid or missing `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` disables the checkout CTA with a visible error state
+- With Docker available, POST to `/api/voice/process` and confirm the worker advances the job to `completed` while the staged mock payload disappears from local memory after processing
+
+### Next Sprint Prerequisites
+- Replace the manual `userId` sandbox field with authenticated account context and a real billing entry point.
+- Promote the local dequeue worker to a LocalStack-backed worker process so queue semantics match future SQS deployment more closely.
+- Connect the worker result path to downstream V3 orchestration without ever persisting transcripts or raw payloads.
+
+---
+
+## 2026-03-17 - V3 E2E Lifecycle, Credit Deduction, and Destination Routing
+
+### Files Changed
+- `.env.local.example`
+- `docs/sprint-summary.md`
+- `src/app/api/user/credits/route.ts`
+- `src/app/api/voice/process/route.ts`
+- `src/features/voice-capture/services/submit-voice-capture.ts`
+- `src/features/voice-capture/services/v3-voice-process.ts`
+- `src/server/cache/memory-cache-store.ts`
+- `src/server/cache/v3-redis.ts`
+- `src/server/db/v3-local-state.ts`
+- `src/server/db/v3-runtime.ts`
+- `src/server/voice/destination-webhook.ts`
+- `src/server/voice/local-dequeue-worker.ts`
+- `src/server/voice/mock-payload-store.ts`
+- `src/server/voice/mock-stt-processor.ts`
+- `src/server/voice/voice-credit-core.ts`
+- `src/server/voice/voice-processing-core.ts`
+- `src/shared/contracts/v3-voice-job.ts`
+- `tests/e2e/v3-ui-worker.spec.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+- `tests/e2e/voice-credit-core.spec.ts`
+- `tests/e2e/voice-cutoff-ui.spec.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+- `tests/playwright.config.ts`
+
+### Architecture Changes
+- Repointed the existing Voice Capture submit path to `/api/voice/process`, so the unchanged `AudioWorklet + PCM over WSS` client now enqueues a V3 voice job without weakening the 15-second reducer cutoff or `clientRequestId` duplicate lock.
+- Added a memory-runtime branch for local V3 development that mirrors the future Postgres/Redis credit and queue lifecycle closely enough for zero-cost static and E2E validation.
+- Added worker-side credit deduction using the same pessimistic locking contract as payments: SQL runtime uses `SERIALIZABLE` plus `SELECT ... FOR UPDATE`, while the local memory runtime uses a per-user serialized lock to preserve the same one-writer semantics during tests.
+- Added destination webhook routing right before zero-retention cleanup. The worker now POSTs the final transcript payload to `DESTINATION_WEBHOOK_URL` with `X-Webhook-Timestamp`, `X-Webhook-Signature`, and `X-Idempotency-Key`, then drops the staged payload from memory immediately after the send attempt regardless of success or failure.
+- Tightened the success-screen lifecycle E2E to measure the 2-second completion dwell from the moment the success UI is actually visible, matching the UI contract instead of overcounting pre-success upload latency.
+
+### Known Risks
+- Docker is still unavailable in the current Codex environment, so the V3 local runtime continued to use `memory://` stores for queues, Redis, and Postgres semantics. Static validation and browser E2E passed, but live container-backed verification still needs to happen on the representative local machine.
+- The local dequeue worker still runs in-process with Next.js and is not yet a separate worker executable, so multi-process failure semantics are not represented until the LocalStack/SQS phase lands.
+- `DESTINATION_WEBHOOK_SECRET` currently falls back to `MAKE_WEBHOOK_SECRET` if the dedicated destination secret is unset. That preserves existing test infrastructure, but production should set a dedicated destination secret explicitly.
+
+### Manual QA / Verification
+- `corepack pnpm typecheck`
+- `corepack pnpm lint`
+- `corepack pnpm test`
+- `corepack pnpm test:e2e`
+- `corepack pnpm build`
+- Open `/capture?userId=<id>` and verify a normal capture session still follows `idle -> recording -> stopping -> uploading -> success -> idle`
+- Confirm the Step 2 transcript still scrolls on touch devices and that a duplicate send click cannot enqueue a second V3 job
+- With Docker available, seed a user credit balance, POST to `/api/voice/process`, and verify the corresponding `voice_processing_log` row transitions through `queued -> processing -> charged -> completed`
+- Point `DESTINATION_WEBHOOK_URL` at a local inspection endpoint and confirm the routed payload includes `clientRequestId`, `transcriptText`, `sessionId`, `pcmFrameCount`, `stt_provider`, `audio_duration_sec`, `createdAt`, and the webhook signature/idempotency headers before the staged payload disappears from memory
+
+### Next Sprint Prerequisites
+- Replace the in-process local worker with a standalone LocalStack/SQS dequeue worker that preserves the same zero-retention cleanup contract.
+- Promote the memory-runtime fallback paths to real Postgres/Redis validation on a Docker-enabled machine before wiring AWS-backed environments.
+- Connect the destination webhook path to the final V3 orchestration target and add observability around `charged`, `completed`, `webhook_failed`, and `insufficient_credits` transitions without ever persisting transcript payloads.
+

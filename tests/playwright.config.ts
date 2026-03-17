@@ -37,6 +37,11 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_APP_ENV: 'local',
       NEXT_PUBLIC_WSS_URL: process.env.NEXT_PUBLIC_WSS_URL ?? 'ws://127.0.0.1:8787/voice',
+      NEXT_PUBLIC_V3_DEFAULT_USER_ID: process.env.NEXT_PUBLIC_V3_DEFAULT_USER_ID ?? '1',
+      DATABASE_URL: process.env.DATABASE_URL ?? 'memory://local',
+      REDIS_URL: process.env.REDIS_URL ?? 'memory://local',
+      DESTINATION_WEBHOOK_URL:
+        process.env.DESTINATION_WEBHOOK_URL ?? 'http://127.0.0.1:8788/webhook',
       MAKE_WEBHOOK_URL: process.env.MAKE_WEBHOOK_URL ?? 'http://127.0.0.1:8788/webhook',
       MAKE_WEBHOOK_SECRET: process.env.MAKE_WEBHOOK_SECRET ?? 'voxera-local-secret'
     }

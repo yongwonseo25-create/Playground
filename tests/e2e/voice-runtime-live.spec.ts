@@ -17,7 +17,7 @@ test.describe('voice runtime live integration', () => {
     await harness.close();
   });
 
-  test('streams PCM over WSS and submits the Zod-validated payload to /api/voice/submit', async ({
+  test('streams PCM over WSS and enqueues the V3 payload through /api/voice/process before routing the webhook', async ({
     page
   }) => {
     await page.goto('/capture');

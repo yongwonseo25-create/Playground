@@ -6,16 +6,20 @@
   "scripts": {
     "dev": "next dev",
     "dev:https": "next dev --experimental-https --hostname localhost --port 3000",
+    "docker:v3:up": "docker compose up -d postgres redis",
+    "docker:v3:down": "docker compose down",
     "build": "next build",
+    "db:migrate": "node scripts/db/run-migrations.mjs",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test tests/e2e/env-core.spec.ts tests/e2e/backend-reliability.spec.ts tests/e2e/dual-stt-router.spec.ts -c tests/playwright.env-core.config.ts",
+    "test": "playwright test tests/e2e/env-core.spec.ts tests/e2e/backend-reliability.spec.ts tests/e2e/dual-stt-router.spec.ts tests/e2e/stripe-payment-core.spec.ts tests/e2e/voice-credit-core.spec.ts tests/e2e/v3-checkout-queue-cache.spec.ts tests/e2e/v3-ui-worker.spec.ts -c tests/playwright.env-core.config.ts",
     "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts tests/e2e/voice-runtime-live.spec.ts tests/e2e/voice-cutoff-ui.spec.ts tests/e2e/voice-microphone-guard.spec.ts tests/e2e/voice-transcript-interactions.spec.ts -c tests/playwright.config.ts",
     "test:e2e:routing": "playwright test tests/e2e/voice-stt-routing-live.spec.ts -c tests/playwright.routing.config.ts",
     "test:e2e:demo": "playwright test tests/e2e/voice-ui-live-demo.spec.ts -c tests/playwright.demo.config.ts --headed"
   },
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.910.0",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-progress": "^1.1.0",
@@ -27,9 +31,13 @@
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",
+    "pg": "^8.16.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "redis": "^5.9.0",
     "sonner": "^1.7.1",
+    "@stripe/stripe-js": "^7.5.0",
+    "stripe": "^20.4.1",
     "tailwind-merge": "^2.5.5",
     "ws": "^8.19.0",
     "zod": "^4.3.6"
@@ -37,6 +45,7 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/node": "^22.10.1",
+    "@types/pg": "^8.18.0",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@types/ws": "^8.18.1",

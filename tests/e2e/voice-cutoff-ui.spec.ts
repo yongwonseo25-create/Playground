@@ -15,7 +15,7 @@ test.describe('voice cutoff ui automation', () => {
     await harness.close();
   });
 
-  test('keeps the recording UI stable through the 15-second cutoff and still delivers to Make.com', async ({
+  test('keeps the recording UI stable through the 15-second cutoff and still routes through the V3 processing API', async ({
     page
   }, testInfo) => {
     test.setTimeout(90_000);
@@ -45,7 +45,7 @@ test.describe('voice cutoff ui automation', () => {
       .toBeGreaterThan(0);
 
     const submitResponsePromise = page.waitForResponse(
-      (response) => response.url().includes('/api/voice/submit') && response.request().method() === 'POST'
+      (response) => response.url().includes('/api/voice/process') && response.request().method() === 'POST'
     );
 
     await sendButton.click();
@@ -55,14 +55,17 @@ test.describe('voice cutoff ui automation', () => {
     const submitResponse = await submitResponsePromise;
     const submitJson = (await submitResponse.json()) as {
       ok: boolean;
-      stt_provider: 'whisper' | 'return-zero';
-      audio_duration_sec: number;
+      acceptedForProcessing: boolean;
+      queueProvider: 'local' | 'sqs';
+      deduplicated: boolean;
     };
     const webhookRequest = harness.getWebhookRequests()[0];
 
     expect(submitJson).toMatchObject({
       ok: true,
-      stt_provider: 'whisper'
+      acceptedForProcessing: true,
+      queueProvider: 'local',
+      deduplicated: false
     });
     expect(webhookRequest?.body.stt_provider).toBe('whisper');
     expect(webhookRequest?.body.audio_duration_sec).toBeGreaterThan(0);

@@ -17,7 +17,7 @@ export function MarketingLanding() {
         </p>
       </section>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2">
+      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Voice Workflow</CardTitle>
@@ -36,6 +36,17 @@ export function MarketingLanding() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">No backend assumptions are hardcoded.</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Billing Sandbox</CardTitle>
+            <CardDescription>Stripe test-mode checkout wired to the V3 credit API.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full sm:w-auto">
+              <Link href="/billing">Open billing sandbox</Link>
+            </Button>
           </CardContent>
         </Card>
       </section>
