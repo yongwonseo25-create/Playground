@@ -5,9 +5,15 @@ CREATE TABLE IF NOT EXISTS v4_dispatches (
   transcript_text TEXT NOT NULL,
   structured_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
   status TEXT NOT NULL,
+  job_id TEXT NOT NULL,
+  buffer_key TEXT NOT NULL,
+  webhook_idempotency_key TEXT NOT NULL,
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
   account_key TEXT NOT NULL,
   webhook_delivered_at TIMESTAMPTZ,
   credit_consumed_at TIMESTAMPTZ,
+  queued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -19,6 +25,11 @@ CREATE TABLE IF NOT EXISTS v4_approvals (
   transcript_text TEXT NOT NULL,
   structured_fields JSONB NOT NULL DEFAULT '[]'::jsonb,
   status TEXT NOT NULL,
+  job_id TEXT,
+  buffer_key TEXT,
+  webhook_idempotency_key TEXT,
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
   actor TEXT,
   account_key TEXT NOT NULL,
   executed_at TIMESTAMPTZ,
@@ -32,6 +43,7 @@ CREATE INDEX IF NOT EXISTS idx_v4_approvals_status_created_at
 CREATE TABLE IF NOT EXISTS v4_execution_credit_accounts (
   account_key TEXT PRIMARY KEY,
   balance INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

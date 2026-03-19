@@ -25,6 +25,7 @@ export type V4StructuredField = z.infer<typeof v4StructuredFieldSchema>;
 export const v4ApprovalStatusSchema = z.enum([
   'pending',
   'approved',
+  'processing',
   'rejected',
   'executed',
   'failed'
@@ -92,11 +93,15 @@ export const v4ExecutionCreditChargeResultSchema = z
   .object({
     accountKey: z.string().trim().min(1).max(128),
     remainingCredits: z.number().int().nonnegative(),
-    deducted: z.boolean()
+    deducted: z.boolean(),
+    version: z.number().int().nonnegative()
   })
   .strict();
 
 export type V4ExecutionCreditChargeResult = z.infer<typeof v4ExecutionCreditChargeResultSchema>;
+
+export const v4DispatchStatusSchema = z.enum(['queued', 'processing', 'executed', 'failed']);
+export type V4DispatchStatus = z.infer<typeof v4DispatchStatusSchema>;
 
 export const v4ExecutionWebhookPayloadSchema = z
   .object({

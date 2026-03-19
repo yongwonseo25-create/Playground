@@ -117,6 +117,7 @@ export class WebhookClient {
             timeoutMs: this.timeoutMs,
             headers: {
               'Content-Type': 'application/json',
+              'Idempotency-Key': idempotencyKey,
               'X-Webhook-Timestamp': timestamp,
               'X-Webhook-Signature': signature,
               'X-Idempotency-Key': idempotencyKey
