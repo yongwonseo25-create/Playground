@@ -25,7 +25,8 @@ export async function submitZhiDispatch(payload: ZhiDispatchRequest): Promise<Zh
   const response = await fetch('/api/v4/zhi/dispatch', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Idempotency-Key': parsedPayload.data.clientRequestId
     },
     body: JSON.stringify(parsedPayload.data)
   });

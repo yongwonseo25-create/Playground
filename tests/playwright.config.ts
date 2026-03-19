@@ -40,10 +40,16 @@ export default defineConfig({
       MAKE_WEBHOOK_URL: process.env.MAKE_WEBHOOK_URL ?? 'http://127.0.0.1:8788/webhook',
       MAKE_WEBHOOK_SECRET: process.env.MAKE_WEBHOOK_SECRET ?? 'voxera-local-secret',
       DATABASE_URL: process.env.DATABASE_URL ?? 'pgmem://voxera-zhi-ui',
+      REDIS_URL: process.env.REDIS_URL ?? 'memory://voxera-zhi-ui',
       V4_EXECUTION_CREDIT_ACCOUNT_KEY:
         process.env.V4_EXECUTION_CREDIT_ACCOUNT_KEY ?? 'zhi-ui-account',
       V4_EXECUTION_CREDIT_INITIAL_BALANCE:
-        process.env.V4_EXECUTION_CREDIT_INITIAL_BALANCE ?? '50'
+        process.env.V4_EXECUTION_CREDIT_INITIAL_BALANCE ?? '50',
+      V4_EXECUTION_BUFFER_TTL_SEC: process.env.V4_EXECUTION_BUFFER_TTL_SEC ?? '600',
+      V4_IDEMPOTENCY_TTL_SEC: process.env.V4_IDEMPOTENCY_TTL_SEC ?? '600',
+      V4_REDIS_ENCRYPTION_KEY:
+        process.env.V4_REDIS_ENCRYPTION_KEY ?? 'voxera-local-v4-resilience',
+      V4_WORKER_POLL_INTERVAL_MS: process.env.V4_WORKER_POLL_INTERVAL_MS ?? '150'
     }
   }
 });

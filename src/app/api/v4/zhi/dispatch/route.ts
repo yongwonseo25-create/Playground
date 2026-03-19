@@ -4,6 +4,7 @@ import {
   zhiDispatchRequestSchema,
   zhiDispatchResponseSchema
 } from '@/shared/contracts/v4/zhi';
+import { handleV4IdempotentJsonRequest } from '@/server/v4/shared/idempotency';
 import { dispatchZhiCommand } from '@/server/v4/zhi/orchestrator';
 
 export const runtime = 'nodejs';
@@ -31,8 +32,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const response = await dispatchZhiCommand(parsedBody.data);
-    return NextResponse.json(zhiDispatchResponseSchema.parse(response), { status: 200 });
+    return handleV4IdempotentJsonRequest(request, 'v4:zhi:dispatch', async () => {
+      const response = await dispatchZhiCommand(parsedBody.data);
+      return {
+        status: 202,
+        body: zhiDispatchResponseSchema.parse(response)
+      };
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'ZHI dispatch failed.';
 

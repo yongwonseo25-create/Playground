@@ -1,9 +1,8 @@
 import { z } from 'zod';
 import {
+  v4DispatchStatusSchema,
   v4DestinationKeySchema,
-  type V4Destination,
   v4DestinationSchema,
-  type V4ExecutionCreditChargeResult,
   v4ExecutionCreditChargeResultSchema
 } from '@/shared/contracts/v4/common';
 
@@ -27,10 +26,13 @@ export const zhiDispatchResponseSchema = z
   .object({
     ok: z.literal(true),
     mode: z.literal('zhi'),
-    status: z.enum(['executed', 'duplicate']),
+    status: z.enum(['queued', 'duplicate']),
     executionId: z.string().min(1),
+    jobId: z.string().uuid(),
     destination: v4DestinationSchema,
-    credits: v4ExecutionCreditChargeResultSchema
+    idempotencyKey: z.string().uuid(),
+    queuedAt: z.string().datetime({ offset: true }),
+    dispatchState: v4DispatchStatusSchema
   })
   .strict();
 

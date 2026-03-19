@@ -15,7 +15,7 @@ test.describe('V4 ZHI cutoff automation', () => {
     await harness.close();
   });
 
-  test('keeps the 15-second cutoff and still auto-executes the destination', async ({ page }, testInfo) => {
+  test('keeps the 15-second cutoff and still queues the destination asynchronously', async ({ page }, testInfo) => {
     test.setTimeout(90_000);
 
     await page.goto('/capture');
@@ -40,6 +40,7 @@ test.describe('V4 ZHI cutoff automation', () => {
     await expect.poll(() => harness.getTotalPcmFrameCount()).toBeGreaterThan(0);
 
     await expect(page.getByTestId('voice-success-container')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('voice-success-text')).toContainText('Queued for Slack');
     await expect.poll(() => harness.getWebhookRequests().length).toBe(1);
 
     const webhookRequest = harness.getWebhookRequests()[0];
@@ -47,6 +48,7 @@ test.describe('V4 ZHI cutoff automation', () => {
       mode: 'zhi',
       destinationKey: 'slack'
     });
+    expect(webhookRequest?.headers['idempotency-key']).toBeTruthy();
 
     console.log(
       `[cutoff-ui-evidence] project=${testInfo.project.name} cutoffMs=${autoStopMs} destination=${(webhookRequest?.body as { destinationKey?: string })?.destinationKey}`

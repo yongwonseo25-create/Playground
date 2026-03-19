@@ -1,3 +1,4 @@
+import '@/shared/config/env.client';
 import { V4ZhiCaptureScreen } from '@/features/v4-zhi/components/v4-zhi-capture-screen';
 
 export default function VoiceCapturePage() {

@@ -9,12 +9,15 @@ import {
   type ZhiDispatchResponse,
   zhiDispatchResponseSchema
 } from '@/shared/contracts/v4/zhi';
-import { deliverV4Webhook } from '@/server/v4/shared/make-dispatch';
-import { consumeExecutionCredit } from '@/server/v4/shared/execution-credits';
+import {
+  createExecutionBufferKey,
+  writeExecutionBuffer
+} from '@/server/v4/shared/execution-buffer';
+import { enqueueV4ExecutionJob } from '@/server/v4/shared/queue';
+import { ensureV4WorkerRunning } from '@/server/v4/shared/worker';
 import {
   createZhiDispatchRecord,
-  findZhiDispatchByClientRequestId,
-  markZhiDispatchExecuted
+  findZhiDispatchByClientRequestId
 } from '@/server/v4/zhi/zhi-repository';
 
 export function listZhiCatalog(): V4Destination[] {
@@ -84,57 +87,65 @@ export async function dispatchZhiCommand(input: ZhiDispatchRequest): Promise<Zhi
   const structuredPayload = buildStructuredPayload(destination, input.transcriptText);
   const existingRecord = await findZhiDispatchByClientRequestId(input.clientRequestId);
 
-  if (existingRecord?.status === 'executed') {
-    const credits = await consumeExecutionCredit({
-      referenceId: existingRecord.executionId,
-      accountKey: existingRecord.accountKey,
-      reason: `v4:${destination.key}:execute`
-    });
-
+  if (existingRecord) {
     return zhiDispatchResponseSchema.parse({
       ok: true,
       mode: 'zhi',
       status: 'duplicate',
       executionId: existingRecord.executionId,
+      jobId: existingRecord.jobId,
       destination,
-      credits
+      idempotencyKey: existingRecord.webhookIdempotencyKey,
+      queuedAt: existingRecord.queuedAt,
+      dispatchState: existingRecord.status
     });
   }
 
-  const dispatchRecord =
-    existingRecord ??
-    (await createZhiDispatchRecord({
-      clientRequestId: input.clientRequestId,
-      transcriptText: input.transcriptText,
-      destinationKey: destination.key,
-      structuredPayload,
-      accountKey: input.accountKey
-    }));
+  const executionId = `zhi_${crypto.randomUUID()}`;
+  const jobId = crypto.randomUUID();
+  const webhookIdempotencyKey = crypto.randomUUID();
+  const payload = buildWebhookPayload({
+    executionId,
+    request: input,
+    destination,
+    structuredPayload
+  });
+  const bufferKey = createExecutionBufferKey(executionId);
+  const buffer = await writeExecutionBuffer(bufferKey, payload);
 
-  await deliverV4Webhook(
-    buildWebhookPayload({
-      executionId: dispatchRecord.executionId,
-      request: input,
-      destination,
-      structuredPayload
-    }),
-    input.clientRequestId
-  );
-
-  const credits = await consumeExecutionCredit({
-    referenceId: dispatchRecord.executionId,
-    accountKey: dispatchRecord.accountKey,
-    reason: `v4:${destination.key}:execute`
+  const dispatchRecord = await createZhiDispatchRecord({
+    executionId,
+    jobId,
+    bufferKey,
+    webhookIdempotencyKey,
+    clientRequestId: input.clientRequestId,
+    transcriptText: input.transcriptText,
+    destinationKey: destination.key,
+    structuredPayload,
+    accountKey: input.accountKey
   });
 
-  await markZhiDispatchExecuted(dispatchRecord.executionId);
+  await enqueueV4ExecutionJob({
+    jobId,
+    lane: 'zhi',
+    referenceId: executionId,
+    bufferKey,
+    webhookIdempotencyKey,
+    accountKey: dispatchRecord.accountKey,
+    attempts: 0,
+    expiresAt: buffer.expiresAt
+  });
+  ensureV4WorkerRunning();
 
   return zhiDispatchResponseSchema.parse({
     ok: true,
     mode: 'zhi',
-    status: 'executed',
-    executionId: dispatchRecord.executionId,
+    status: 'queued',
+    executionId,
+    jobId,
     destination,
-    credits
+    idempotencyKey: webhookIdempotencyKey,
+    queuedAt: dispatchRecord.queuedAt,
+    dispatchState: dispatchRecord.status
   });
 }

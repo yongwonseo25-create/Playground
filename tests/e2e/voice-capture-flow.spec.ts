@@ -15,7 +15,7 @@ test.describe('V4 ZHI capture flow', () => {
     await harness.close();
   });
 
-  test('selects Slack and auto-executes immediately after recording stops', async ({ page }) => {
+  test('selects Slack and queues resilient execution immediately after recording stops', async ({ page }) => {
     test.setTimeout(90_000);
 
     await page.goto('/capture');
@@ -34,7 +34,7 @@ test.describe('V4 ZHI capture flow', () => {
     await micButton.click({ force: true });
 
     await expect(page.getByTestId('voice-success-container')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('voice-success-text')).toContainText('Sent to Slack');
+    await expect(page.getByTestId('voice-success-text')).toContainText('Queued for Slack');
     await expect.poll(() => harness.getWebhookRequests().length).toBe(1);
 
     const webhookRequest = harness.getWebhookRequests()[0];
@@ -42,6 +42,7 @@ test.describe('V4 ZHI capture flow', () => {
       mode: 'zhi',
       destinationKey: 'slack'
     });
+    expect(webhookRequest?.headers['idempotency-key']).toBeTruthy();
 
     await expect(micButton).toBeVisible({ timeout: 10_000 });
     await expect(micButton).toHaveAttribute('aria-label', 'Start recording');

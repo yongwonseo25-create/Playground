@@ -14,7 +14,6 @@ import {
 import {
   getV4Destination,
   listV4Destinations,
-  type V4Destination,
   type V4DestinationKey
 } from '@/shared/contracts/v4/common';
 import { type ZhiDispatchResponse } from '@/shared/contracts/v4/zhi';
@@ -163,7 +162,7 @@ export function V4ZhiCaptureScreen() {
             <div>
               <h1 className="text-4xl font-semibold tracking-[0.12em] text-cyan-50">VOXERA</h1>
               <p className="mt-2 max-w-[260px] text-sm leading-6 text-slate-300/78">
-                Choose the destination first. ZHI runs the captured intent into Make.com immediately after speech stops.
+                Choose the destination first. ZHI accepts the voice command fast, encrypts the payload, and hands execution to the background worker.
               </p>
             </div>
             {selectedDestination ? (
@@ -256,8 +255,8 @@ export function V4ZhiCaptureScreen() {
 
                 <p className="mt-6 text-center text-sm leading-6 text-slate-300/72">
                   {selectedDestination
-                    ? `${selectedDestination.label} is armed for zero-human execution.`
-                    : 'Pick Slack or Jira to arm the automatic execution lane.'}
+                    ? `${selectedDestination.label} is armed for queue-first zero-human execution.`
+                    : 'Pick Slack or Jira to arm the resilient execution lane.'}
                 </p>
               </div>
             </motion.section>
@@ -280,7 +279,7 @@ export function V4ZhiCaptureScreen() {
                     </h2>
                   </div>
                   <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-300/74">
-                    {isSending ? 'Executing' : state.status === 'error' ? 'Retry Required' : 'Preparing'}
+                    {isSending ? 'Queueing' : state.status === 'error' ? 'Retry Required' : 'Preparing'}
                   </div>
                 </div>
 
@@ -295,10 +294,10 @@ export function V4ZhiCaptureScreen() {
                   <p className="text-xs uppercase tracking-[0.24em] text-cyan-200/62">Execution status</p>
                   <p className="mt-2 text-sm leading-6 text-slate-200/88">
                     {isSending
-                      ? `Dispatching directly to ${selectedDestination?.label ?? 'the destination'} and charging one execution credit only after webhook success.`
+                      ? `Encrypting the payload, persisting it in Redis, and queueing ${selectedDestination?.label ?? 'the destination'} for the worker.`
                       : state.status === 'error'
                         ? state.lastError ?? 'The execution failed before the webhook completed.'
-                        : 'Preparing the final payload from the live transcript.'}
+                        : 'Preparing the final payload and idempotency envelope from the live transcript.'}
                   </p>
                 </div>
               </div>
@@ -321,7 +320,7 @@ export function V4ZhiCaptureScreen() {
                   data-testid="voice-send-button"
                   className="h-14 flex-1 rounded-2xl bg-cyan-300 text-slate-950 hover:bg-cyan-200"
                 >
-                  {isSending ? 'Executing...' : 'Retry Execution'}
+                  {isSending ? 'Queueing...' : 'Retry Queue'}
                 </Button>
               </div>
             </motion.section>
@@ -350,15 +349,15 @@ export function V4ZhiCaptureScreen() {
                     />
                   </svg>
                 </div>
-                <p className="mt-6 text-[11px] uppercase tracking-[0.28em] text-emerald-100/72">Executed</p>
+                <p className="mt-6 text-[11px] uppercase tracking-[0.28em] text-emerald-100/72">Queued</p>
                 <h2 data-testid="voice-success-text" className="mt-3 text-3xl font-semibold text-white">
-                  Sent to {lastDispatchResult?.destination.label ?? selectedDestination?.label ?? 'destination'}
+                  Queued for {lastDispatchResult?.destination.label ?? selectedDestination?.label ?? 'destination'}
                 </h2>
                 <p className="mt-4 text-sm leading-6 text-emerald-50/82">
-                  1 execution credit was charged only after Make.com delivery completed.
+                  The worker now owns delivery. Execution credit is deducted only after Make.com acknowledges the request.
                 </p>
                 <div className="mt-6 rounded-[22px] border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/84">
-                  Remaining credits: <span className="font-semibold">{lastDispatchResult?.credits.remainingCredits ?? '--'}</span>
+                  Job ID: <span className="font-semibold">{lastDispatchResult?.jobId.slice(0, 8) ?? '--'}</span>
                 </div>
               </div>
             </motion.section>

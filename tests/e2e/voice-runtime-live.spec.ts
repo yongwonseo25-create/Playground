@@ -35,8 +35,10 @@ test.describe('V4 ZHI runtime live integration', () => {
     const dispatchResponse = await dispatchResponsePromise;
     const dispatchJson = (await dispatchResponse.json()) as {
       ok: boolean;
+      status: 'queued' | 'duplicate';
       destination: { key: string };
-      credits: { remainingCredits: number };
+      jobId: string;
+      dispatchState: 'queued' | 'processing' | 'executed' | 'failed';
     };
 
     await expect(page.getByTestId('voice-success-container')).toBeVisible({ timeout: 15_000 });
@@ -47,13 +49,17 @@ test.describe('V4 ZHI runtime live integration', () => {
 
     expect(startEvent?.type).toBe('session.start');
     expect(stopEvent?.type).toBe('session.stop');
+    expect(dispatchResponse.status()).toBe(202);
     expect(dispatchJson.ok).toBe(true);
+    expect(dispatchJson.status).toBe('queued');
     expect(dispatchJson.destination.key).toBe('jira');
-    expect(dispatchJson.credits.remainingCredits).toBeGreaterThan(0);
+    expect(dispatchJson.jobId).toHaveLength(36);
+    expect(dispatchJson.dispatchState).toBe('queued');
     expect(webhookRequest?.body).toMatchObject({
       mode: 'zhi',
       destinationKey: 'jira',
       transcriptText: 'Voxera runtime transcript confirmed.'
     });
+    expect(webhookRequest?.headers['idempotency-key']).toBeTruthy();
   });
 });
