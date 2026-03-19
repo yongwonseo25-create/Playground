@@ -3,6 +3,30 @@ import { spawn } from 'node:child_process';
 
 const NEXT_DEV_READY_TOKENS = ['Ready in', 'ready started server', 'Local:'];
 
+async function probeNextDevServer(port: number): Promise<{ status: number | null; bodyText: string }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5_000);
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/capture`, {
+      signal: controller.signal
+    });
+    const bodyText = await response.text().catch(() => '');
+
+    return {
+      status: response.status,
+      bodyText
+    };
+  } catch (error) {
+    return {
+      status: null,
+      bodyText: error instanceof Error ? error.message : 'Probe request failed.'
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export interface NextDevRunResult {
   exitCode: number | null;
   output: string;
@@ -38,6 +62,7 @@ export async function runNextDevOnce(options: {
     let output = '';
     let settled = false;
     let ready = false;
+    let probeStarted = false;
 
     const settle = (result: NextDevRunResult) => {
       if (settled) {
@@ -56,12 +81,24 @@ export async function runNextDevOnce(options: {
       output += text;
       if (!ready && NEXT_DEV_READY_TOKENS.some((token) => text.includes(token))) {
         ready = true;
-        settle({
-          exitCode: null,
-          output,
-          ready: true,
-          timedOut: false
-        });
+
+        if (!probeStarted) {
+          probeStarted = true;
+          void probeNextDevServer(options.port).then((probe) => {
+            const combinedOutput = `${output}\n${probe.bodyText}`;
+            const hasEnvError =
+              combinedOutput.includes('[env]') ||
+              combinedOutput.includes('Insecure WebSocket (ws://) is not allowed outside local environment') ||
+              combinedOutput.includes('MAKE_WEBHOOK_URL must use http:// or https://.');
+
+            settle({
+              exitCode: null,
+              output: combinedOutput,
+              ready: !hasEnvError && (probe.status === null || probe.status < 500),
+              timedOut: false
+            });
+          });
+        }
       }
     };
 
@@ -69,10 +106,15 @@ export async function runNextDevOnce(options: {
     child.stderr.on('data', onData);
 
     child.on('exit', (exitCode) => {
+      const hasEnvError =
+        output.includes('[env]') ||
+        output.includes('Insecure WebSocket (ws://) is not allowed outside local environment') ||
+        output.includes('MAKE_WEBHOOK_URL must use http:// or https://.');
+
       settle({
         exitCode,
         output,
-        ready,
+        ready: ready && !hasEnvError,
         timedOut: false
       });
     });

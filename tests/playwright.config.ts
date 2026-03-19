@@ -38,7 +38,12 @@ export default defineConfig({
       NEXT_PUBLIC_APP_ENV: 'local',
       NEXT_PUBLIC_WSS_URL: process.env.NEXT_PUBLIC_WSS_URL ?? 'ws://127.0.0.1:8787/voice',
       MAKE_WEBHOOK_URL: process.env.MAKE_WEBHOOK_URL ?? 'http://127.0.0.1:8788/webhook',
-      MAKE_WEBHOOK_SECRET: process.env.MAKE_WEBHOOK_SECRET ?? 'voxera-local-secret'
+      MAKE_WEBHOOK_SECRET: process.env.MAKE_WEBHOOK_SECRET ?? 'voxera-local-secret',
+      DATABASE_URL: process.env.DATABASE_URL ?? 'pgmem://voxera-zhi-ui',
+      V4_EXECUTION_CREDIT_ACCOUNT_KEY:
+        process.env.V4_EXECUTION_CREDIT_ACCOUNT_KEY ?? 'zhi-ui-account',
+      V4_EXECUTION_CREDIT_INITIAL_BALANCE:
+        process.env.V4_EXECUTION_CREDIT_INITIAL_BALANCE ?? '50'
     }
   }
 });

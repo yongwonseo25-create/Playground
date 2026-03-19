@@ -2,12 +2,16 @@ import http from 'node:http';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { makeWebhookPayloadSchema, type MakeWebhookPayload } from '../../../src/shared/contracts/voice-submit';
 import {
+  type V4ExecutionWebhookPayload,
+  v4ExecutionWebhookPayloadSchema
+} from '../../../src/shared/contracts/v4/common';
+import {
   voiceClientEventSchema,
   type VoiceClientEvent
 } from '../../../src/shared/contracts/voice';
 
 type WebhookRequest = {
-  body: MakeWebhookPayload;
+  body: MakeWebhookPayload | V4ExecutionWebhookPayload;
   headers: http.IncomingHttpHeaders;
 };
 
@@ -102,15 +106,24 @@ export class LiveVoiceRuntimeHarness {
         return;
       }
 
-      const parsedPayload = makeWebhookPayloadSchema.safeParse(parsedJson);
-      if (!parsedPayload.success) {
+      const parsedV4Payload = v4ExecutionWebhookPayloadSchema.safeParse(parsedJson);
+      const parsedLegacyPayload = makeWebhookPayloadSchema.safeParse(parsedJson);
+
+      if (!parsedV4Payload.success && !parsedLegacyPayload.success) {
+        response.statusCode = 400;
+        response.end('Invalid webhook payload');
+        return;
+      }
+
+      const parsedBody = parsedV4Payload.success ? parsedV4Payload.data : parsedLegacyPayload.data;
+      if (!parsedBody) {
         response.statusCode = 400;
         response.end('Invalid webhook payload');
         return;
       }
 
       this.webhookRequests.push({
-        body: parsedPayload.data,
+        body: parsedBody,
         headers: request.headers
       });
 
@@ -151,7 +164,7 @@ export class LiveVoiceRuntimeHarness {
               JSON.stringify({
                 type: 'transcript.partial',
                 sessionId,
-                text: '실시간 PCM 스트림 수신 중',
+                text: 'Streaming PCM frames into Voxera.',
                 isFinal: false
               })
             );
@@ -203,7 +216,7 @@ export class LiveVoiceRuntimeHarness {
             JSON.stringify({
               type: 'transcript.final',
               sessionId: resolvedSessionId,
-              text: '대표님, WSS 런타임 정상 연결 확인 완료.',
+              text: 'Voxera runtime transcript confirmed.',
               isFinal: true,
               pcmFrameCount: sessionPcmFrames,
               stt_provider: 'whisper',
