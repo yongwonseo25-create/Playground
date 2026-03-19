@@ -69,6 +69,15 @@ Before finishing any meaningful task, run:
 If a task changes env validation, security headers, routing, or submission flow, also run:
 - pnpm test:e2e
 
+## V4 Resilience Rules
+- V4 mutable API requests must require `Idempotency-Key` UUID headers at the route entrypoint.
+- V4 ZHI and HITL route handlers must enqueue work and return quickly; do not call Make.com synchronously inside the request path.
+- Store outbound V4 payloads only inside the AES-256 encrypted Redis buffer and keep TTL between 5 and 10 minutes.
+- Delete encrypted Redis payloads immediately after successful delivery or final retry exhaustion.
+- Execution credits must use optimistic locking via the `version` column; do not reintroduce `FOR UPDATE`-based debit flows.
+- Worker retries must use exponential backoff and stay inside the Redis TTL window.
+- Nightly automation and log analysis must read `.runtime/v4-worker.log` and may repair worker/buffer/idempotency issues only; they must not bypass the reducer or the 15-second source of truth.
+
 ## Sprint Memory Rule
 Before starting a sprint or major task:
 1. Read docs/sprint-summary.md

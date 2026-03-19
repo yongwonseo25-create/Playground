@@ -49,10 +49,10 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 ## Current Architecture Snapshot
 
 ### App Structure
-- Status: dual-track V4 foundation active in an isolated ZHI worktree
+- Status: dual-track V4 resilience worktree active with ZHI UI plus ZHI/HITL server lanes
 - Current routing approach: Next.js App Router with route groups
-- Current feature folder approach: shared voice runtime remains centered on `features/voice-capture`, while V4 lane-specific UI lives under `features/v4-zhi`
-- Current UI shell status: destination-first ZHI capture flow is wired to the V4 API and Playwright-verified
+- Current feature folder approach: shared voice runtime remains centered on `features/voice-capture`, while V4 lane-specific orchestration now splits across `server/v4/zhi`, `server/v4/hitl`, and shared resilience infrastructure in `server/v4/shared`
+- Current UI shell status: destination-first ZHI capture flow is Playwright-verified against the async worker path, while HITL is exposed through API routes and direct route tests
 
 ### Voice State Machine
 - Status: implemented and stable
@@ -92,18 +92,20 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Automated routing QA status: a dedicated Playwright stack now boots Next dev plus the standalone WSS server, injects a synthetic microphone with fake media flags, and proves Whisper default versus Return Zero premium routing through captured webhook payloads
 
 ### Submission / Cost Defense
-- Status: live V3 `/api/voice/submit` flow remains intact while the ZHI worktree adds `/api/v4/zhi/*` execution routes
+- Status: live V3 `/api/voice/submit` flow remains intact while V4 mutable routes now require idempotency headers and queue work asynchronously
 - 15-second cutoff status: reducer timer remains the source of truth and auto-stops at the hard limit
 - `clientRequestId` lock status: generated synchronously before async submit begins
-- Duplicate prevention strategy: reducer upload lock gates browser submit attempts, ZHI dispatch deduplicates on `clientRequestId`, and downstream webhook idempotency continues through `X-Idempotency-Key`
+- Duplicate prevention strategy: reducer upload lock gates browser submit attempts, request-entry idempotency middleware caches repeated V4 responses in Redis, domain records still deduplicate on `clientRequestId`, and downstream webhook delivery now carries both `Idempotency-Key` and `X-Idempotency-Key`
 - Cost telemetry status: `stt_provider` and `audio_duration_sec` now flow from the WSS transcript result into `/api/voice/submit` and the downstream webhook payload
 
 ### V4 Orchestration
-- Status: ZHI lane is persisted and executable
+- Status: ZHI and HITL lanes are persisted, buffered, and executed by the shared worker
 - Shared contract status: `src/shared/contracts/v4/common.ts` now owns destination catalog, structured field schema, approval status, and execution-credit contract types
-- Persistence strategy: V4 uses PostgreSQL tables `v4_dispatches`, `v4_approvals`, `v4_execution_credit_accounts`, and `v4_execution_credit_ledger`, with `pg-mem` used only for local test/runtime harnesses
-- Dispatch strategy: `POST /api/v4/zhi/dispatch` validates the request, executes the Make.com webhook, then deducts exactly one execution credit only after webhook success
-- UI routing strategy: `/capture` now renders the destination-first ZHI screen, where Slack and Jira run through the same shared voice state machine without altering the 8 fixed reducer states
+- Persistence strategy: V4 uses PostgreSQL tables `v4_dispatches`, `v4_approvals`, `v4_execution_credit_accounts`, and `v4_execution_credit_ledger`, with a `version` column enabling optimistic credit debits and `pg-mem` used only for local test/runtime harnesses
+- Dispatch strategy: V4 route handlers write the DB record, encrypt the outbound payload into a Redis TTL buffer, enqueue the Redis Stream job, and return in queue-accept mode while the async worker handles Make.com delivery and post-success credit charging
+- Buffer and retry strategy: outbound payloads are stored only as AES-256 encrypted Redis blobs with 5-10 minute TTL, deleted immediately on success, and retried with exponential backoff only while the TTL window remains valid
+- Idempotency strategy: mutable V4 APIs require `Idempotency-Key` UUID headers and replay cached responses from Redis instead of re-running the route body
+- UI routing strategy: `/capture` still renders the destination-first ZHI screen, but its success state now means “queued for resilient execution” rather than “synchronously sent”
 
 ### Mobile UX
 - Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
@@ -839,14 +841,108 @@ Split shared V4 contracts, replace stubbed orchestration with PostgreSQL-backed 
 
 ---
 
+### Sprint 13 - V4 Resilience Worker, Encrypted Buffer, and Exactly-Once Middleware
+- Date: 2026-03-19
+- Status: completed
+
+#### Goal
+Replace synchronous V4 delivery with an async worker architecture, move credit debits to optimistic locking, introduce AES-256 Redis buffering plus idempotent route middleware, and document the nightly worker-log automation path.
+
+#### Files Created
+- `src/app/api/v4/hitl/cards/route.ts`
+- `src/app/api/v4/hitl/queue/route.ts`
+- `src/app/api/v4/hitl/approvals/[approvalId]/route.ts`
+- `src/server/v4/hitl/processor.ts`
+- `src/server/v4/shared/execution-buffer.ts`
+- `src/server/v4/shared/idempotency.ts`
+- `src/server/v4/shared/queue.ts`
+- `src/server/v4/shared/runtime-store.ts`
+- `src/server/v4/shared/worker-log.ts`
+- `src/server/v4/shared/worker.ts`
+- `src/server/v4/zhi/processor.ts`
+- `tests/e2e/v4-hitl-approval.spec.ts`
+
+#### Files Modified
+- `.env.local.example`
+- `AGENTS.md`
+- `agents.mmd`
+- `docs/sprint-summary.md`
+- `package.json`
+- `src/app/(voice)/capture/page.tsx`
+- `src/app/api/v4/zhi/destinations/route.ts`
+- `src/app/api/v4/zhi/dispatch/route.ts`
+- `src/features/v4-zhi/components/v4-zhi-capture-screen.tsx`
+- `src/features/v4-zhi/services/submit-zhi-dispatch.ts`
+- `src/server/reliability/WebhookClient.ts`
+- `src/server/v4/hitl/approval-store.ts`
+- `src/server/v4/hitl/hitl-service.ts`
+- `src/server/v4/shared/env.ts`
+- `src/server/v4/shared/execution-credits.ts`
+- `src/server/v4/shared/migrations/001_v4_orchestration.sql`
+- `src/server/v4/zhi/orchestrator.ts`
+- `src/server/v4/zhi/zhi-repository.ts`
+- `src/shared/contracts/v4/common.ts`
+- `src/shared/contracts/v4/hitl.ts`
+- `src/shared/contracts/v4/zhi.ts`
+- `tests/e2e/v4-zhi-dispatch.spec.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+- `tests/e2e/voice-cutoff-ui.spec.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+- `tests/playwright.config.ts`
+- `tests/playwright.routing.config.ts`
+
+#### Architecture Changes
+- Added a shared runtime store that uses Redis in production and `memory://` only for local test harnesses
+- Added AES-256 encrypted Redis buffering so webhook payloads exist only in short-lived encrypted storage before external delivery
+- Added a Redis Stream-backed async worker path for both ZHI and HITL execution, with `.runtime/v4-worker.log` as the nightly automation analysis target
+- Added route-entry idempotency middleware that caches prior responses in Redis and replays them for identical `Idempotency-Key` requests
+- Added HITL route coverage to the resilience branch so approval queue creation and approve-after-queue flows now share the same worker path
+
+#### State Machine Changes
+- Preserved all 8 constitutional states without renaming or restructuring
+- Preserved the reducer-owned synchronous submit lock while the network path behind that lock changed from direct delivery to queue acceptance
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- Startup fail-fast for invalid public WSS envs remains active by importing `env.client` from the capture entrypoint
+
+#### Submission / Cost Defense Changes
+- Replaced pessimistic credit locking with optimistic compare-and-swap updates on `v4_execution_credit_accounts.version`
+- ZHI dispatch now returns queue acceptance within the request path while the worker performs delivery and post-success credit deduction asynchronously
+- HITL approval execution now enqueues the approved card and deducts the execution credit only after the worker receives a successful Make.com response
+- Duplicate V4 requests now short-circuit through Redis idempotency result replay before route logic runs again
+
+#### Known Risks
+- Production rollout still needs real Redis connectivity plus staging validation for the shared worker cursor behavior under multi-instance load
+- The current worker is process-hosted inside the app runtime for local and single-instance operation; a separate deployable worker process is still advisable before heavy production traffic
+- Nightly automation is now log-ready, but the actual external cron registration still needs to be created in the deployment environment
+
+#### Manual QA
+- [x] `corepack pnpm install --lockfile=false`
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified `POST /api/v4/zhi/dispatch` returns `202 queued`, stays under 200ms in the direct route spec, and delivers the webhook asynchronously
+- [x] Verified `POST /api/v4/hitl/approvals/[approvalId]` returns `202 approved`, executes asynchronously, and replays duplicate approval responses from Redis
+
+#### Next Sprint Prerequisites
+- Provision a staging Redis instance and run the worker/TTL/idempotency path against real infrastructure
+- Split the process-hosted worker into a separately deployable worker service if horizontal web scaling is planned
+- Decide whether the HITL structured-card UI should be reintroduced into `/capture` or live behind a dedicated operator route in this combined resilience branch
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
 - The real WSS backend must match the shared websocket event schema now enforced in the browser runtime
 - Return Zero polling cadence and timeout thresholds still need staging calibration for premium/high-risk override traffic
 - The 1.5-second final-transcript drain window may need tuning against real backend latency
-- The PostgreSQL migration and execution-credit seed path still need one staging smoke run against non-`pg-mem` infrastructure
+- The PostgreSQL migration, Redis buffer, and worker-cursor paths still need one staging smoke run against non-`pg-mem` infrastructure
 - Multi-tenant execution-credit account mapping is not implemented yet for V4
+- The current worker runs in-process and should be separated before heavy multi-instance production traffic
 
 ---
 
@@ -874,6 +970,9 @@ Split shared V4 contracts, replace stubbed orchestration with PostgreSQL-backed 
 - [x] Make.com webhook signature, retry/backoff, timeout circuit breaker, duplicate block, and failure queue replay are mock-server verified
 - [x] V4 shared contracts are centralized under `src/shared/contracts/v4/common.ts`
 - [x] ZHI dispatch deducts one execution credit only after a successful Make.com webhook
+- [x] V4 mutable routes require `Idempotency-Key` and replay cached responses for duplicate requests
+- [x] V4 payloads are buffered only inside the AES-256 Redis TTL layer before delivery
+- [x] HITL approval execution uses the same async worker and encrypted buffer architecture as ZHI
 
 ---
 

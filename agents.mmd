@@ -1,18 +1,21 @@
 flowchart TD
   User["User Voice Command"] --> Router["Destination Router"]
-  Router -->|ZHI lane| ZHI["ZHI Agent\nPermissions: webhook.execute, credits.consume"]
-  Router -->|HITL lane| HITL["HITL Agent\nPermissions: approvals.read, approvals.write, webhook.execute_after_approval, credits.consume_on_approval"]
+  Router --> Idem["Idempotency Middleware\nPermissions: request.cache.read_write"]
+  Idem -->|ZHI lane| ZHI["ZHI Agent\nPermissions: dispatch.write, queue.enqueue"]
+  Idem -->|HITL lane| HITL["HITL Agent\nPermissions: approvals.read_write, queue.enqueue_after_approval"]
 
   ZHI --> Dispatch["/api/v4/zhi/dispatch"]
   HITL --> Cards["/api/v4/hitl/cards"]
   HITL --> Queue["/api/v4/hitl/queue"]
   HITL --> Approvals["/api/v4/hitl/approvals/[approvalId]"]
 
-  Dispatch --> Make["Make.com Webhook"]
-  Approvals --> Make
+  Dispatch --> Buffer["AES-256 Redis TTL Buffer\n5-10 min"]
+  Approvals --> Buffer
+  Buffer --> Stream["Redis Stream Queue"]
+  Stream --> Worker["V4 Async Worker"]
 
-  Dispatch --> Credits["Execution Credit Service"]
-  Approvals --> Credits
+  Worker --> Make["Make.com Webhook"]
+  Worker --> Credits["Optimistic Credit Service\nversion CAS"]
 
   Cards --> ApprovalsTable["v4_approvals (PostgreSQL)"]
   Dispatch --> DispatchTable["v4_dispatches (PostgreSQL)"]
@@ -20,3 +23,6 @@ flowchart TD
 
   Queue --> Operator["Human Approver"]
   Operator --> Approvals
+  Worker --> Logs[".runtime/v4-worker.log"]
+  Nightly["03:00 Nightly Automation"] --> Logs
+  Nightly --> Worker
