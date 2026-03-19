@@ -1,0 +1,22 @@
+flowchart TD
+  User["User Voice Command"] --> Router["Destination Router"]
+  Router -->|ZHI lane| ZHI["ZHI Agent\nPermissions: webhook.execute, credits.consume"]
+  Router -->|HITL lane| HITL["HITL Agent\nPermissions: approvals.read, approvals.write, webhook.execute_after_approval, credits.consume_on_approval"]
+
+  ZHI --> Dispatch["/api/v4/zhi/dispatch"]
+  HITL --> Cards["/api/v4/hitl/cards"]
+  HITL --> Queue["/api/v4/hitl/queue"]
+  HITL --> Approvals["/api/v4/hitl/approvals/[approvalId]"]
+
+  Dispatch --> Make["Make.com Webhook"]
+  Approvals --> Make
+
+  Dispatch --> Credits["Execution Credit Service"]
+  Approvals --> Credits
+
+  Cards --> ApprovalsTable["v4_approvals (PostgreSQL)"]
+  Dispatch --> DispatchTable["v4_dispatches (PostgreSQL)"]
+  Credits --> Ledger["v4_execution_credit_accounts + v4_execution_credit_ledger (PostgreSQL)"]
+
+  Queue --> Operator["Human Approver"]
+  Operator --> Approvals

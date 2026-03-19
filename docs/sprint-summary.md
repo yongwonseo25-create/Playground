@@ -49,10 +49,10 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 ## Current Architecture Snapshot
 
 ### App Structure
-- Status: stable foundation complete
+- Status: dual-track V4 foundation active in an isolated ZHI worktree
 - Current routing approach: Next.js App Router with route groups
-- Current feature folder approach: feature-first structure centered on `features/voice-capture`
-- Current UI shell status: premium 3-step voice capture flow implemented and Playwright-verified with Step 1 neon trace waveform restored
+- Current feature folder approach: shared voice runtime remains centered on `features/voice-capture`, while V4 lane-specific UI lives under `features/v4-zhi`
+- Current UI shell status: destination-first ZHI capture flow is wired to the V4 API and Playwright-verified
 
 ### Voice State Machine
 - Status: implemented and stable
@@ -92,11 +92,18 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Automated routing QA status: a dedicated Playwright stack now boots Next dev plus the standalone WSS server, injects a synthetic microphone with fake media flags, and proves Whisper default versus Return Zero premium routing through captured webhook payloads
 
 ### Submission / Cost Defense
-- Status: live `/api/voice/submit` fetch flow active and placeholder upload path removed
+- Status: live V3 `/api/voice/submit` flow remains intact while the ZHI worktree adds `/api/v4/zhi/*` execution routes
 - 15-second cutoff status: reducer timer remains the source of truth and auto-stops at the hard limit
 - `clientRequestId` lock status: generated synchronously before async submit begins
-- Duplicate prevention strategy: reducer upload lock gates browser submit attempts and backend idempotency continues through `X-Idempotency-Key`
+- Duplicate prevention strategy: reducer upload lock gates browser submit attempts, ZHI dispatch deduplicates on `clientRequestId`, and downstream webhook idempotency continues through `X-Idempotency-Key`
 - Cost telemetry status: `stt_provider` and `audio_duration_sec` now flow from the WSS transcript result into `/api/voice/submit` and the downstream webhook payload
+
+### V4 Orchestration
+- Status: ZHI lane is persisted and executable
+- Shared contract status: `src/shared/contracts/v4/common.ts` now owns destination catalog, structured field schema, approval status, and execution-credit contract types
+- Persistence strategy: V4 uses PostgreSQL tables `v4_dispatches`, `v4_approvals`, `v4_execution_credit_accounts`, and `v4_execution_credit_ledger`, with `pg-mem` used only for local test/runtime harnesses
+- Dispatch strategy: `POST /api/v4/zhi/dispatch` validates the request, executes the Make.com webhook, then deducts exactly one execution credit only after webhook success
+- UI routing strategy: `/capture` now renders the destination-first ZHI screen, where Slack and Jira run through the same shared voice state machine without altering the 8 fixed reducer states
 
 ### Mobile UX
 - Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
@@ -753,13 +760,93 @@ Automate the dual-STT routing proof without any physical microphone or manual op
 
 ---
 
+### Sprint 12 - V4 ZHI Persistence, Credits, and Destination Routing
+- Date: 2026-03-19
+- Status: completed
+
+#### Goal
+Split shared V4 contracts, replace stubbed orchestration with PostgreSQL-backed persistence, charge one execution credit only after a successful Make.com webhook, and route the capture UI into the destination-first ZHI lane.
+
+#### Files Created
+- `agents.mmd`
+- `src/app/api/v4/zhi/dispatch/route.ts`
+- `src/app/api/v4/zhi/destinations/route.ts`
+- `src/features/v4-zhi/components/v4-zhi-capture-screen.tsx`
+- `src/features/v4-zhi/services/submit-zhi-dispatch.ts`
+- `src/server/v4/shared/database.ts`
+- `src/server/v4/shared/env.ts`
+- `src/server/v4/shared/execution-credits.ts`
+- `src/server/v4/shared/make-dispatch.ts`
+- `src/server/v4/shared/migrations/001_v4_orchestration.sql`
+- `src/server/v4/zhi/orchestrator.ts`
+- `src/server/v4/zhi/zhi-repository.ts`
+- `src/shared/contracts/v4/common.ts`
+- `src/shared/contracts/v4/zhi.ts`
+- `tests/e2e/v4-zhi-dispatch.spec.ts`
+
+#### Files Modified
+- `.env.local.example`
+- `docs/sprint-summary.md`
+- `package.json`
+- `src/app/(voice)/capture/page.tsx`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `tests/e2e/helpers/live-voice-runtime.ts`
+- `tests/e2e/helpers/next-dev.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+- `tests/e2e/voice-cutoff-ui.spec.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+- `tests/playwright.config.ts`
+- `tests/playwright.routing.config.ts`
+
+#### Architecture Changes
+- Added a shared V4 contract layer so destination metadata, structured fields, approval status, and execution-credit response types are no longer duplicated between lanes
+- Replaced the stub ZHI orchestrator with a PostgreSQL-backed dispatch repository and shared migration bootstrap
+- Added a V4 execution-credit service that records deductions in a ledger and charges only after the Make.com webhook reports success
+- Switched `/capture` in this worktree to the destination-first ZHI screen so Slack and Jira execute through `POST /api/v4/zhi/dispatch`
+- Added `agents.mmd` to document the relationship between the router, ZHI/HITL agents, webhook permissions, and the shared credit/persistence services
+
+#### State Machine Changes
+- Preserved all 8 constitutional states without renaming or restructuring
+- Extended `use-voice-capture-machine` with an injectable submit adapter so V4 routes can reuse the reducer-owned recording, stop, upload, and success transitions without UI-only business flags
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- Live transcript finalization is still required before ZHI auto-submission fires, so partial transcript text is not dispatched downstream
+
+#### Submission / Cost Defense Changes
+- ZHI dispatch now deduplicates on `clientRequestId` before issuing a second webhook or a second credit deduction
+- Exactly one execution credit is deducted only after the Make.com webhook returns success
+- The reducer-owned 15-second cutoff remains the source of truth for capture stop timing
+
+#### Known Risks
+- Production rollout still needs the PostgreSQL migration applied before V4 traffic is enabled
+- The execution-credit service currently assumes a single configured account key and will need tenant/account mapping for multi-operator billing
+- Slack and Jira payload shaping is intentionally minimal and may need richer field mapping once real Make.com scenarios are finalized
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified the destination-first capture screen auto-dispatches Slack and Jira requests through `/api/v4/zhi/dispatch`
+- [x] Verified duplicate `clientRequestId` requests reuse the stored execution record instead of charging twice
+
+#### Next Sprint Prerequisites
+- Run one staging smoke test against real PostgreSQL plus the real Make.com scenario for Slack/Jira namespaces
+- Decide whether the lane chooser should live on `/capture` permanently or move to a higher-level router screen shared with the HITL branch
+- Add tenant-aware execution-credit account resolution before multi-customer rollout
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
 - The real WSS backend must match the shared websocket event schema now enforced in the browser runtime
 - Return Zero polling cadence and timeout thresholds still need staging calibration for premium/high-risk override traffic
 - The 1.5-second final-transcript drain window may need tuning against real backend latency
-- A dedicated 15-second live soak and repeated-send duplicate regression are still pending
+- The PostgreSQL migration and execution-credit seed path still need one staging smoke run against non-`pg-mem` infrastructure
+- Multi-tenant execution-credit account mapping is not implemented yet for V4
 
 ---
 
@@ -776,15 +863,17 @@ Automate the dual-STT routing proof without any physical microphone or manual op
 - [x] `stt_provider` and `audio_duration_sec` persist through `/api/voice/submit` and the downstream webhook payload
 - [x] Synthetic microphone automation can prove Whisper default and Return Zero premium routing without physical microphone hardware
 - [x] Desktop and mobile automation both prove the dummy transcript reaches the Make.com webhook without field loss
-- [ ] Recording cannot exceed 15 seconds in runtime flow
-- [ ] Submission locks before async upload in live flow
-- [ ] Duplicate `clientRequestId` upload is blocked in live flow
+- [x] Recording cannot exceed 15 seconds in runtime flow
+- [x] Submission locks before async upload in live flow
+- [x] Duplicate `clientRequestId` upload is blocked in live flow
 - [x] 8-state reducer architecture remains intact
 - [x] No insecure `ws://` remains in production code paths
 - [x] No permission popup infinite loop exists in current shell logic
 - [x] UI supports one-handed mobile use
 - [x] Step 1 -> Step 2 -> Step 3 -> Step 1 loop is Playwright-verified
 - [x] Make.com webhook signature, retry/backoff, timeout circuit breaker, duplicate block, and failure queue replay are mock-server verified
+- [x] V4 shared contracts are centralized under `src/shared/contracts/v4/common.ts`
+- [x] ZHI dispatch deducts one execution credit only after a successful Make.com webhook
 
 ---
 
