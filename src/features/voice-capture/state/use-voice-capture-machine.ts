@@ -16,6 +16,19 @@ import {
   initialVoiceCaptureState
 } from '@/features/voice-capture/types/voice-types';
 
+export interface VoiceCaptureSubmitPayload {
+  clientRequestId: string;
+  transcriptText: string;
+  sessionId?: string;
+  pcmFrameCount: number;
+  sttProvider: 'whisper' | 'return-zero';
+  audioDurationSec: number;
+}
+
+export interface UseVoiceCaptureMachineOptions {
+  onSubmit?: (payload: VoiceCaptureSubmitPayload) => Promise<void>;
+}
+
 function createClientRequestId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -32,9 +45,21 @@ async function requestMicrophonePermission(): Promise<void> {
   stream.getTracks().forEach((track) => track.stop());
 }
 
-export function useVoiceCaptureMachine() {
+async function defaultSubmitHandler(payload: VoiceCaptureSubmitPayload): Promise<void> {
+  await submitVoiceCapture({
+    clientRequestId: payload.clientRequestId,
+    transcriptText: payload.transcriptText,
+    sessionId: payload.sessionId,
+    pcmFrameCount: payload.pcmFrameCount,
+    stt_provider: payload.sttProvider,
+    audio_duration_sec: payload.audioDurationSec
+  });
+}
+
+export function useVoiceCaptureMachine(options: UseVoiceCaptureMachineOptions = {}) {
   const [state, dispatch] = useReducer(voiceCaptureReducer, initialVoiceCaptureState);
   const activeSessionRef = useRef<RealtimeVoiceSession | null>(null);
+  const submitHandler = options.onSubmit ?? defaultSubmitHandler;
 
   const handleRuntimeFailure = (error: unknown) => {
     const message = error instanceof Error ? error.message : 'Voice runtime failed.';
@@ -232,13 +257,13 @@ export function useVoiceCaptureMachine() {
         activeSessionRef.current = null;
       }
 
-      await submitVoiceCapture({
+      await submitHandler({
         clientRequestId,
         transcriptText,
         sessionId: state.sessionId ?? snapshot?.sessionId ?? undefined,
         pcmFrameCount: state.pcmFrameCount || snapshot?.pcmFrameCount || 0,
-        stt_provider: snapshot?.sttProvider ?? 'whisper',
-        audio_duration_sec: snapshot?.audioDurationSec ?? 0
+        sttProvider: snapshot?.sttProvider ?? 'whisper',
+        audioDurationSec: snapshot?.audioDurationSec ?? 0
       });
       dispatch({ type: 'UPLOAD_SUCCESS' });
     } catch (error) {

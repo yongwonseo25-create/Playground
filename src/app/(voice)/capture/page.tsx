@@ -1,5 +1,5 @@
-import { VoiceCaptureScreen } from '@/features/voice-capture/components/voice-capture-screen';
+import { V4ZhiCaptureScreen } from '@/features/v4-zhi/components/v4-zhi-capture-screen';
 
 export default function VoiceCapturePage() {
-  return <VoiceCaptureScreen />;
+  return <V4ZhiCaptureScreen />;
 }
