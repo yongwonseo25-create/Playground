@@ -1,6 +1,6 @@
 import '@/shared/config/env.client';
-import { V4ZhiCaptureScreen } from '@/features/v4-zhi/components/v4-zhi-capture-screen';
+import { V4HybridCaptureScreen } from '@/features/v4-hybrid/components/v4-hybrid-capture-screen';
 
 export default function VoiceCapturePage() {
-  return <V4ZhiCaptureScreen />;
+  return <V4HybridCaptureScreen />;
 }

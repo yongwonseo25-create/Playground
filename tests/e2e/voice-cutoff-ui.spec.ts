@@ -1,57 +1,49 @@
 import { expect, test } from '@playwright/test';
 import { LiveVoiceRuntimeHarness } from './helpers/live-voice-runtime';
-import { installSyntheticMicrophone } from './helpers/synthetic-microphone';
 
-test.describe('V4 ZHI cutoff automation', () => {
+test.describe('V4 hybrid HITL flow', () => {
   let harness: LiveVoiceRuntimeHarness;
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async () => {
     harness = new LiveVoiceRuntimeHarness();
     await harness.start();
-    await installSyntheticMicrophone(page);
   });
 
   test.afterEach(async () => {
     await harness.close();
   });
 
-  test('keeps the 15-second cutoff and still queues the destination asynchronously', async ({ page }, testInfo) => {
+  test('opens the Gmail structured card and approves execution through HITL', async ({ page }) => {
     test.setTimeout(90_000);
 
     await page.goto('/capture');
-    await page.getByTestId('destination-slack').click();
+    await page.getByTestId('action-chip-gmail').click();
+    await page
+      .getByTestId('hybrid-text-input')
+      .fill('오늘 미팅 후속 조치 내용을 이메일 초안으로 정리해줘.');
+    await page.getByTestId('generate-structured-card-button').click();
 
-    const micButton = page.getByTestId('voice-mic-button');
-    await expect(micButton).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('recording-card-field-account_name')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('recording-card-field-account_name').fill('Acme Corp');
 
-    const startedAt = Date.now();
-    await micButton.click({ force: true });
-    await expect(micButton).toHaveAttribute('aria-label', 'Stop recording and continue');
-
-    const dispatchResponsePromise = page.waitForResponse(
-      (response) => response.url().includes('/api/v4/zhi/dispatch') && response.request().method() === 'POST'
+    const approvalResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v4/hitl/approvals/') && response.request().method() === 'POST'
     );
 
-    await dispatchResponsePromise;
-    const autoStopMs = Date.now() - startedAt;
+    await page.getByTestId('approve-execute-button').click();
 
-    expect(autoStopMs).toBeGreaterThanOrEqual(14_000);
-    expect(autoStopMs).toBeLessThan(18_500);
-    await expect.poll(() => harness.getTotalPcmFrameCount()).toBeGreaterThan(0);
+    const approvalResponse = await approvalResponsePromise;
+    expect(approvalResponse.status()).toBe(202);
 
-    await expect(page.getByTestId('voice-success-container')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('voice-success-text')).toContainText('Queued for Slack');
+    await expect(page.getByTestId('hitl-approved-status')).toContainText('Approve & Execute queued');
     await expect.poll(() => harness.getWebhookRequests().length).toBe(1);
 
     const webhookRequest = harness.getWebhookRequests()[0];
     expect(webhookRequest?.body).toMatchObject({
-      mode: 'zhi',
-      destinationKey: 'slack'
+      mode: 'hitl',
+      destinationKey: 'crm'
     });
     expect(webhookRequest?.headers['idempotency-key']).toBeTruthy();
-
-    console.log(
-      `[cutoff-ui-evidence] project=${testInfo.project.name} cutoffMs=${autoStopMs} destination=${(webhookRequest?.body as { destinationKey?: string })?.destinationKey}`
-    );
   });
 });

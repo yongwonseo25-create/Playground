@@ -52,7 +52,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Status: dual-track V4 resilience worktree active with ZHI UI plus ZHI/HITL server lanes
 - Current routing approach: Next.js App Router with route groups
 - Current feature folder approach: shared voice runtime remains centered on `features/voice-capture`, while V4 lane-specific orchestration now splits across `server/v4/zhi`, `server/v4/hitl`, and shared resilience infrastructure in `server/v4/shared`
-- Current UI shell status: destination-first ZHI capture flow is Playwright-verified against the async worker path, while HITL is exposed through API routes and direct route tests
+- Current UI shell status: `/capture` now renders a destination-first hybrid shell with four action chips, immediate-text ZHI queueing for Notion/Google Docs, and queue-backed HITL approval cards for KakaoTalk/Gmail
 
 ### Voice State Machine
 - Status: implemented and stable
@@ -106,6 +106,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Buffer and retry strategy: outbound payloads are stored only as AES-256 encrypted Redis blobs with 5-10 minute TTL, deleted immediately on success, and retried with exponential backoff only while the TTL window remains valid
 - Idempotency strategy: mutable V4 APIs require `Idempotency-Key` UUID headers and replay cached responses from Redis instead of re-running the route body
 - UI routing strategy: `/capture` still renders the destination-first ZHI screen, but its success state now means “queued for resilient execution” rather than “synchronously sent”
+- Hybrid UI strategy: the front-end now bridges four branded destinations onto the existing V4 backend lanes by mapping Notion/Google Docs into ZHI dispatch keys and KakaoTalk/Gmail into the shared HITL approval queue, while keeping all voice-runtime guardrails intact in untouched voice-capture modules
 
 ### Mobile UX
 - Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
@@ -934,6 +935,75 @@ Replace synchronous V4 delivery with an async worker architecture, move credit d
 
 ---
 
+### Sprint 14 - Front-End Hybridization for ZHI and HITL
+- Date: 2026-03-19
+- Status: completed
+
+#### Goal
+Port the attached VOXERA UI playbook into an isolated front-end worktree, introduce a Vercel/Linear-inspired token system, and wire `/capture` into both ZHI and HITL APIs using temporary text input plus queue-backed structured approval cards.
+
+#### Files Created
+- `src/components/voxera/action-chip.tsx`
+- `src/components/voxera/recording-card.tsx`
+- `src/features/v4-hybrid/components/v4-hybrid-capture-screen.tsx`
+- `src/features/v4-hybrid/services/v4-hybrid-client.ts`
+- `src/shared/design/design-tokens.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `src/app/(voice)/capture/page.tsx`
+- `src/app/layout.tsx`
+- `src/features/v4-hybrid/components/v4-hybrid-capture-screen.tsx`
+- `src/features/v4-hybrid/services/v4-hybrid-client.ts`
+- `src/shared/styles/globals.css`
+- `tailwind.config.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+- `tests/e2e/voice-cutoff-ui.spec.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+
+#### Architecture Changes
+- Replaced the old `/capture` ZHI-only entry with a hybrid shell that lets operators choose among Notion, KakaoTalk, Gmail, and Google Docs through Framer Motion action chips
+- Added a shared front-end token layer for Linear/Vercel-style dark surfaces, typography, glow shadows, and chip accents without changing the underlying voice runtime modules
+- Added a client-side hybrid API adapter so ZHI cards post to `/api/v4/zhi/dispatch`, while HITL cards create queue items through `/api/v4/hitl/cards`, hydrate the form from `/api/v4/hitl/queue`, and execute only after `POST /api/v4/hitl/approvals/[approvalId]`
+- Reworked Playwright e2e coverage so `/capture` is now verified for ZHI queueing, HITL approval execution, and queue rehydration on both desktop and mobile
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+- Left `features/voice-capture` untouched so the AudioWorklet-driven reducer remains available for the voice-first runtime path
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- The new hybrid UI uses temporary text input only as a front-end orchestration shell and does not weaken the live voice transport rules
+
+#### Submission / Cost Defense Changes
+- No change to the reducer-owned 15-second cutoff or synchronous `clientRequestId` lock in the live voice runtime
+- ZHI temporary-text dispatches still return queue acceptance only, while HITL approvals still deduct execution credits only after the worker receives a successful Make.com response
+- HITL queue reads now send UUID idempotency headers from the client so the existing exactly-once middleware accepts the front-end polling path
+
+#### Known Risks
+- The branded front-end destinations currently bridge onto existing backend keys: Notion -> Jira, Google Docs -> Slack, KakaoTalk/Gmail -> CRM
+- Because the backend HITL card generator still produces CRM-oriented fields, Gmail/KakaoTalk currently reuse that generic structured card schema until dedicated destination contracts are added
+- `/capture` now prioritizes the hybrid text-routing shell; if the live microphone experience must remain the default operator surface, a higher-level router or separate route should be introduced next
+
+#### Manual QA
+- [x] `corepack pnpm install --lockfile=false`
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified Notion queueing reaches `/api/v4/zhi/dispatch` and shows queued worker status on desktop and Pixel 5
+- [x] Verified Gmail HITL flow opens the structured card, approves execution, and sends the worker-managed webhook on desktop and Pixel 5
+- [x] Verified pending HITL cards can be reopened from the queue list after closing the bottom sheet
+
+#### Next Sprint Prerequisites
+- Add dedicated backend destination contracts if Notion, Google Docs, KakaoTalk, and Gmail need their own field schema instead of the current bridge mapping
+- Decide whether the hybrid text shell should coexist with the live mic shell behind a router, tabs, or a dedicated `/capture/voice` surface
+- Run one staging smoke test with real Make.com scenarios for the bridged front-end destinations before enabling production traffic
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
@@ -943,6 +1013,7 @@ Replace synchronous V4 delivery with an async worker architecture, move credit d
 - The PostgreSQL migration, Redis buffer, and worker-cursor paths still need one staging smoke run against non-`pg-mem` infrastructure
 - Multi-tenant execution-credit account mapping is not implemented yet for V4
 - The current worker runs in-process and should be separated before heavy multi-instance production traffic
+- The front-end hybrid shell currently maps branded destinations onto existing backend namespaces rather than dedicated per-destination contracts
 
 ---
 

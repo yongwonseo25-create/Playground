@@ -3,24 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --background: 220 20% 98%;
-  --foreground: 223 22% 12%;
-  --card: 0 0% 100%;
-  --card-foreground: 223 22% 12%;
-  --primary: 199 89% 48%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 218 20% 92%;
-  --secondary-foreground: 223 22% 12%;
-  --muted: 220 18% 94%;
-  --muted-foreground: 222 10% 40%;
-  --accent: 36 100% 88%;
-  --accent-foreground: 30 70% 20%;
+  color-scheme: dark;
+  --background: 0 0% 4%;
+  --foreground: 0 0% 93%;
+  --card: 0 0% 7%;
+  --card-foreground: 0 0% 93%;
+  --primary: 192 92% 68%;
+  --primary-foreground: 0 0% 4%;
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 93%;
+  --muted: 0 0% 9%;
+  --muted-foreground: 0 0% 63%;
+  --accent: 0 0% 10%;
+  --accent-foreground: 0 0% 93%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
-  --border: 220 18% 86%;
-  --input: 220 18% 86%;
-  --ring: 199 89% 48%;
-  --radius: 14px;
+  --border: 0 0% 16%;
+  --input: 0 0% 9%;
+  --ring: 192 92% 68%;
+  --radius: 20px;
 }
 
 * {
@@ -33,10 +34,27 @@ body {
 }
 
 body {
-  @apply antialiased;
-  font-feature-settings: 'ss01' on, 'cv01' on;
-  background-image: radial-gradient(circle at 15% -10%, hsl(199 89% 48% / 0.12), transparent 35%),
-    radial-gradient(circle at 90% 0%, hsl(36 100% 50% / 0.1), transparent 40%);
+  @apply antialiased font-sans;
+  font-feature-settings: 'ss01' on, 'cv01' on, 'ss04' on;
+  background-color: #0a0a0a;
+  background-image:
+    radial-gradient(circle at 12% 0%, rgba(124, 58, 237, 0.08), transparent 24%),
+    radial-gradient(circle at 84% 10%, rgba(76, 132, 255, 0.12), transparent 22%),
+    radial-gradient(circle at 50% 120%, rgba(250, 224, 66, 0.08), transparent 20%),
+    linear-gradient(180deg, #0a0a0a 0%, #0d0d0d 42%, #090909 100%);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(circle at center, black 45%, transparent 100%);
 }
 
 .voxera-scroll {
@@ -59,4 +77,9 @@ body {
 
 .voxera-scroll::-webkit-scrollbar-thumb:hover {
   background: transparent;
+}
+
+.font-display {
+  font-family: var(--font-inter-display), var(--font-geist-sans), sans-serif;
+  font-feature-settings: 'ss04' 1;
 }

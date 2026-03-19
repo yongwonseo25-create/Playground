@@ -1,65 +1,36 @@
 import { expect, test } from '@playwright/test';
 import { LiveVoiceRuntimeHarness } from './helpers/live-voice-runtime';
-import { installSyntheticMicrophone } from './helpers/synthetic-microphone';
 
-test.describe('V4 ZHI runtime live integration', () => {
+test.describe('V4 hybrid queue surface', () => {
   let harness: LiveVoiceRuntimeHarness;
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async () => {
     harness = new LiveVoiceRuntimeHarness();
     await harness.start();
-    await installSyntheticMicrophone(page);
   });
 
   test.afterEach(async () => {
     await harness.close();
   });
 
-  test('streams PCM over WSS and dispatches the V4 ZHI payload', async ({ page }) => {
+  test('hydrates the HITL queue and reopens a pending structured card from the queue list', async ({
+    page
+  }) => {
     await page.goto('/capture');
-    await page.getByTestId('destination-jira').click();
+    await page.getByTestId('action-chip-kakao').click();
+    await page
+      .getByTestId('hybrid-text-input')
+      .fill('카카오톡으로 고객 응답 초안을 준비해줘.');
+    await page.getByTestId('generate-structured-card-button').click();
 
-    const micButton = page.getByTestId('voice-mic-button');
-    await expect(micButton).toBeVisible();
+    await expect(page.getByTestId('recording-card-field-account_name')).toBeVisible({ timeout: 30_000 });
+    await page.mouse.click(12, 12);
 
-    await micButton.click({ force: true });
-    await expect(micButton).toHaveAttribute('aria-label', 'Stop recording and continue');
+    await expect(page.getByTestId('hitl-queue-item').first()).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('hitl-queue-item').first().click();
 
-    const dispatchResponsePromise = page.waitForResponse(
-      (response) => response.url().includes('/api/v4/zhi/dispatch') && response.request().method() === 'POST'
-    );
-
-    await page.waitForTimeout(800);
-    await micButton.click({ force: true });
-
-    const dispatchResponse = await dispatchResponsePromise;
-    const dispatchJson = (await dispatchResponse.json()) as {
-      ok: boolean;
-      status: 'queued' | 'duplicate';
-      destination: { key: string };
-      jobId: string;
-      dispatchState: 'queued' | 'processing' | 'executed' | 'failed';
-    };
-
-    await expect(page.getByTestId('voice-success-container')).toBeVisible({ timeout: 15_000 });
-    await expect.poll(() => harness.getWebhookRequests().length).toBe(1);
-
-    const [startEvent, stopEvent] = harness.getWebSocketEvents();
-    const webhookRequest = harness.getWebhookRequests()[0];
-
-    expect(startEvent?.type).toBe('session.start');
-    expect(stopEvent?.type).toBe('session.stop');
-    expect(dispatchResponse.status()).toBe(202);
-    expect(dispatchJson.ok).toBe(true);
-    expect(dispatchJson.status).toBe('queued');
-    expect(dispatchJson.destination.key).toBe('jira');
-    expect(dispatchJson.jobId).toHaveLength(36);
-    expect(dispatchJson.dispatchState).toBe('queued');
-    expect(webhookRequest?.body).toMatchObject({
-      mode: 'zhi',
-      destinationKey: 'jira',
-      transcriptText: 'Voxera runtime transcript confirmed.'
-    });
-    expect(webhookRequest?.headers['idempotency-key']).toBeTruthy();
+    await expect(page.getByTestId('recording-card-field-account_name')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('recording-card-field-contact_summary')).toContainText('카카오톡');
+    await expect.poll(() => harness.getWebhookRequests().length).toBe(0);
   });
 });
