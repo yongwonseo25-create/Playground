@@ -3,7 +3,6 @@ import {
   v4ApprovalStatusSchema,
   v4DestinationKeySchema,
   v4DestinationSchema,
-  v4ExecutionCreditChargeResultSchema,
   v4StructuredFieldSchema
 } from '@/shared/contracts/v4/common';
 
@@ -28,6 +27,9 @@ export const hitlApprovalCardSchema = z
     fields: z.array(v4StructuredFieldSchema),
     status: v4ApprovalStatusSchema,
     accountKey: z.string().min(1),
+    jobId: z.string().uuid().optional(),
+    retryCount: z.number().int().nonnegative().default(0),
+    lastError: z.string().min(1).optional(),
     createdAt: z.string().datetime(),
     resolvedAt: z.string().datetime().optional(),
     actor: z.string().min(1).optional()
@@ -60,8 +62,10 @@ export const hitlApprovalResponseSchema = z
   .object({
     ok: z.literal(true),
     mode: z.literal('hitl'),
+    status: z.enum(['approved', 'rejected', 'duplicate']),
     approval: hitlApprovalCardSchema,
-    credits: v4ExecutionCreditChargeResultSchema.optional()
+    jobId: z.string().uuid().optional(),
+    idempotencyKey: z.string().uuid().optional()
   })
   .strict();
 

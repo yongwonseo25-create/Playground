@@ -14,12 +14,17 @@ import {
   hitlCardResponseSchema,
   hitlQueueResponseSchema
 } from '@/shared/contracts/v4/hitl';
-import { deliverV4Webhook } from '@/server/v4/shared/make-dispatch';
-import { consumeExecutionCredit } from '@/server/v4/shared/execution-credits';
+import {
+  createExecutionBufferKey,
+  writeExecutionBuffer
+} from '@/server/v4/shared/execution-buffer';
+import { enqueueV4ExecutionJob } from '@/server/v4/shared/queue';
+import { ensureV4WorkerRunning } from '@/server/v4/shared/worker';
 import {
   createPendingApproval,
   getApprovalById,
   listPendingApprovals,
+  queueApprovalExecution,
   updateApproval
 } from '@/server/v4/hitl/approval-store';
 
@@ -133,21 +138,6 @@ export async function resolveHitlApproval(
 
   const nextFields = input.fields.length > 0 ? input.fields : approval.fields;
 
-  if (approval.status === 'executed') {
-    const credits = await consumeExecutionCredit({
-      referenceId: approval.approvalId,
-      accountKey: approval.accountKey,
-      reason: `v4:${approval.destination.key}:approve-execute`
-    });
-
-    return hitlApprovalResponseSchema.parse({
-      ok: true,
-      mode: 'hitl',
-      approval,
-      credits
-    });
-  }
-
   if (input.decision === 'reject') {
     const rejectedApproval = await updateApproval({
       approvalId,
@@ -159,38 +149,60 @@ export async function resolveHitlApproval(
     return hitlApprovalResponseSchema.parse({
       ok: true,
       mode: 'hitl',
+      status: 'rejected',
       approval: rejectedApproval
     });
   }
 
-  await deliverV4Webhook(
-    buildWebhookPayload({
-      approvalId: approval.approvalId,
-      clientRequestId: approval.clientRequestId,
-      destination: approval.destination,
-      transcriptText: approval.transcriptText,
-      fields: nextFields
-    }),
-    approval.clientRequestId
-  );
+  if (approval.status === 'approved' || approval.status === 'processing' || approval.status === 'executed') {
+    return hitlApprovalResponseSchema.parse({
+      ok: true,
+      mode: 'hitl',
+      status: 'duplicate',
+      approval,
+      jobId: approval.jobId,
+      idempotencyKey: approval.jobId ? approval.jobId : undefined
+    });
+  }
 
-  const credits = await consumeExecutionCredit({
-    referenceId: approval.approvalId,
-    accountKey: approval.accountKey,
-    reason: `v4:${approval.destination.key}:approve-execute`
-  });
-
-  const executedApproval = await updateApproval({
-    approvalId,
-    status: 'executed',
-    actor: input.actor,
+  const jobId = crypto.randomUUID();
+  const webhookIdempotencyKey = crypto.randomUUID();
+  const bufferKey = createExecutionBufferKey(approval.approvalId);
+  const payload = buildWebhookPayload({
+    approvalId: approval.approvalId,
+    clientRequestId: approval.clientRequestId,
+    destination: approval.destination,
+    transcriptText: approval.transcriptText,
     fields: nextFields
   });
+  const buffer = await writeExecutionBuffer(bufferKey, payload);
+  const queuedApproval = await queueApprovalExecution({
+    approvalId,
+    actor: input.actor,
+    fields: nextFields,
+    jobId,
+    bufferKey,
+    webhookIdempotencyKey
+  });
+
+  await enqueueV4ExecutionJob({
+    jobId,
+    lane: 'hitl',
+    referenceId: approval.approvalId,
+    bufferKey,
+    webhookIdempotencyKey,
+    accountKey: approval.accountKey,
+    attempts: 0,
+    expiresAt: buffer.expiresAt
+  });
+  ensureV4WorkerRunning();
 
   return hitlApprovalResponseSchema.parse({
     ok: true,
     mode: 'hitl',
-    approval: executedApproval,
-    credits
+    status: 'approved',
+    approval: queuedApproval,
+    jobId,
+    idempotencyKey: webhookIdempotencyKey
   });
 }
