@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard", ui-sans-serif, system-ui, sans-serif;
+  --color-voxera-bg: #000000;
+  --color-voxera-tray: #0d0d12;
+  --color-voxera-card: #16161e;
+  --color-voxera-card-hover: #1f1f2e;
+  --color-voxera-border-tray: rgba(196, 203, 245, 0.15);
+  --color-voxera-border-card: rgba(255, 255, 255, 0.12);
+  --color-voxera-border-active: rgba(196, 203, 245, 0.5);
+  --color-voxera-lilac: #e8e4f2;
+  --color-voxera-lilac-icy: #e4e7f5;
+  --color-voxera-periwinkle: #c4cbf5;
+  --color-voxera-icy-blue: #d0e0ff;
+  --color-voxera-mint: #a7f3d0;
+  --color-voxera-success: #059669;
+}
+
+body {
+  background-color: var(--color-voxera-bg);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar for text review */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  margin: 4px 0;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(196, 203, 245, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.2);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(196, 203, 245, 0.6);
+}

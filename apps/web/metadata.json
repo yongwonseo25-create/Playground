@@ -1,0 +1,5 @@
+{
+  "name": "VOXERA",
+  "description": "A premium voice-to-execution engine that converts spoken intent into structured business action.",
+  "requestFramePermissions": ["microphone"]
+}

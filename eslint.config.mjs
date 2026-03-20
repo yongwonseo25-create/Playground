@@ -1,5 +1,5 @@
-﻿import nextVitals from 'eslint-config-next';
+import nextVitals from 'eslint-config-next';
 
-const config = [...nextVitals, { ignores: ['coverage/**'] }];
+const config = [...nextVitals, { ignores: ['apps/**', 'coverage/**'] }];
 
 export default config;

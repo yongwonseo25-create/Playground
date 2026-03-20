@@ -2,6 +2,7 @@ node_modules
 .next
 out
 dist
+.runtime
 pnpm-lock.yaml
 .env.local
 .env.*.local

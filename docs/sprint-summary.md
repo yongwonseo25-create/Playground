@@ -5,6 +5,13 @@
 > Codex must read this file before starting any new sprint or major coding task.
 > At the end of each sprint, Codex must update this file with the latest architecture, changed files, risks, and next prerequisites.
 
+## Latest Snapshot
+
+- [완료] 구글 AI 스튜디오 기반 _IMPORTED_UI 프론트엔드 이식 완료 (Port 3404)
+- [완료] Service Layer (api.ts) 및 server.ts 용접 완료 (Port 8791)
+- [완료] Make.com 웹훅 payload (sessionId, destination, text) 실증 테스트 성공
+- [Next Action] In-Memory 세션을 Redis/Postgres로 전환 및 Make.com 멱등성 아키텍처 구축
+
 ---
 
 ## Project Identity
@@ -53,6 +60,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Current routing approach: Next.js App Router with route groups
 - Current feature folder approach: shared voice runtime remains centered on `features/voice-capture`, while V4 lane-specific orchestration now splits across `server/v4/zhi`, `server/v4/hitl`, and shared resilience infrastructure in `server/v4/shared`
 - Current UI shell status: `/capture` now renders a destination-first hybrid shell with four action chips, immediate-text ZHI queueing for Notion/Google Docs, and queue-backed HITL approval cards for KakaoTalk/Gmail
+- Current fusion sandbox status: an isolated worktree now hosts a copied Google AI Studio front-end under `apps/web` plus a dedicated Express bridge under `apps/api`, so imported UI experiments do not modify the main Next.js V4 shell
 
 ### Voice State Machine
 - Status: implemented and stable
@@ -111,6 +119,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Consumer UI strategy: `/capture` now renders a centered Apple/Linear-style minimalist shell with a single title, four destination chips, a bottom composer, and a glassmorphism approval sheet instead of dashboard-style operator panels
 - Hybrid UI strategy: the front-end, V4 contracts, and backend lanes now share a 1:1 destination mapping, so queue cards reopen against the correct branded destination rather than a generic CRM fallback
 - Structured output strategy: ZHI resolves Gemini Flash-Lite routing with `minimal/low` thinking caps, HITL resolves Gemini 3.1 Pro routing with `low/medium` caps, and startup warm-up pre-compiles all four destination schemas before the first real API call
+- Fusion bridge strategy: `apps/api/src/server.ts` now exposes `/api/session`, `/api/upload`, `/api/session/:sessionId/events`, `/api/execute`, and `/api/reset`, converting the imported service-layer pattern to the existing Make.com contract while streaming progress back to `apps/web` over SSE
 
 ### Mobile UX
 - Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
@@ -122,6 +131,71 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 ---
 
 ## Sprint Log
+
+---
+
+### Sprint 13 ??Isolated UI Fusion Sandbox
+- Date: 2026-03-20
+- Status: completed in isolated worktree `codex/feature/v4-final-fusion`
+
+#### Goal
+Create a sterile worktree for the imported Google AI Studio UI, copy the delivered front-end into `apps/web` without polluting the core V4 app, and weld its service layer to a local bridge that can drive Make.com plus live processing updates.
+
+#### Files Created
+- `apps/api/.env.local`
+- `apps/api/package.json`
+- `apps/api/tsconfig.json`
+- `apps/api/src/server.ts`
+- `apps/web/.env.local`
+- `apps/web/postcss.config.cjs`
+- `apps/web/src/vite-env.d.ts`
+- `scripts/start-v4-fusion-api.cmd`
+- `scripts/start-v4-fusion-web.cmd`
+- `scripts/start-v4-fusion-stack.cmd`
+- `apps/web/**` imported UI tree copied from `_IMPORTED_UI`
+
+#### Files Modified
+- `apps/web/package.json`
+- `apps/web/src/services/api.ts`
+- `eslint.config.mjs`
+- `tsconfig.json`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a physically isolated fusion sandbox worktree so imported UI work does not alter the main V4 Next.js application
+- Added an Express bridge API that owns imported-session lifecycle, SSE progress streaming, and Make.com execution dispatch
+- Repointed the imported `api.ts` service layer so `startVoiceSession`, `uploadVoiceBlob`, `getProcessingResult`, `sendStructuredOutput`, and `resetSession` hit the local bridge instead of placeholder endpoints
+- Preserved the core V4 backend in `src/**`; the imported UI now runs beside it under `apps/web` instead of replacing it
+
+#### State Machine Changes
+- None to the core 8-state reducer
+- Imported UI flow uses its own local session steps and does not alter the protected V4 voice reducer
+
+#### Audio / Transport Changes
+- Core rule remains unchanged: AudioWorklet + PCM over WSS only for the main product path
+- Imported fusion sandbox currently uses SSE for progress callbacks between `apps/web` and `apps/api`
+- No MediaRecorder fallback was introduced into the protected V4 runtime
+
+#### Submission / Cost Defense Changes
+- Make.com dispatch now accepts `{ sessionId, destination, text }` from the imported UI bridge
+- Webhook requests include `Idempotency-Key` and `X-Idempotency-Key` derived from `sessionId`
+- Core V4 `clientRequestId` locking and billing protections remain untouched in `src/**`
+
+#### Known Risks
+- The imported UI is a Vite app, not a Next.js App Router slice, so it currently lives beside the main app rather than inside it
+- The imported sandbox bridge is in-memory only and is for visual/service integration testing, not production persistence
+- `apps/api/.env.local` contains local webhook configuration and should stay local-only
+
+#### Manual QA
+- [x] Run `apps/api` and confirm `GET /api/health` returns `ok: true`
+- [x] Run `apps/web` and confirm `http://127.0.0.1:3404` returns the imported UI shell
+- [x] Create a session, upload dummy audio metadata, and observe SSE `progress` plus `result` events
+- [x] Execute a Make.com dispatch and confirm `/api/execute` returns `sent: true`
+
+#### Next Sprint Prerequisites
+- Decide whether the imported UI should remain a separate Vite island or be incrementally ported into the main Next.js app
+- Replace the in-memory fusion bridge with shared V4 persistence only if the imported experience is approved
+- Add visual regression coverage once the final destination UX is locked
 
 ---
 
