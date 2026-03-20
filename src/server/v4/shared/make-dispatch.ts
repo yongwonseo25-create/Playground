@@ -29,9 +29,9 @@ function getWebhookClient(): WebhookClient {
 
 export async function deliverV4Webhook(
   payload: V4ExecutionWebhookPayload,
-  idempotencyKey: string
+  transactionId: string
 ): Promise<SendResult> {
   const parsedPayload = v4ExecutionWebhookPayloadSchema.parse(payload);
   const client = getWebhookClient();
-  return client.send(parsedPayload, idempotencyKey);
+  return client.send(parsedPayload, transactionId);
 }

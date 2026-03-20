@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test tests/e2e/env-core.spec.ts tests/e2e/backend-reliability.spec.ts tests/e2e/dual-stt-router.spec.ts tests/e2e/v4-zhi-dispatch.spec.ts tests/e2e/v4-hitl-approval.spec.ts -c tests/playwright.env-core.config.ts",
+    "test": "playwright test tests/e2e/env-core.spec.ts tests/e2e/backend-reliability.spec.ts tests/e2e/dual-stt-router.spec.ts tests/e2e/v4-llm-routing.spec.ts tests/e2e/v4-schema-mapping.spec.ts tests/e2e/v4-zhi-dispatch.spec.ts tests/e2e/v4-hitl-approval.spec.ts tests/e2e/v4-text-inject-e2e.spec.ts -c tests/playwright.env-core.config.ts",
     "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts tests/e2e/voice-runtime-live.spec.ts tests/e2e/voice-cutoff-ui.spec.ts -c tests/playwright.config.ts",
     "test:e2e:routing": "playwright test tests/e2e/voice-stt-routing-live.spec.ts -c tests/playwright.routing.config.ts"
   },

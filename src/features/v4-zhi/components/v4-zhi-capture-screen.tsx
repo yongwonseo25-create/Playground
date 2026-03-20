@@ -256,7 +256,7 @@ export function V4ZhiCaptureScreen() {
                 <p className="mt-6 text-center text-sm leading-6 text-slate-300/72">
                   {selectedDestination
                     ? `${selectedDestination.label} is armed for queue-first zero-human execution.`
-                    : 'Pick Slack or Jira to arm the resilient execution lane.'}
+                    : 'Pick a ZHI destination to arm the resilient execution lane.'}
                 </p>
               </div>
             </motion.section>

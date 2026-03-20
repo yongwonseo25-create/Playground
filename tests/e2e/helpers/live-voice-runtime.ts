@@ -58,7 +58,7 @@ export class LiveVoiceRuntimeHarness {
 
   constructor(options: { websocketPort?: number; webhookPort?: number } = {}) {
     this.websocketPort = options.websocketPort ?? 8787;
-    this.webhookPort = options.webhookPort ?? 8788;
+    this.webhookPort = options.webhookPort ?? 8896;
   }
 
   async start(): Promise<void> {

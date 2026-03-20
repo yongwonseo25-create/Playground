@@ -1,14 +1,20 @@
+import type { V4ThinkingLevel } from '@/shared/contracts/v4/common';
 import { parseServerEnv } from '@/shared/config/env-core';
 
 export interface V4ServerEnv extends ReturnType<typeof parseServerEnv> {
   DATABASE_URL: string;
   REDIS_URL: string;
+  GEMINI_API_KEY?: string;
   V4_EXECUTION_CREDIT_ACCOUNT_KEY: string;
   V4_EXECUTION_CREDIT_INITIAL_BALANCE: number;
   V4_EXECUTION_BUFFER_TTL_SEC: number;
   V4_IDEMPOTENCY_TTL_SEC: number;
   V4_REDIS_ENCRYPTION_KEY: string;
   V4_WORKER_POLL_INTERVAL_MS: number;
+  V4_ZHI_LLM_MODEL: string;
+  V4_ZHI_LLM_THINKING_LEVEL: Extract<V4ThinkingLevel, 'minimal' | 'low'>;
+  V4_HITL_LLM_MODEL: string;
+  V4_HITL_LLM_THINKING_LEVEL: Extract<V4ThinkingLevel, 'low' | 'medium'>;
 }
 
 function required(name: string, value: string | undefined): string {
@@ -73,6 +79,38 @@ function parseBoundedInteger(
   return parsed;
 }
 
+function parseZhiThinkingLevel(
+  value: string | undefined,
+  fallback: Extract<V4ThinkingLevel, 'minimal' | 'low'>
+): Extract<V4ThinkingLevel, 'minimal' | 'low'> {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) {
+    return fallback;
+  }
+
+  if (normalized === 'minimal' || normalized === 'low') {
+    return normalized;
+  }
+
+  throw new Error('[env] V4_ZHI_LLM_THINKING_LEVEL must be "minimal" or "low".');
+}
+
+function parseHitlThinkingLevel(
+  value: string | undefined,
+  fallback: Extract<V4ThinkingLevel, 'low' | 'medium'>
+): Extract<V4ThinkingLevel, 'low' | 'medium'> {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) {
+    return fallback;
+  }
+
+  if (normalized === 'low' || normalized === 'medium') {
+    return normalized;
+  }
+
+  throw new Error('[env] V4_HITL_LLM_THINKING_LEVEL must be "low" or "medium".');
+}
+
 export function getV4ServerEnv(input: Record<string, string | undefined> = process.env): V4ServerEnv {
   const baseEnv = parseServerEnv({
     NEXT_PUBLIC_WSS_URL: input.NEXT_PUBLIC_WSS_URL,
@@ -94,10 +132,23 @@ export function getV4ServerEnv(input: Record<string, string | undefined> = proce
     input.V4_EXECUTION_CREDIT_ACCOUNT_KEY?.trim() ||
     (isLocalLike ? 'local-operator' : required('V4_EXECUTION_CREDIT_ACCOUNT_KEY', undefined));
 
+  const zhiLlmModel =
+    input.V4_ZHI_LLM_MODEL?.trim() ||
+    (isLocalLike ? 'gemini-3.1-flash-lite-preview' : required('V4_ZHI_LLM_MODEL', undefined));
+  const hitlLlmModel =
+    input.V4_HITL_LLM_MODEL?.trim() ||
+    (isLocalLike ? 'gemini-3.1-pro-preview' : required('V4_HITL_LLM_MODEL', undefined));
+  const geminiApiKey = input.GEMINI_API_KEY?.trim() || undefined;
+
+  if (!isLocalLike && !geminiApiKey) {
+    throw new Error('[env] GEMINI_API_KEY is required outside local-like environments.');
+  }
+
   return {
     ...baseEnv,
     DATABASE_URL: databaseUrl,
     REDIS_URL: redisUrl,
+    GEMINI_API_KEY: geminiApiKey,
     V4_EXECUTION_CREDIT_ACCOUNT_KEY: accountKey,
     V4_EXECUTION_CREDIT_INITIAL_BALANCE: parseInteger(
       'V4_EXECUTION_CREDIT_INITIAL_BALANCE',
@@ -127,6 +178,10 @@ export function getV4ServerEnv(input: Record<string, string | undefined> = proce
       250,
       50,
       10_000
-    )
+    ),
+    V4_ZHI_LLM_MODEL: zhiLlmModel,
+    V4_ZHI_LLM_THINKING_LEVEL: parseZhiThinkingLevel(input.V4_ZHI_LLM_THINKING_LEVEL, 'minimal'),
+    V4_HITL_LLM_MODEL: hitlLlmModel,
+    V4_HITL_LLM_THINKING_LEVEL: parseHitlThinkingLevel(input.V4_HITL_LLM_THINKING_LEVEL, 'low')
   };
 }

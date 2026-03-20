@@ -50,8 +50,8 @@ test.describe('V4 ZHI dispatch route', () => {
         },
         body: JSON.stringify({
           clientRequestId,
-          transcriptText: 'Create a Jira follow-up ticket for the onboarding checklist.',
-          destinationKey: 'jira',
+          transcriptText: 'Capture today’s onboarding decisions in Notion and queue the next actions.',
+          destinationKey: 'notion',
           sessionId: 'session-zhi-1',
           sttProvider: 'whisper',
           audioDurationSec: 4.2
@@ -82,7 +82,10 @@ test.describe('V4 ZHI dispatch route', () => {
     expect(mockServer.getRequests()[0]?.headers['x-idempotency-key']).toBeTruthy();
     expect(mockServer.getRequests()[0]?.bodyJson).toMatchObject({
       mode: 'zhi',
-      destinationKey: 'jira'
+      destinationKey: 'notion',
+      structuredPayload: {
+        workspace: 'Operations'
+      }
     });
 
     const cachedDuplicateResponse = await POST(createRequest());

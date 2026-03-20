@@ -47,8 +47,20 @@ test.describe('env-core fail-fast', () => {
       env: {
         NEXT_PUBLIC_APP_ENV: 'local',
         NEXT_PUBLIC_WSS_URL: 'ws://127.0.0.1:8787/voice',
-        MAKE_WEBHOOK_URL: 'http://localhost:8788/webhook',
-        MAKE_WEBHOOK_SECRET: 'env-core-secret'
+        MAKE_WEBHOOK_URL: 'http://localhost:8896/webhook',
+        MAKE_WEBHOOK_SECRET: 'env-core-secret',
+        DATABASE_URL: 'pgmem://env-core-local',
+        REDIS_URL: 'memory://env-core-local',
+        V4_EXECUTION_CREDIT_ACCOUNT_KEY: 'env-core-account',
+        V4_EXECUTION_CREDIT_INITIAL_BALANCE: '4',
+        V4_EXECUTION_BUFFER_TTL_SEC: '600',
+        V4_IDEMPOTENCY_TTL_SEC: '600',
+        V4_REDIS_ENCRYPTION_KEY: '12345678901234567890123456789012',
+        V4_WORKER_POLL_INTERVAL_MS: '50',
+        V4_ZHI_LLM_MODEL: 'gemini-3.1-flash-lite-preview',
+        V4_ZHI_LLM_THINKING_LEVEL: 'minimal',
+        V4_HITL_LLM_MODEL: 'gemini-3.1-pro-preview',
+        V4_HITL_LLM_THINKING_LEVEL: 'low'
       }
     });
 

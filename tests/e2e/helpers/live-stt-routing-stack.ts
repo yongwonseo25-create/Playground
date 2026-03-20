@@ -17,7 +17,7 @@ export class LiveSttRoutingStack {
   private wssProcess: ChildProcessWithoutNullStreams | null = null;
 
   constructor(options: { webhookPort?: number; appBaseUrl?: string } = {}) {
-    this.webhookPort = options.webhookPort ?? 8788;
+    this.webhookPort = options.webhookPort ?? 8896;
     this.appBaseUrl = options.appBaseUrl ?? process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3400';
   }
 

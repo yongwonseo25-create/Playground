@@ -3,9 +3,9 @@ import {
   ackQueuedV4ExecutionJob,
   type V4ExecutionJob,
   promoteDueV4ExecutionRetries,
-  readQueuedV4ExecutionJobs,
-  scheduleV4ExecutionRetry
+  readQueuedV4ExecutionJobs
 } from '@/server/v4/shared/queue';
+import { refundExecutionCreditTransaction } from '@/server/v4/shared/execution-credits';
 import { getV4ServerEnv } from '@/server/v4/shared/env';
 import { logV4WorkerEvent } from '@/server/v4/shared/worker-log';
 import {
@@ -21,19 +21,6 @@ import { processZhiExecutionJob } from '@/server/v4/zhi/processor';
 
 let workerTimer: NodeJS.Timeout | null = null;
 let activeDrain: Promise<number> | null = null;
-
-function computeRetryDelayMs(attempts: number): number {
-  return Math.min(60_000, 1_000 * 2 ** Math.max(0, attempts));
-}
-
-async function markRetryState(job: V4ExecutionJob, errorMessage: string, retryCount: number): Promise<void> {
-  if (job.lane === 'zhi') {
-    await markZhiDispatchQueuedForRetry(job.referenceId, errorMessage, retryCount);
-    return;
-  }
-
-  await markHitlApprovalQueuedForRetry(job.referenceId, errorMessage, retryCount);
-}
 
 async function markFailureState(job: V4ExecutionJob, errorMessage: string, retryCount: number): Promise<void> {
   if (job.lane === 'zhi') {
@@ -92,38 +79,23 @@ export async function drainV4ExecutionWorkerOnce(): Promise<number> {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown V4 worker execution failure.';
         const retryCount = job.attempts + 1;
-        const nextDelayMs = computeRetryDelayMs(job.attempts);
-        const expiresAtMs = Date.parse(job.expiresAt);
-
-        if (Number.isFinite(expiresAtMs) && Date.now() + nextDelayMs < expiresAtMs) {
-          await markRetryState(job, errorMessage, retryCount);
-          await scheduleV4ExecutionRetry(
-            {
-              ...job,
-              attempts: retryCount
-            },
-            Date.now() + nextDelayMs
-          );
-          await logV4WorkerEvent({
-            level: 'error',
-            event: 'job.retry_scheduled',
-            lane: job.lane,
-            jobId: job.jobId,
-            referenceId: job.referenceId,
-            detail: errorMessage
-          });
-        } else {
-          await markFailureState(job, errorMessage, retryCount);
-          await deleteExecutionBuffer(job.bufferKey);
-          await logV4WorkerEvent({
-            level: 'error',
-            event: 'job.failed',
-            lane: job.lane,
-            jobId: job.jobId,
-            referenceId: job.referenceId,
-            detail: errorMessage
-          });
-        }
+        await markFailureState(job, errorMessage, retryCount);
+        await refundExecutionCreditTransaction({
+          transactionId: job.webhookIdempotencyKey,
+          referenceId: job.referenceId,
+          accountKey: job.accountKey,
+          reason: `v4:${job.lane}:refund`,
+          failureReason: errorMessage
+        });
+        await deleteExecutionBuffer(job.bufferKey);
+        await logV4WorkerEvent({
+          level: 'error',
+          event: 'job.failed',
+          lane: job.lane,
+          jobId: job.jobId,
+          referenceId: job.referenceId,
+          detail: errorMessage
+        });
       } finally {
         await ackQueuedV4ExecutionJob(entry.streamId);
       }

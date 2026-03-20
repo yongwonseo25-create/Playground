@@ -4,7 +4,7 @@ import {
   readExecutionBuffer
 } from '@/server/v4/shared/execution-buffer';
 import { type V4ExecutionJob } from '@/server/v4/shared/queue';
-import { consumeExecutionCredit } from '@/server/v4/shared/execution-credits';
+import { completeExecutionCreditTransaction } from '@/server/v4/shared/execution-credits';
 import {
   getApprovalById,
   markHitlApprovalExecuted,
@@ -26,10 +26,11 @@ export async function processHitlExecutionJob(job: V4ExecutionJob): Promise<void
   }
 
   await deliverV4Webhook(payload, job.webhookIdempotencyKey);
-  await consumeExecutionCredit({
+  await completeExecutionCreditTransaction({
+    transactionId: job.webhookIdempotencyKey,
     referenceId: approval.approvalId,
     accountKey: approval.accountKey,
-    reason: `v4:${approval.destination.key}:approve-execute`
+    reason: `v4:${approval.destination.key}:complete`
   });
   await markHitlApprovalExecuted(approval.approvalId);
   await deleteExecutionBuffer(job.bufferKey);

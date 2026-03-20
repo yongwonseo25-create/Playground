@@ -4,6 +4,7 @@ import {
   listV4Destinations,
   type V4ExecutionWebhookPayload
 } from '@/shared/contracts/v4/common';
+import type { V4StructuredPayload } from '@/shared/contracts/v4/schemas';
 import {
   type ZhiDispatchRequest,
   type ZhiDispatchResponse,
@@ -13,7 +14,12 @@ import {
   createExecutionBufferKey,
   writeExecutionBuffer
 } from '@/server/v4/shared/execution-buffer';
+import {
+  refundExecutionCreditTransaction,
+  reserveExecutionCredit
+} from '@/server/v4/shared/execution-credits';
 import { enqueueV4ExecutionJob } from '@/server/v4/shared/queue';
+import { prepareV4StructuredOutput } from '@/server/v4/shared/structured-output';
 import { ensureV4WorkerRunning } from '@/server/v4/shared/worker';
 import {
   createZhiDispatchRecord,
@@ -34,35 +40,11 @@ function assertZhiDestination(destinationKey: string): V4Destination {
   return destination;
 }
 
-function buildStructuredPayload(destination: V4Destination, transcriptText: string): Record<string, unknown> {
-  if (destination.key === 'slack') {
-    return {
-      channel: '#ops-automation',
-      message: transcriptText,
-      source: 'voxera-v4-zhi'
-    };
-  }
-
-  if (destination.key === 'jira') {
-    return {
-      projectKey: 'OPS',
-      issueType: 'Task',
-      summary: transcriptText.slice(0, 120),
-      description: transcriptText,
-      source: 'voxera-v4-zhi'
-    };
-  }
-
-  return {
-    transcriptText
-  };
-}
-
 function buildWebhookPayload(input: {
   executionId: string;
   request: ZhiDispatchRequest;
   destination: V4Destination;
-  structuredPayload: Record<string, unknown>;
+  structuredPayload: V4StructuredPayload;
 }): V4ExecutionWebhookPayload {
   const { executionId, request, destination, structuredPayload } = input;
 
@@ -84,7 +66,6 @@ function buildWebhookPayload(input: {
 
 export async function dispatchZhiCommand(input: ZhiDispatchRequest): Promise<ZhiDispatchResponse> {
   const destination = assertZhiDestination(input.destinationKey);
-  const structuredPayload = buildStructuredPayload(destination, input.transcriptText);
   const existingRecord = await findZhiDispatchByClientRequestId(input.clientRequestId);
 
   if (existingRecord) {
@@ -103,49 +84,71 @@ export async function dispatchZhiCommand(input: ZhiDispatchRequest): Promise<Zhi
 
   const executionId = `zhi_${crypto.randomUUID()}`;
   const jobId = crypto.randomUUID();
-  const webhookIdempotencyKey = crypto.randomUUID();
+  const structuredResult = await prepareV4StructuredOutput({
+    lane: 'zhi',
+    destinationKey: destination.key,
+    transcriptText: input.transcriptText
+  });
   const payload = buildWebhookPayload({
     executionId,
     request: input,
     destination,
-    structuredPayload
+    structuredPayload: structuredResult.payload
   });
-  const bufferKey = createExecutionBufferKey(executionId);
-  const buffer = await writeExecutionBuffer(bufferKey, payload);
-
-  const dispatchRecord = await createZhiDispatchRecord({
-    executionId,
-    jobId,
-    bufferKey,
-    webhookIdempotencyKey,
-    clientRequestId: input.clientRequestId,
-    transcriptText: input.transcriptText,
-    destinationKey: destination.key,
-    structuredPayload,
-    accountKey: input.accountKey
-  });
-
-  await enqueueV4ExecutionJob({
-    jobId,
-    lane: 'zhi',
+  const reservation = await reserveExecutionCredit({
     referenceId: executionId,
-    bufferKey,
-    webhookIdempotencyKey,
-    accountKey: dispatchRecord.accountKey,
-    attempts: 0,
-    expiresAt: buffer.expiresAt
+    destinationKey: destination.key,
+    accountKey: input.accountKey,
+    reason: `v4:${destination.key}:reserve`
   });
-  ensureV4WorkerRunning();
 
-  return zhiDispatchResponseSchema.parse({
-    ok: true,
-    mode: 'zhi',
-    status: 'queued',
-    executionId,
-    jobId,
-    destination,
-    idempotencyKey: webhookIdempotencyKey,
-    queuedAt: dispatchRecord.queuedAt,
-    dispatchState: dispatchRecord.status
-  });
+  try {
+    const bufferKey = createExecutionBufferKey(executionId);
+    const buffer = await writeExecutionBuffer(bufferKey, payload);
+    const dispatchRecord = await createZhiDispatchRecord({
+      executionId,
+      jobId,
+      bufferKey,
+      webhookIdempotencyKey: reservation.transactionId,
+      transactionId: reservation.transactionId,
+      clientRequestId: input.clientRequestId,
+      transcriptText: input.transcriptText,
+      destinationKey: destination.key,
+      structuredPayload: structuredResult.payload,
+      accountKey: input.accountKey
+    });
+
+    await enqueueV4ExecutionJob({
+      jobId,
+      lane: 'zhi',
+      referenceId: executionId,
+      bufferKey,
+      webhookIdempotencyKey: reservation.transactionId,
+      accountKey: dispatchRecord.accountKey,
+      attempts: 0,
+      expiresAt: buffer.expiresAt
+    });
+    ensureV4WorkerRunning();
+
+    return zhiDispatchResponseSchema.parse({
+      ok: true,
+      mode: 'zhi',
+      status: 'queued',
+      executionId,
+      jobId,
+      destination,
+      idempotencyKey: reservation.transactionId,
+      queuedAt: dispatchRecord.queuedAt,
+      dispatchState: dispatchRecord.status
+    });
+  } catch (error) {
+    await refundExecutionCreditTransaction({
+      transactionId: reservation.transactionId,
+      referenceId: executionId,
+      accountKey: reservation.accountKey,
+      reason: `v4:${destination.key}:reserve-refund`,
+      failureReason: error instanceof Error ? error.message : 'Dispatch queue setup failed.'
+    });
+    throw error;
+  }
 }

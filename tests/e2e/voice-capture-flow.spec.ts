@@ -22,7 +22,7 @@ test.describe('V4 hybrid ZHI flow', () => {
     await page.getByTestId('action-chip-notion').click();
     await page
       .getByTestId('hybrid-text-input')
-      .fill('오늘 운영 회의 메모를 정리해서 실행 가능한 액션으로 보내줘.');
+      .fill('Capture the daily ops review in Notion and queue the next actions.');
 
     const dispatchResponsePromise = page.waitForResponse(
       (response) => response.url().includes('/api/v4/zhi/dispatch') && response.request().method() === 'POST'
@@ -39,7 +39,10 @@ test.describe('V4 hybrid ZHI flow', () => {
     const webhookRequest = harness.getWebhookRequests()[0];
     expect(webhookRequest?.body).toMatchObject({
       mode: 'zhi',
-      destinationKey: 'jira'
+      destinationKey: 'notion',
+      structuredPayload: {
+        workspace: 'Operations'
+      }
     });
     expect(webhookRequest?.headers['idempotency-key']).toBeTruthy();
   });

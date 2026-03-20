@@ -46,7 +46,7 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_APP_ENV: 'local',
       NEXT_PUBLIC_WSS_URL: 'ws://127.0.0.1:8787/voice-session',
-      MAKE_WEBHOOK_URL: process.env.MAKE_WEBHOOK_URL ?? 'http://127.0.0.1:8788/webhook',
+      MAKE_WEBHOOK_URL: process.env.MAKE_WEBHOOK_URL ?? 'http://127.0.0.1:8896/webhook',
       MAKE_WEBHOOK_SECRET: process.env.MAKE_WEBHOOK_SECRET ?? 'voxera-local-secret',
       DATABASE_URL: process.env.DATABASE_URL ?? 'pgmem://voxera-zhi-routing',
       REDIS_URL: process.env.REDIS_URL ?? 'memory://voxera-zhi-routing',
@@ -58,7 +58,12 @@ export default defineConfig({
       V4_IDEMPOTENCY_TTL_SEC: process.env.V4_IDEMPOTENCY_TTL_SEC ?? '600',
       V4_REDIS_ENCRYPTION_KEY:
         process.env.V4_REDIS_ENCRYPTION_KEY ?? 'voxera-local-v4-resilience',
-      V4_WORKER_POLL_INTERVAL_MS: process.env.V4_WORKER_POLL_INTERVAL_MS ?? '150'
+      V4_WORKER_POLL_INTERVAL_MS: process.env.V4_WORKER_POLL_INTERVAL_MS ?? '150',
+      GEMINI_API_KEY: '',
+      V4_ZHI_LLM_MODEL: process.env.V4_ZHI_LLM_MODEL ?? 'gemini-3.1-flash-lite-preview',
+      V4_ZHI_LLM_THINKING_LEVEL: process.env.V4_ZHI_LLM_THINKING_LEVEL ?? 'minimal',
+      V4_HITL_LLM_MODEL: process.env.V4_HITL_LLM_MODEL ?? 'gemini-3.1-pro-preview',
+      V4_HITL_LLM_THINKING_LEVEL: process.env.V4_HITL_LLM_THINKING_LEVEL ?? 'low'
     }
   }
 });

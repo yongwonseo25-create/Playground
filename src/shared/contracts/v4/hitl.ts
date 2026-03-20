@@ -28,6 +28,7 @@ export const hitlApprovalCardSchema = z
     status: v4ApprovalStatusSchema,
     accountKey: z.string().min(1),
     jobId: z.string().uuid().optional(),
+    transactionId: z.string().uuid().optional(),
     retryCount: z.number().int().nonnegative().default(0),
     lastError: z.string().min(1).optional(),
     createdAt: z.string().datetime(),

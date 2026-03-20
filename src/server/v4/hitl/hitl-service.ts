@@ -5,6 +5,10 @@ import {
   type V4StructuredField
 } from '@/shared/contracts/v4/common';
 import {
+  buildStructuredFieldsForDestination,
+  buildStructuredPayloadFromFields
+} from '@/shared/contracts/v4/schemas';
+import {
   type HitlApprovalRequest,
   type HitlApprovalResponse,
   type HitlCardRequest,
@@ -18,7 +22,12 @@ import {
   createExecutionBufferKey,
   writeExecutionBuffer
 } from '@/server/v4/shared/execution-buffer';
+import {
+  reserveExecutionCredit,
+  refundExecutionCreditTransaction
+} from '@/server/v4/shared/execution-credits';
 import { enqueueV4ExecutionJob } from '@/server/v4/shared/queue';
+import { prepareV4StructuredOutput } from '@/server/v4/shared/structured-output';
 import { ensureV4WorkerRunning } from '@/server/v4/shared/worker';
 import {
   createPendingApproval,
@@ -38,51 +47,6 @@ function assertHitlDestination(destinationKey: string): V4Destination {
   return destination;
 }
 
-function buildStructuredFields(destination: V4Destination, transcriptText: string): V4StructuredField[] {
-  if (destination.key === 'crm') {
-    return [
-      {
-        key: 'account_name',
-        label: 'Account Name',
-        value: '',
-        kind: 'text',
-        required: true,
-        placeholder: 'Acme Corp'
-      },
-      {
-        key: 'contact_summary',
-        label: 'Contact Summary',
-        value: transcriptText.slice(0, 240),
-        kind: 'textarea',
-        required: true,
-        placeholder: 'Summarize the customer intent'
-      },
-      {
-        key: 'next_action',
-        label: 'Next Action',
-        value: 'Follow up within 24 hours',
-        kind: 'text',
-        required: true,
-        placeholder: 'Define the operator action'
-      }
-    ];
-  }
-
-  return [
-    {
-      key: 'summary',
-      label: 'Summary',
-      value: transcriptText,
-      kind: 'textarea',
-      required: true
-    }
-  ];
-}
-
-function fieldsToPayload(fields: V4StructuredField[]): Record<string, string> {
-  return Object.fromEntries(fields.map((field) => [field.key, field.value]));
-}
-
 function buildWebhookPayload(input: {
   approvalId: string;
   clientRequestId: string;
@@ -98,7 +62,7 @@ function buildWebhookPayload(input: {
     destinationLabel: input.destination.label,
     transcriptText: input.transcriptText,
     structuredFields: input.fields,
-    structuredPayload: fieldsToPayload(input.fields),
+    structuredPayload: buildStructuredPayloadFromFields(input.destination.key, input.fields),
     sttProvider: 'whisper',
     audioDurationSec: 0,
     executedAt: new Date().toISOString()
@@ -107,9 +71,14 @@ function buildWebhookPayload(input: {
 
 export async function createHitlApprovalCard(input: HitlCardRequest): Promise<HitlCardResponse> {
   const destination = assertHitlDestination(input.destinationKey);
+  const structuredResult = await prepareV4StructuredOutput({
+    lane: 'hitl',
+    destinationKey: destination.key,
+    transcriptText: input.transcriptText
+  });
   const approval = await createPendingApproval({
     ...input,
-    fields: buildStructuredFields(destination, input.transcriptText)
+    fields: buildStructuredFieldsForDestination(destination.key, structuredResult.payload)
   });
 
   return hitlCardResponseSchema.parse({
@@ -161,48 +130,68 @@ export async function resolveHitlApproval(
       status: 'duplicate',
       approval,
       jobId: approval.jobId,
-      idempotencyKey: approval.jobId ? approval.jobId : undefined
+      idempotencyKey: approval.transactionId ?? approval.jobId ?? undefined
     });
   }
 
   const jobId = crypto.randomUUID();
-  const webhookIdempotencyKey = crypto.randomUUID();
+  const normalizedPayload = buildStructuredPayloadFromFields(approval.destination.key, nextFields);
+  const normalizedFields = buildStructuredFieldsForDestination(approval.destination.key, normalizedPayload);
   const bufferKey = createExecutionBufferKey(approval.approvalId);
   const payload = buildWebhookPayload({
     approvalId: approval.approvalId,
     clientRequestId: approval.clientRequestId,
     destination: approval.destination,
     transcriptText: approval.transcriptText,
-    fields: nextFields
+    fields: normalizedFields
   });
-  const buffer = await writeExecutionBuffer(bufferKey, payload);
-  const queuedApproval = await queueApprovalExecution({
-    approvalId,
-    actor: input.actor,
-    fields: nextFields,
-    jobId,
-    bufferKey,
-    webhookIdempotencyKey
-  });
-
-  await enqueueV4ExecutionJob({
-    jobId,
-    lane: 'hitl',
+  const reservation = await reserveExecutionCredit({
     referenceId: approval.approvalId,
-    bufferKey,
-    webhookIdempotencyKey,
+    destinationKey: approval.destination.key,
     accountKey: approval.accountKey,
-    attempts: 0,
-    expiresAt: buffer.expiresAt
+    reason: `v4:${approval.destination.key}:reserve`
   });
-  ensureV4WorkerRunning();
 
-  return hitlApprovalResponseSchema.parse({
-    ok: true,
-    mode: 'hitl',
-    status: 'approved',
-    approval: queuedApproval,
-    jobId,
-    idempotencyKey: webhookIdempotencyKey
-  });
+  try {
+    const buffer = await writeExecutionBuffer(bufferKey, payload);
+    const queuedApproval = await queueApprovalExecution({
+      approvalId,
+      actor: input.actor,
+      fields: normalizedFields,
+      jobId,
+      bufferKey,
+      webhookIdempotencyKey: reservation.transactionId,
+      transactionId: reservation.transactionId
+    });
+
+    await enqueueV4ExecutionJob({
+      jobId,
+      lane: 'hitl',
+      referenceId: approval.approvalId,
+      bufferKey,
+      webhookIdempotencyKey: reservation.transactionId,
+      accountKey: approval.accountKey,
+      attempts: 0,
+      expiresAt: buffer.expiresAt
+    });
+    ensureV4WorkerRunning();
+
+    return hitlApprovalResponseSchema.parse({
+      ok: true,
+      mode: 'hitl',
+      status: 'approved',
+      approval: queuedApproval,
+      jobId,
+      idempotencyKey: reservation.transactionId
+    });
+  } catch (error) {
+    await refundExecutionCreditTransaction({
+      transactionId: reservation.transactionId,
+      referenceId: approval.approvalId,
+      accountKey: approval.accountKey,
+      reason: `v4:${approval.destination.key}:reserve-refund`,
+      failureReason: error instanceof Error ? error.message : 'Approval queue setup failed.'
+    });
+    throw error;
+  }
 }

@@ -49,8 +49,8 @@ test.describe('V4 HITL approval route', () => {
         },
         body: JSON.stringify({
           clientRequestId: crypto.randomUUID(),
-          transcriptText: 'Create a CRM follow-up card for the renewal meeting.',
-          destinationKey: 'crm',
+          transcriptText: 'Draft a Gmail follow-up for the renewal meeting and ask for next steps.',
+          destinationKey: 'gmail',
           sessionId: 'session-hitl-1'
         })
       })
@@ -58,7 +58,17 @@ test.describe('V4 HITL approval route', () => {
 
     const createdJson = (await createResponse.json()) as {
       ok: boolean;
-      approval: { approvalId: string; status: string };
+      approval: {
+        approvalId: string;
+        status: string;
+        fields: Array<{
+          key: string;
+          label: string;
+          value: string;
+          kind: 'text' | 'textarea';
+          required: boolean;
+        }>;
+      };
     };
 
     expect(createResponse.status).toBe(201);
@@ -82,6 +92,14 @@ test.describe('V4 HITL approval route', () => {
 
     const approvalId = createdJson.approval.approvalId;
     const approvalRequestKey = crypto.randomUUID();
+    const approvedFields = createdJson.approval.fields.map((field) =>
+      field.key === 'to'
+        ? {
+            ...field,
+            value: 'team@example.com'
+          }
+        : field
+    );
     const approveResponse = await approveCard(
       new Request(`http://localhost/api/v4/hitl/approvals/${approvalId}`, {
         method: 'POST',
@@ -92,15 +110,7 @@ test.describe('V4 HITL approval route', () => {
         body: JSON.stringify({
           decision: 'approve',
           actor: 'qa-operator',
-          fields: [
-            {
-              key: 'account_name',
-              label: 'Account Name',
-              value: 'Acme Corp',
-              kind: 'text',
-              required: true
-            }
-          ]
+          fields: approvedFields
         })
       }),
       {
@@ -123,7 +133,10 @@ test.describe('V4 HITL approval route', () => {
     await expect.poll(() => mockServer.getRequests().length).toBe(1);
     expect(mockServer.getRequests()[0]?.bodyJson).toMatchObject({
       mode: 'hitl',
-      destinationKey: 'crm'
+      destinationKey: 'gmail',
+      structuredPayload: {
+        to: 'team@example.com'
+      }
     });
     expect(mockServer.getRequests()[0]?.headers['idempotency-key']).toBeTruthy();
 

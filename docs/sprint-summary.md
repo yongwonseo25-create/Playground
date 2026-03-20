@@ -100,13 +100,17 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 
 ### V4 Orchestration
 - Status: ZHI and HITL lanes are persisted, buffered, and executed by the shared worker
-- Shared contract status: `src/shared/contracts/v4/common.ts` now owns destination catalog, structured field schema, approval status, and execution-credit contract types
-- Persistence strategy: V4 uses PostgreSQL tables `v4_dispatches`, `v4_approvals`, `v4_execution_credit_accounts`, and `v4_execution_credit_ledger`, with a `version` column enabling optimistic credit debits and `pg-mem` used only for local test/runtime harnesses
-- Dispatch strategy: V4 route handlers write the DB record, encrypt the outbound payload into a Redis TTL buffer, enqueue the Redis Stream job, and return in queue-accept mode while the async worker handles Make.com delivery and post-success credit charging
+- Shared contract status: `src/shared/contracts/v4/common.ts` now owns the four first-class destination keys (Notion, Google Docs, Gmail, KakaoTalk), approval status, and execution-credit contract types, while `src/shared/contracts/v4/schemas/*` owns the per-destination JSON schema validators
+- Persistence strategy: V4 uses PostgreSQL tables `v4_dispatches`, `v4_approvals`, `v4_execution_credit_accounts`, `v4_execution_credit_transactions`, and `v4_execution_credit_ledger`, with `credit_transaction_id` cross-links on dispatch/approval rows, optimistic account versioning, and `pg-mem` used only for local test/runtime harnesses
+- Dispatch strategy: V4 route handlers now reserve one execution credit as a `pending` transaction before queueing, write the DB record plus transaction reference, encrypt the outbound payload into a Redis TTL buffer, enqueue the Redis Stream job, and return in queue-accept mode while the async worker handles Make.com delivery
+- Settlement strategy: the worker sends Make.com with `Idempotency-Key` and `X-Idempotency-Key` both set to the DB `transaction_id`, marks the transaction `completed` only after a `200 OK`, and issues an immediate refund transaction when terminal delivery failure occurs
 - Buffer and retry strategy: outbound payloads are stored only as AES-256 encrypted Redis blobs with 5-10 minute TTL, deleted immediately on success, and retried with exponential backoff only while the TTL window remains valid
-- Idempotency strategy: mutable V4 APIs require `Idempotency-Key` UUID headers and replay cached responses from Redis instead of re-running the route body
-- UI routing strategy: `/capture` still renders the destination-first ZHI screen, but its success state now means “queued for resilient execution” rather than “synchronously sent”
-- Hybrid UI strategy: the front-end now bridges four branded destinations onto the existing V4 backend lanes by mapping Notion/Google Docs into ZHI dispatch keys and KakaoTalk/Gmail into the shared HITL approval queue, while keeping all voice-runtime guardrails intact in untouched voice-capture modules
+- Idempotency strategy: mutable V4 APIs require `Idempotency-Key` UUID headers and replay cached responses from Redis instead of re-running the route body, while `/api/v4/e2e/text-inject` reuses the same middleware for terminal-driven exactly-once verification
+- UI routing strategy: `/capture` keeps the destination-first hybrid shell, but ZHI now routes directly to Notion/Google Docs schemas and HITL now routes directly to Gmail/KakaoTalk schemas with no `jira/slack/crm` bridge layer
+- Local inspection strategy: `/capture` now surfaces an explicit memo-mode banner by default, so VS Code and localhost reviews can bypass microphone prompts and exercise the text-injection shell immediately
+- Consumer UI strategy: `/capture` now renders a centered Apple/Linear-style minimalist shell with a single title, four destination chips, a bottom composer, and a glassmorphism approval sheet instead of dashboard-style operator panels
+- Hybrid UI strategy: the front-end, V4 contracts, and backend lanes now share a 1:1 destination mapping, so queue cards reopen against the correct branded destination rather than a generic CRM fallback
+- Structured output strategy: ZHI resolves Gemini Flash-Lite routing with `minimal/low` thinking caps, HITL resolves Gemini 3.1 Pro routing with `low/medium` caps, and startup warm-up pre-compiles all four destination schemas before the first real API call
 
 ### Mobile UX
 - Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
@@ -1004,6 +1008,265 @@ Port the attached VOXERA UI playbook into an isolated front-end worktree, introd
 
 ---
 
+### Sprint 15 - LLM Routing and Destination Schema Mapping
+- Date: 2026-03-20
+- Status: completed
+
+#### Goal
+Replace the temporary `jira/slack/crm` bridge with first-class Notion, Google Docs, Gmail, and KakaoTalk contracts, add lane-specific Gemini routing policy, and pre-warm structured-output schemas at server startup.
+
+#### Files Created
+- `instrumentation.ts`
+- `src/server/v4/shared/llm-routing.ts`
+- `src/server/v4/shared/structured-output.ts`
+- `src/server/v4/shared/warm-up-job.ts`
+- `src/shared/contracts/v4/schemas/common.ts`
+- `src/shared/contracts/v4/schemas/notion.ts`
+- `src/shared/contracts/v4/schemas/google-docs.ts`
+- `src/shared/contracts/v4/schemas/gmail.ts`
+- `src/shared/contracts/v4/schemas/kakaotalk.ts`
+- `src/shared/contracts/v4/schemas/index.ts`
+- `tests/e2e/v4-llm-routing.spec.ts`
+- `tests/e2e/v4-schema-mapping.spec.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `package.json`
+- `src/features/v4-hybrid/components/v4-hybrid-capture-screen.tsx`
+- `src/features/v4-zhi/components/v4-zhi-capture-screen.tsx`
+- `src/server/v4/hitl/hitl-service.ts`
+- `src/server/v4/shared/env.ts`
+- `src/server/v4/zhi/orchestrator.ts`
+- `src/shared/contracts/v4/common.ts`
+- `tests/e2e/v4-hitl-approval.spec.ts`
+- `tests/e2e/v4-zhi-dispatch.spec.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+- `tests/e2e/voice-cutoff-ui.spec.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+- `tests/playwright.config.ts`
+- `tests/playwright.routing.config.ts`
+
+#### Architecture Changes
+- Added lane-specific Gemini routing policy so ZHI resolves Flash-Lite with bounded low-thinking settings and HITL resolves Gemini 3.1 Pro with capped higher-fidelity thinking settings
+- Added four dedicated destination schema modules that now drive fallback payload generation, validation, field rendering, and approval normalization
+- Removed the front-end destination bridge so the hybrid UI and backend share the same destination keys end-to-end
+- Added startup schema warm-up through `instrumentation.ts`, which now logs warmed destinations before the first real API call
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- The destination-first hybrid shell still leaves the live voice runtime modules untouched
+
+#### Submission / Cost Defense Changes
+- `clientRequestId` locking and V4 idempotency headers remain the first guard before async work begins
+- HITL approval payloads now re-validate against their destination schema before queueing execution, preventing malformed card edits from reaching the worker
+- Warm-up confirmed the first `POST /api/v4/hitl/cards` request returned `201` with `ttft=0.492321` after startup schema priming
+
+#### Known Risks
+- Local and test environments currently use deterministic fallback structured output because no live `GEMINI_API_KEY` is injected there
+- Production should pin the exact Gemini Flash-Lite model identifier through env if Google changes preview naming
+- Real Make.com scenario validation for the four new destination payload shapes still needs one staging smoke run
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified `tests/e2e/v4-llm-routing.spec.ts` proves ZHI/HITL model names and bounded thinking levels are sourced from env
+- [x] Verified `tests/e2e/v4-schema-mapping.spec.ts` proves all four destination validators pass with dummy text and round-trip HITL fields back into their structured payloads
+- [x] Verified local `next dev` startup logs `[v4-warmup] Structured output schemas warmed: notion, google_docs, gmail, kakaotalk`
+- [x] Verified first `curl` hit to `POST /api/v4/hitl/cards` returned `status=201 ttft=0.492321`
+
+#### Next Sprint Prerequisites
+- Inject real `GEMINI_API_KEY` plus staging model IDs and run one live structured-output smoke test per destination
+- Decide whether ZHI webhook payloads should include explicit LLM route metadata for downstream observability
+- Add operator-facing enum controls if Gmail/KakaoTalk fields should stop using free-form text inputs for bounded values
+
+---
+
+### Sprint 16 - Make.com Saga Settlement and Terminal Exactly-Once E2E
+- Date: 2026-03-20
+- Status: completed
+
+#### Goal
+Prove that the V4 hybrid engine can reserve, settle, or refund execution credits against the real Make.com webhook contract, and add a terminal-driven text injection path that verifies exactly-once processing without going through the front-end.
+
+#### Files Created
+- `src/app/api/v4/e2e/text-inject/route.ts`
+- `tests/e2e/v4-text-inject-e2e.spec.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `package.json`
+- `src/server/v4/hitl/approval-store.ts`
+- `src/server/v4/hitl/hitl-service.ts`
+- `src/server/v4/hitl/processor.ts`
+- `src/server/v4/shared/execution-credits.ts`
+- `src/server/v4/shared/make-dispatch.ts`
+- `src/server/v4/shared/migrations/001_v4_orchestration.sql`
+- `src/server/v4/shared/worker.ts`
+- `src/server/v4/zhi/orchestrator.ts`
+- `src/server/v4/zhi/processor.ts`
+- `src/server/v4/zhi/zhi-repository.ts`
+- `src/shared/contracts/v4/hitl.ts`
+- `tests/e2e/v4-hitl-approval.spec.ts`
+- `tests/e2e/v4-zhi-dispatch.spec.ts`
+
+#### Architecture Changes
+- Added `v4_execution_credit_transactions` as the source of truth for reservation and settlement, and linked dispatch/approval records back to the owning transaction id
+- Moved execution credit handling to a Saga-style flow: reserve on request acceptance, complete only after webhook success, refund immediately when delivery fails terminally
+- Bound outbound Make.com idempotency headers to the DB transaction id so downstream duplicate suppression and internal settlement reference the same immutable key
+- Added `POST /api/v4/e2e/text-inject` so terminal-driven curl tests can exercise both ZHI and HITL lanes through the same idempotency middleware and worker path as the UI
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- The new text-injection route is a testing ingress only and does not change the live microphone transport path
+
+#### Submission / Cost Defense Changes
+- `clientRequestId` locking and V4 idempotency headers remain the first guard before async work begins
+- Each accepted execution now creates a `pending` credit transaction before queueing and reuses that transaction id as the outbound `X-Idempotency-Key`
+- Worker-side completion finalizes the reserved debit only after `200 OK`, while terminal webhook failure issues a compensating refund that restores the account balance
+
+#### Known Risks
+- Real Make.com endpoint injection is supported through `MAKE_WEBHOOK_URL`, but this sprint's proof used the signed local mock receiver because no live endpoint was configured in the workspace
+- The worker still retries transport failures inline before refunding, so production backoff policy should be staged against the real Make.com latency envelope
+- Multi-tenant execution-credit account routing is still not implemented
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified `tests/e2e/v4-text-inject-e2e.spec.ts` proves a duplicate `Idempotency-Key` request returns the cached response and emits exactly one webhook
+- [x] Verified the outbound webhook carries `X-Idempotency-Key = transaction_id`
+- [x] Verified a terminal `500` from the webhook receiver changes the credit transaction to `refunded` and restores the account balance
+
+#### Next Sprint Prerequisites
+- Point `MAKE_WEBHOOK_URL` at a staging Make.com scenario and rerun the terminal injection smoke test against real infrastructure
+- Decide whether worker retry counts should remain transport-level or move into a queue-visible dead-letter policy
+- Add tenant/account resolution so the reservation saga can debit the correct balance per customer
+
+---
+
+### Sprint 17 - VS Code Memo-Mode Launch for Visual Inspection
+- Date: 2026-03-20
+- Status: completed
+
+#### Goal
+Make the hybrid V4 UI easy to inspect inside VS Code by defaulting the visual shell to memo-mode semantics, adding a local `.env.local`, and launching the localhost stack with a loopback webhook receiver.
+
+#### Files Created
+- `.env.local`
+- `.runtime/start-v4-ui-dev.ps1`
+- `.runtime/start-vscode-ui-webhook.ps1`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `src/features/v4-hybrid/components/v4-hybrid-capture-screen.tsx`
+
+#### Architecture Changes
+- Added a local-only launch profile that points `MAKE_WEBHOOK_URL` at a loopback receiver and sets safe default V4 env values for UI review
+- Added an explicit memo-mode badge/banner so `/capture` communicates that this route is using the text shell and not requesting microphone access
+- Kept the underlying ZHI/HITL routing unchanged, so Notion and Google Docs still queue immediately while Gmail and KakaoTalk still require structured approval
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- The localhost review route intentionally bypasses microphone interaction in the UI layer only; it does not weaken the live voice runtime modules
+
+#### Submission / Cost Defense Changes
+- No change to the reducer-owned 15-second cutoff or synchronous `clientRequestId` lock
+- Memo-mode launch still routes through the same V4 APIs and idempotency middleware as the prior hybrid shell
+
+#### Known Risks
+- `.env.local` currently uses a loopback webhook and placeholder `GEMINI_API_KEY` because no real secrets were present in the workspace
+- VS Code command-URI handling can vary by desktop state; the localhost route is up, but panel focus may still depend on the active editor instance
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] Verified `http://127.0.0.1:3402/capture` returns `200`
+- [x] Verified the rendered HTML contains the memo-mode banner text
+- [x] Triggered `vscode://command/simpleBrowser.show?[\"http://127.0.0.1:3402/capture\"]` from the local VS Code CLI
+
+#### Next Sprint Prerequisites
+- Replace the loopback webhook in `.env.local` with the real staging or Make.com endpoint when secrets are available
+- Decide whether the memo-mode badge should remain permanent or hide behind a local-only flag after commander review
+
+---
+
+### Sprint 18 - Consumer Minimal UI Replacement
+- Date: 2026-03-20
+- Status: completed
+
+#### Goal
+Replace the dashboard-like hybrid surface with a true consumer-facing minimalist UI while keeping the ZHI/HITL execution flow, queue rehydration, and approval card behavior intact.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `src/components/voxera/action-chip.tsx`
+- `src/components/voxera/recording-card.tsx`
+- `src/features/v4-hybrid/components/v4-hybrid-capture-screen.tsx`
+- `tests/e2e/env-core.spec.ts`
+- `tests/e2e/helpers/live-stt-routing-stack.ts`
+- `tests/e2e/helpers/live-voice-runtime.ts`
+- `tests/e2e/v4-llm-routing.spec.ts`
+- `tests/e2e/v4-schema-mapping.spec.ts`
+- `tests/playwright.config.ts`
+- `tests/playwright.routing.config.ts`
+
+#### Architecture Changes
+- Removed the visible dashboard copy and split-pane queue panel from `/capture`
+- Rebuilt the surface around a single centered title, four minimal destination chips, a bottom composer, and floating queue pills for reopening pending HITL drafts
+- Redesigned the structured approval card as a wider glassmorphism sheet with softer inputs and minimal chrome
+- Re-separated Playwright webhook ports from the live local preview port so browser E2E and commander preview no longer compete for the same loopback listener
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- The consumer UI still uses memo-mode for this route only and does not alter the live voice runtime modules
+
+#### Submission / Cost Defense Changes
+- No change to the reducer-owned 15-second cutoff or synchronous `clientRequestId` lock
+- Notion/Google Docs still route through the immediate ZHI path and Gmail/KakaoTalk still route through the approval-first HITL path
+
+#### Known Risks
+- The local commander preview still uses real `.env.local` values, so consumer UI interaction can hit the configured Make.com webhook
+- The pending-pill layout is intentionally minimal and may need another spacing pass if more than a few HITL drafts accumulate at once
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified `http://127.0.0.1:3402/capture` returns `200` and includes the title plus all four destination labels
+
+#### Next Sprint Prerequisites
+- Decide whether the pending draft pills should remain visible for end users or collapse behind a subtle history affordance
+- Run one visual pass on real devices to tune bottom-composer spacing for smaller mobile heights
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
@@ -1013,7 +1276,10 @@ Port the attached VOXERA UI playbook into an isolated front-end worktree, introd
 - The PostgreSQL migration, Redis buffer, and worker-cursor paths still need one staging smoke run against non-`pg-mem` infrastructure
 - Multi-tenant execution-credit account mapping is not implemented yet for V4
 - The current worker runs in-process and should be separated before heavy multi-instance production traffic
-- The front-end hybrid shell currently maps branded destinations onto existing backend namespaces rather than dedicated per-destination contracts
+- Local/test structured output still runs on deterministic fallback unless a real `GEMINI_API_KEY` is injected
+- The new transaction-backed settlement path still needs one staging run against a live Make.com endpoint before production cutover
+- The VS Code localhost launch profile currently relies on loopback webhook + placeholder LLM secrets until real local credentials are supplied
+- The live commander preview now points at the configured real Make.com webhook, so manual button taps execute against that external endpoint
 
 ---
 
@@ -1044,6 +1310,8 @@ Port the attached VOXERA UI playbook into an isolated front-end worktree, introd
 - [x] V4 mutable routes require `Idempotency-Key` and replay cached responses for duplicate requests
 - [x] V4 payloads are buffered only inside the AES-256 Redis TTL layer before delivery
 - [x] HITL approval execution uses the same async worker and encrypted buffer architecture as ZHI
+- [x] V4 execution credits now transition through `pending -> completed/refunded` instead of charging inline
+- [x] Duplicate terminal text-injection requests with the same idempotency key emit exactly one webhook and replay the cached API result
 
 ---
 

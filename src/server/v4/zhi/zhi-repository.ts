@@ -11,6 +11,7 @@ type ZhiDispatchRow = {
   job_id: string;
   buffer_key: string;
   webhook_idempotency_key: string;
+  credit_transaction_id: string | null;
   retry_count: number;
   last_error: string | null;
   account_key: string;
@@ -39,6 +40,7 @@ export interface ZhiDispatchRecord {
   jobId: string;
   bufferKey: string;
   webhookIdempotencyKey: string;
+  transactionId: string | null;
   retryCount: number;
   lastError: string | null;
   accountKey: string;
@@ -60,6 +62,7 @@ function mapZhiDispatchRecord(row: ZhiDispatchRow): ZhiDispatchRecord {
     jobId: row.job_id,
     bufferKey: row.buffer_key,
     webhookIdempotencyKey: row.webhook_idempotency_key,
+    transactionId: row.credit_transaction_id,
     retryCount: row.retry_count,
     lastError: row.last_error,
     accountKey: row.account_key,
@@ -85,6 +88,7 @@ export async function findZhiDispatchByClientRequestId(
              job_id,
              buffer_key,
              webhook_idempotency_key,
+             credit_transaction_id,
              retry_count,
              last_error,
              account_key,
@@ -116,6 +120,7 @@ export async function findZhiDispatchByExecutionId(
              job_id,
              buffer_key,
              webhook_idempotency_key,
+             credit_transaction_id,
              retry_count,
              last_error,
              account_key,
@@ -138,6 +143,7 @@ export async function createZhiDispatchRecord(input: {
   jobId: string;
   bufferKey: string;
   webhookIdempotencyKey: string;
+  transactionId: string;
   clientRequestId: string;
   destinationKey: string;
   transcriptText: string;
@@ -157,9 +163,10 @@ export async function createZhiDispatchRecord(input: {
         job_id,
         buffer_key,
         webhook_idempotency_key,
+        credit_transaction_id,
         account_key
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING execution_id,
                 client_request_id,
                 destination_key,
@@ -169,6 +176,7 @@ export async function createZhiDispatchRecord(input: {
                 job_id,
                 buffer_key,
                 webhook_idempotency_key,
+                credit_transaction_id,
                 retry_count,
                 last_error,
                 account_key,
@@ -188,6 +196,7 @@ export async function createZhiDispatchRecord(input: {
       input.jobId,
       input.bufferKey,
       input.webhookIdempotencyKey,
+      input.transactionId,
       accountKey
     ]
   );

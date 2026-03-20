@@ -13,6 +13,7 @@ type HitlApprovalRow = {
   job_id: string | null;
   buffer_key: string | null;
   webhook_idempotency_key: string | null;
+  credit_transaction_id: string | null;
   retry_count: number;
   last_error: string | null;
   actor: string | null;
@@ -45,6 +46,7 @@ function mapHitlApprovalCard(row: HitlApprovalRow): HitlApprovalCard {
     status: row.status,
     accountKey: row.account_key,
     jobId: row.job_id ?? undefined,
+    transactionId: row.credit_transaction_id ?? undefined,
     retryCount: row.retry_count,
     lastError: row.last_error ?? undefined,
     createdAt: toIsoString(row.created_at) ?? new Date().toISOString(),
@@ -63,6 +65,7 @@ const approvalSelect = `
          job_id,
          buffer_key,
          webhook_idempotency_key,
+         credit_transaction_id,
          retry_count,
          last_error,
          actor,
@@ -120,6 +123,7 @@ export async function createPendingApproval(
                 job_id,
                 buffer_key,
                 webhook_idempotency_key,
+                credit_transaction_id,
                 retry_count,
                 last_error,
                 actor,
@@ -190,6 +194,7 @@ export async function updateApproval(input: {
                 job_id,
                 buffer_key,
                 webhook_idempotency_key,
+                credit_transaction_id,
                 retry_count,
                 last_error,
                 actor,
@@ -211,6 +216,7 @@ export async function queueApprovalExecution(input: {
   jobId: string;
   bufferKey: string;
   webhookIdempotencyKey: string;
+  transactionId: string;
 }): Promise<HitlApprovalCard> {
   const result = await queryV4<HitlApprovalRow>(
     `
@@ -221,6 +227,7 @@ export async function queueApprovalExecution(input: {
           job_id = $4,
           buffer_key = $5,
           webhook_idempotency_key = $6,
+          credit_transaction_id = $7,
           retry_count = 0,
           last_error = NULL,
           updated_at = NOW()
@@ -234,6 +241,7 @@ export async function queueApprovalExecution(input: {
                 job_id,
                 buffer_key,
                 webhook_idempotency_key,
+                credit_transaction_id,
                 retry_count,
                 last_error,
                 actor,
@@ -248,7 +256,8 @@ export async function queueApprovalExecution(input: {
       input.actor,
       input.jobId,
       input.bufferKey,
-      input.webhookIdempotencyKey
+      input.webhookIdempotencyKey,
+      input.transactionId
     ]
   );
 

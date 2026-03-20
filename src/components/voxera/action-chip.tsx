@@ -40,10 +40,12 @@ export function ActionChip({
       whileTap={disabled ? undefined : { scale: 0.985 }}
       transition={voxeraTokens.motion.spring}
       className={cn(
-        'group relative overflow-hidden rounded-[22px] border bg-bg-surface px-4 py-4 text-left',
+        'group relative overflow-hidden rounded-full border bg-white/[0.04] px-5 py-3.5 text-left backdrop-blur-xl',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0',
         'disabled:cursor-not-allowed disabled:opacity-50',
-        selected ? 'border-transparent' : 'border-stroke hover:border-stroke-hover'
+        selected
+          ? 'border-transparent bg-white/[0.1]'
+          : 'border-white/10 hover:border-white/18 hover:bg-white/[0.07]'
       )}
       style={{
         boxShadow: selected ? chipTone.glowShadow : undefined,
@@ -61,22 +63,21 @@ export function ActionChip({
         }}
       />
 
-      <div className="relative z-10 flex items-start gap-3">
+      <div className="relative z-10 flex items-center gap-3">
         <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.08]"
           style={{ color: chipTone.accent }}
         >
-          <Icon className="h-5 w-5" />
+          <Icon className="h-4 w-4" />
         </span>
 
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-display text-base font-medium text-text-primary">{label}</p>
-            <span className="rounded-full border border-stroke bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-text-secondary">
-              {modeLabel}
-            </span>
-          </div>
-          <p className="mt-2 text-sm leading-6 text-text-secondary">{description}</p>
+          <p className="font-display text-sm font-medium tracking-[-0.02em] text-text-primary sm:text-[15px]">
+            {label}
+          </p>
+          <p className="sr-only">
+            {description} {modeLabel}
+          </p>
         </div>
       </div>
     </motion.button>

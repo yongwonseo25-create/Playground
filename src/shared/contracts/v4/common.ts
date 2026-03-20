@@ -3,7 +3,15 @@ import { z } from 'zod';
 export const v4ExecutionModeSchema = z.enum(['zhi', 'hitl']);
 export type V4ExecutionMode = z.infer<typeof v4ExecutionModeSchema>;
 
-export const v4DestinationKeySchema = z.enum(['slack', 'jira', 'crm']);
+export const v4ThinkingLevelSchema = z.enum(['minimal', 'low', 'medium']);
+export type V4ThinkingLevel = z.infer<typeof v4ThinkingLevelSchema>;
+
+export const v4DestinationKeySchema = z.enum([
+  'notion',
+  'google_docs',
+  'gmail',
+  'kakaotalk'
+]);
 export type V4DestinationKey = z.infer<typeof v4DestinationKeySchema>;
 
 export const v4StructuredFieldKindSchema = z.enum(['text', 'textarea']);
@@ -40,7 +48,7 @@ export const v4DestinationSchema = z
     mode: v4ExecutionModeSchema,
     requiresApproval: z.boolean(),
     description: z.string().trim().min(1).max(280),
-    accent: z.enum(['cyan', 'amber', 'emerald']),
+    accent: z.enum(['slate', 'cyan', 'amber', 'emerald']),
     makeNamespace: z.string().trim().min(1).max(64)
   })
   .strict();
@@ -49,31 +57,40 @@ export type V4Destination = z.infer<typeof v4DestinationSchema>;
 
 export const v4DestinationCatalog = z.array(v4DestinationSchema).parse([
   {
-    key: 'slack',
-    label: 'Slack',
+    key: 'notion',
+    label: 'Notion',
     mode: 'zhi',
     requiresApproval: false,
-    description: 'Speak once and push the action straight into the team channel.',
+    description: 'Structure the voice request into a queue-ready Notion page payload.',
+    accent: 'slate',
+    makeNamespace: 'notion_page'
+  },
+  {
+    key: 'google_docs',
+    label: 'Google Docs',
+    mode: 'zhi',
+    requiresApproval: false,
+    description: 'Prepare a Google Docs draft payload for immediate resilient execution.',
     accent: 'cyan',
-    makeNamespace: 'slack_message'
+    makeNamespace: 'google_docs_draft'
   },
   {
-    key: 'jira',
-    label: 'Jira',
-    mode: 'zhi',
-    requiresApproval: false,
-    description: 'Turn the captured request into an execution ticket immediately.',
-    accent: 'amber',
-    makeNamespace: 'jira_issue'
-  },
-  {
-    key: 'crm',
-    label: 'CRM',
+    key: 'gmail',
+    label: 'Gmail',
     mode: 'hitl',
     requiresApproval: true,
-    description: 'Draft a structured customer card, review it, then approve execution.',
+    description: 'Draft a reviewable email card, then approve the outbound execution.',
+    accent: 'amber',
+    makeNamespace: 'gmail_draft'
+  },
+  {
+    key: 'kakaotalk',
+    label: 'KakaoTalk',
+    mode: 'hitl',
+    requiresApproval: true,
+    description: 'Generate a structured KakaoTalk card, review it, then approve delivery.',
     accent: 'emerald',
-    makeNamespace: 'crm_record'
+    makeNamespace: 'kakaotalk_message'
   }
 ]);
 

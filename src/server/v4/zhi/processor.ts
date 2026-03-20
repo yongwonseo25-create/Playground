@@ -4,7 +4,7 @@ import {
   readExecutionBuffer
 } from '@/server/v4/shared/execution-buffer';
 import { type V4ExecutionJob } from '@/server/v4/shared/queue';
-import { consumeExecutionCredit } from '@/server/v4/shared/execution-credits';
+import { completeExecutionCreditTransaction } from '@/server/v4/shared/execution-credits';
 import {
   findZhiDispatchByExecutionId,
   markZhiDispatchExecuted,
@@ -26,10 +26,11 @@ export async function processZhiExecutionJob(job: V4ExecutionJob): Promise<void>
   }
 
   await deliverV4Webhook(payload, job.webhookIdempotencyKey);
-  await consumeExecutionCredit({
+  await completeExecutionCreditTransaction({
+    transactionId: job.webhookIdempotencyKey,
     referenceId: dispatch.executionId,
     accountKey: dispatch.accountKey,
-    reason: `v4:${dispatch.destinationKey}:execute`
+    reason: `v4:${dispatch.destinationKey}:complete`
   });
   await markZhiDispatchExecuted(dispatch.executionId);
   await deleteExecutionBuffer(job.bufferKey);

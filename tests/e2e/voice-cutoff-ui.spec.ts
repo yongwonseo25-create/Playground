@@ -20,11 +20,11 @@ test.describe('V4 hybrid HITL flow', () => {
     await page.getByTestId('action-chip-gmail').click();
     await page
       .getByTestId('hybrid-text-input')
-      .fill('오늘 미팅 후속 조치 내용을 이메일 초안으로 정리해줘.');
+      .fill('Draft a Gmail follow-up and keep it pending for approval.');
     await page.getByTestId('generate-structured-card-button').click();
 
-    await expect(page.getByTestId('recording-card-field-account_name')).toBeVisible({ timeout: 30_000 });
-    await page.getByTestId('recording-card-field-account_name').fill('Acme Corp');
+    await expect(page.getByTestId('recording-card-field-to')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('recording-card-field-to').fill('team@example.com');
 
     const approvalResponsePromise = page.waitForResponse(
       (response) =>
@@ -42,7 +42,10 @@ test.describe('V4 hybrid HITL flow', () => {
     const webhookRequest = harness.getWebhookRequests()[0];
     expect(webhookRequest?.body).toMatchObject({
       mode: 'hitl',
-      destinationKey: 'crm'
+      destinationKey: 'gmail',
+      structuredPayload: {
+        to: 'team@example.com'
+      }
     });
     expect(webhookRequest?.headers['idempotency-key']).toBeTruthy();
   });
