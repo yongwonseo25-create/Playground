@@ -23,6 +23,30 @@ function createClientRequestId(): string {
   return `voxera-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function resolveSubmitTargets(): {
+  spreadsheetId?: string;
+  slackChannelId?: string;
+  notionDatabaseId?: string;
+  notionParentPageId?: string;
+} {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const pick = (key: string) => {
+    const value = searchParams.get(key)?.trim();
+    return value && value.length > 0 ? value : undefined;
+  };
+
+  return {
+    spreadsheetId: pick('spreadsheetId'),
+    slackChannelId: pick('slackChannelId'),
+    notionDatabaseId: pick('notionDatabaseId'),
+    notionParentPageId: pick('notionParentPageId')
+  };
+}
+
 async function requestMicrophonePermission(): Promise<void> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('This browser does not support microphone capture.');
@@ -221,6 +245,7 @@ export function useVoiceCaptureMachine() {
     }
 
     const clientRequestId = createClientRequestId();
+    const submitTargets = resolveSubmitTargets();
     dispatch({ type: 'LOCK_SUBMISSION', clientRequestId });
 
     try {
@@ -235,6 +260,10 @@ export function useVoiceCaptureMachine() {
       await submitVoiceCapture({
         clientRequestId,
         transcriptText,
+        spreadsheetId: submitTargets.spreadsheetId,
+        slackChannelId: submitTargets.slackChannelId,
+        notionDatabaseId: submitTargets.notionDatabaseId,
+        notionParentPageId: submitTargets.notionParentPageId,
         sessionId: state.sessionId ?? snapshot?.sessionId ?? undefined,
         pcmFrameCount: state.pcmFrameCount || snapshot?.pcmFrameCount || 0,
         stt_provider: snapshot?.sttProvider ?? 'whisper',

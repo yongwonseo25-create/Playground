@@ -1,0 +1,138 @@
+<svg width="1600" height="1120" viewBox="0 0 1600 1120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#9CB2CC" flood-opacity="0.14"/>
+    </filter>
+    <linearGradient id="pageBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F8FBFF"/>
+      <stop offset="100%" stop-color="#FFF9F4"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="1120" fill="url(#pageBg)"/>
+  <rect x="44" y="36" width="1512" height="1048" rx="34" fill="#FFFFFF" filter="url(#shadow)"/>
+
+  <text x="110" y="118" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="38" font-weight="800" fill="#22324A">
+    VOXERA 실행 대시보드
+  </text>
+
+  <g filter="url(#shadow)">
+    <rect x="1194" y="78" width="108" height="44" rx="16" fill="#EAFBF5" stroke="#9BE3C2" stroke-width="2"/>
+    <text x="1248" y="100" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="16" font-weight="700" fill="#1F6B4A">
+      받은 음성함
+    </text>
+
+    <rect x="1316" y="78" width="108" height="44" rx="16" fill="#FFF5E9" stroke="#FFCA99" stroke-width="2"/>
+    <text x="1370" y="100" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="16" font-weight="700" fill="#8B5314">
+      실행 보드
+    </text>
+
+    <rect x="1438" y="78" width="94" height="44" rx="16" fill="#F4F0FF" stroke="#CDB9FF" stroke-width="2"/>
+    <text x="1485" y="100" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="16" font-weight="700" fill="#5F3EA1">
+      가이드
+    </text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="96" y="168" width="316" height="124" rx="28" fill="#EAF6FF" stroke="#CBEAFF" stroke-width="2"/>
+    <text x="254" y="214" text-anchor="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="23" font-weight="700" fill="#28507D">검토할 음성</text>
+    <text x="254" y="264" text-anchor="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="42" font-weight="800" fill="#28507D">12</text>
+
+    <rect x="440" y="168" width="316" height="124" rx="28" fill="#FFF6E7" stroke="#FFE0B8" stroke-width="2"/>
+    <text x="598" y="214" text-anchor="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="23" font-weight="700" fill="#8A5A18">진행 중 업무</text>
+    <text x="598" y="264" text-anchor="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="42" font-weight="800" fill="#8A5A18">7</text>
+
+    <rect x="784" y="168" width="316" height="124" rx="28" fill="#FFF0F6" stroke="#FFD4E2" stroke-width="2"/>
+    <text x="942" y="214" text-anchor="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="23" font-weight="700" fill="#A53D73">오늘 마감</text>
+    <text x="942" y="264" text-anchor="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="42" font-weight="800" fill="#A53D73">3</text>
+
+    <rect x="1128" y="168" width="316" height="124" rx="28" fill="#ECFBF1" stroke="#CFEFDA" stroke-width="2"/>
+    <text x="1286" y="214" text-anchor="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="23" font-weight="700" fill="#19683D">완료한 업무</text>
+    <text x="1286" y="264" text-anchor="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="42" font-weight="800" fill="#19683D">18</text>
+  </g>
+
+  <text x="112" y="352" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="30" font-weight="800" fill="#205E47">
+    받은 음성함
+  </text>
+  <text x="976" y="352" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="30" font-weight="800" fill="#8A5316">
+    실행 보드
+  </text>
+
+  <g filter="url(#shadow)">
+    <rect x="92" y="378" width="604" height="478" rx="30" fill="#FFFFFF" stroke="#BEEFD3" stroke-width="2"/>
+    <rect x="904" y="378" width="604" height="478" rx="30" fill="#FFFFFF" stroke="#FFD7B0" stroke-width="2"/>
+
+    <rect x="126" y="430" width="536" height="74" rx="22" fill="#F7FCFF" stroke="#D6EEFF" stroke-width="2"/>
+    <text x="156" y="458" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="700" fill="#7B93AE">한 줄 요약</text>
+    <text x="156" y="487" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="22" font-weight="800" fill="#22324A">금요일까지 간략 보고서 초안 작성</text>
+
+    <rect x="126" y="522" width="260" height="70" rx="20" fill="#F7FCFF" stroke="#D6EEFF" stroke-width="2"/>
+    <text x="156" y="549" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="700" fill="#7B93AE">말한 사람</text>
+    <text x="156" y="578" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="20" font-weight="800" fill="#22324A">대표님</text>
+
+    <rect x="402" y="522" width="260" height="70" rx="20" fill="#F7FCFF" stroke="#D6EEFF" stroke-width="2"/>
+    <text x="432" y="549" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="700" fill="#7B93AE">우선순위 / 마감일</text>
+    <text x="432" y="578" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="20" font-weight="800" fill="#22324A">높음 · 2026-03-21</text>
+
+    <rect x="126" y="610" width="536" height="178" rx="22" fill="#F7FCFF" stroke="#D6EEFF" stroke-width="2"/>
+    <text x="156" y="640" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="700" fill="#7B93AE">linked database 미리보기</text>
+    <line x1="156" y1="664" x2="632" y2="664" stroke="#DCEAF8" stroke-width="2"/>
+    <text x="156" y="700" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="17" font-weight="700" fill="#22324A">제안서 수정본 검토</text>
+    <text x="544" y="700" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="16" font-weight="700" fill="#205E47">검토전</text>
+    <line x1="156" y1="722" x2="632" y2="722" stroke="#EDF5FC" stroke-width="2"/>
+    <text x="156" y="758" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="17" font-weight="700" fill="#22324A">회의 후속 연락 정리</text>
+    <text x="530" y="758" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="16" font-weight="700" fill="#A53D73">오늘 마감</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <line x1="716" y1="612" x2="884" y2="612" stroke="#F0BD68" stroke-width="5" stroke-linecap="round"/>
+    <rect x="736" y="580" width="128" height="64" rx="999" fill="#FFF4DE" stroke="#EFBA63" stroke-width="2"/>
+    <text x="800" y="612" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="22" font-weight="800" fill="#8B5A10">
+      실행 전환
+    </text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="938" y="430" width="536" height="74" rx="22" fill="#FFF9F2" stroke="#FFE1C2" stroke-width="2"/>
+    <text x="968" y="458" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="700" fill="#B28657">할 일</text>
+    <text x="968" y="487" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="22" font-weight="800" fill="#22324A">금요일까지 간략 보고서 초안 작성</text>
+
+    <rect x="938" y="522" width="164" height="70" rx="20" fill="#FFF9F2" stroke="#FFE1C2" stroke-width="2"/>
+    <text x="966" y="549" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="700" fill="#B28657">담당자</text>
+    <text x="966" y="578" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="19" font-weight="800" fill="#22324A">대표자명</text>
+
+    <rect x="1124" y="522" width="140" height="70" rx="20" fill="#FFF9F2" stroke="#FFE1C2" stroke-width="2"/>
+    <text x="1152" y="549" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="700" fill="#B28657">상태</text>
+    <text x="1152" y="578" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="19" font-weight="800" fill="#22324A">해야함</text>
+
+    <rect x="1286" y="522" width="188" height="70" rx="20" fill="#FFF9F2" stroke="#FFE1C2" stroke-width="2"/>
+    <text x="1314" y="549" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="700" fill="#B28657">마감일</text>
+    <text x="1314" y="578" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="19" font-weight="800" fill="#22324A">2026-03-21</text>
+
+    <rect x="938" y="610" width="536" height="178" rx="22" fill="#FFF9F2" stroke="#FFE1C2" stroke-width="2"/>
+    <text x="968" y="640" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="700" fill="#B28657">linked database 미리보기</text>
+    <line x1="968" y1="664" x2="1444" y2="664" stroke="#F5E8D8" stroke-width="2"/>
+    <text x="968" y="700" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="17" font-weight="700" fill="#22324A">제안서 수정안 공유</text>
+    <text x="1366" y="700" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="16" font-weight="700" fill="#19683D">진행중</text>
+    <line x1="968" y1="722" x2="1444" y2="722" stroke="#FBF2E7" stroke-width="2"/>
+    <text x="968" y="758" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="17" font-weight="700" fill="#22324A">후속 검토 미팅 정리</text>
+    <text x="1368" y="758" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="16" font-weight="700" fill="#28507D">문서 열기</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="96" y="914" width="430" height="84" rx="26" fill="#EAFBF5" stroke="#9BE3C2" stroke-width="2"/>
+    <text x="311" y="956" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="22" font-weight="800" fill="#1F6B4A">
+      받은 음성함 열기
+    </text>
+
+    <rect x="584" y="914" width="430" height="84" rx="26" fill="#FFF5E9" stroke="#FFCA99" stroke-width="2"/>
+    <text x="799" y="956" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="22" font-weight="800" fill="#8B5314">
+      실행 보드 열기
+    </text>
+
+    <rect x="1072" y="914" width="372" height="84" rx="26" fill="#F4F0FF" stroke="#CDB9FF" stroke-width="2"/>
+    <text x="1258" y="956" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="22" font-weight="800" fill="#5F3EA1">
+      실행 가이드
+    </text>
+  </g>
+</svg>

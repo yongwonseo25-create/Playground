@@ -62,6 +62,8 @@ test.describe('backend reliability', () => {
     const payload = {
       clientRequestId: 'req-backoff',
       transcriptText: '대표님 오늘 할 일 정리해줘',
+      notionDatabaseId: 'notion-db-backoff',
+      notionParentPageId: 'notion-page-backoff',
       sessionId: 'session-backoff',
       pcmFrameCount: 24_000
     };
@@ -148,7 +150,8 @@ test.describe('backend reliability', () => {
 
     const payload = {
       clientRequestId: 'queue-replay-key',
-      transcriptText: '실패 큐에 적재 후 재시도'
+      transcriptText: '실패 큐에 적재 후 재시도',
+      notionDatabaseId: 'notion-db-queue'
     };
 
     await expect(client.send(payload, payload.clientRequestId)).rejects.toThrow(

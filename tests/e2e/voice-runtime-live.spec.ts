@@ -18,7 +18,7 @@ test.describe('voice runtime live integration', () => {
   test('streams PCM over WSS and submits the Zod-validated payload to /api/voice/submit', async ({
     page
   }) => {
-    await page.goto('/capture');
+    await page.goto('/capture?notionDatabaseId=notion-db-live&notionParentPageId=notion-page-live');
 
     const micButton = page.getByTestId('voice-mic-button');
     await expect(micButton).toBeVisible();
@@ -50,6 +50,8 @@ test.describe('voice runtime live integration', () => {
     expect(webhookRequest?.body.pcmFrameCount).toBeGreaterThan(0);
     expect(webhookRequest?.body.stt_provider).toBe('whisper');
     expect(webhookRequest?.body.audio_duration_sec).toBeGreaterThan(0);
+    expect(webhookRequest?.body.notionDatabaseId).toBe('notion-db-live');
+    expect(webhookRequest?.body.notionParentPageId).toBe('notion-page-live');
     expect(webhookRequest?.headers['x-idempotency-key']).toBeTruthy();
   });
 });

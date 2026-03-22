@@ -164,6 +164,8 @@ async function runBrowserRoutingProbe(
       body: JSON.stringify({
         clientRequestId: `routing-submit-${sessionId}`,
         transcriptText: serverEvent.text,
+        notionDatabaseId: 'notion-db-routing',
+        notionParentPageId: 'notion-page-routing',
         sessionId,
         pcmFrameCount: serverEvent.pcmFrameCount ?? pcmFrameCount,
         stt_provider: serverEvent.stt_provider,
@@ -215,6 +217,8 @@ test.describe('voice stt routing live automation', () => {
     expect(webhookRequest?.body.stt_provider).toBe('whisper');
     expect(webhookRequest?.body.audio_duration_sec).toBeGreaterThan(0);
     expect(webhookRequest?.body.transcriptText).toBe(result.serverEvent.text);
+    expect(webhookRequest?.body.notionDatabaseId).toBe('notion-db-routing');
+    expect(webhookRequest?.body.notionParentPageId).toBe('notion-page-routing');
     expect(logs).toContain('[mock-stt] provider=whisper');
     console.log(
       `[routing-evidence] project=${testInfo.project.name} scenario=A server=${result.serverEvent.stt_provider} submit=${result.submitResponse.stt_provider} webhook=${webhookRequest?.body.stt_provider} duration=${webhookRequest?.body.audio_duration_sec} transcript="${webhookRequest?.body.transcriptText}"`
@@ -242,6 +246,8 @@ test.describe('voice stt routing live automation', () => {
     expect(webhookRequest?.body.stt_provider).toBe('return-zero');
     expect(webhookRequest?.body.audio_duration_sec).toBeGreaterThan(0);
     expect(webhookRequest?.body.transcriptText).toBe(result.serverEvent.text);
+    expect(webhookRequest?.body.notionDatabaseId).toBe('notion-db-routing');
+    expect(webhookRequest?.body.notionParentPageId).toBe('notion-page-routing');
     expect(logs).toContain('[mock-stt] provider=return-zero auth');
     expect(logs).toContain('[mock-stt] provider=return-zero result');
     console.log(

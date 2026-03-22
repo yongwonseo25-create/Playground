@@ -97,6 +97,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - `clientRequestId` lock status: generated synchronously before async submit begins
 - Duplicate prevention strategy: reducer upload lock gates browser submit attempts and backend idempotency continues through `X-Idempotency-Key`
 - Cost telemetry status: `stt_provider` and `audio_duration_sec` now flow from the WSS transcript result into `/api/voice/submit` and the downstream webhook payload
+- Destination metadata status: optional `spreadsheetId`, `slackChannelId`, `notionDatabaseId`, and `notionParentPageId` can now flow from browser query params through `/api/voice/submit` into the downstream webhook payload without touching reducer truth
 
 ### Mobile UX
 - Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
@@ -108,6 +109,129 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 ---
 
 ## Sprint Log
+
+---
+
+### Sprint 16 ??Google Workspace Modal Dashboard Pivot
+- Date: 2026-03-21
+- Status: completed
+
+#### Goal
+Replace the failed sheet-cell dashboard imitation with a production-style Apps Script HTML modal dashboard for the Korean-first Google Workspace execution workspace.
+
+#### Files Created
+- `integrations/google-workspace/Dashboard.html`
+
+#### Files Modified
+- `integrations/google-workspace/Code.simple.ko.gs`
+- `docs/google-workspace-install-step-by-step.md`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Google Workspace dashboard rendering moved from sheet-cell styling to `showModalDialog()` + `Dashboard.html`
+- `Code.simple.ko.gs` now acts as a modal dashboard backend:
+  - menu registration
+  - data shaping
+  - sheet navigation actions
+  - webhook ingest
+  - inbox-to-execution conversion
+- first-visit UX now auto-opens the modal dashboard once per user per spreadsheet via `UserProperties`, then falls back to manual open from the `VOXERA` menu
+- `Dashboard.html` now owns the visual UI and loads live data with `google.script.run`
+- Spreadsheet is now treated as data/work surface only:
+  - `받은 음성함`
+  - `실행 보드`
+  - `설정`
+
+#### State Machine Changes
+- None
+
+#### Audio / Transport Changes
+- None
+- Constitutional rules preserved:
+  - AudioWorklet + PCM over WSS only
+  - exact 15-second cutoff remains reducer truth
+  - `clientRequestId` duplicate lock remains intact
+  - 8-state reducer unchanged
+
+#### Submission / Cost Defense Changes
+- None in app runtime
+- Google Workspace webhook ingestion remains protected by bearer secret validation
+
+#### Known Risks
+- Apps Script modal depends on `Dashboard` HTML file existing with the exact file name in the Apps Script project
+- If the spreadsheet is not refreshed after saving, the `VOXERA` menu may still reference stale code
+- Existing repository baseline test failures remain unrelated to this sprint:
+  - insecure `ws://` fail-fast expectation mismatch
+  - non-http(s) `MAKE_WEBHOOK_URL` fail-fast expectation mismatch
+
+#### Manual QA
+- [ ] Replace Apps Script `Code.gs` with `integrations/google-workspace/Code.simple.ko.gs`
+- [ ] Add HTML file named `Dashboard` and paste `integrations/google-workspace/Dashboard.html`
+- [ ] Run `setupSystem()`
+- [ ] Refresh the spreadsheet
+- [ ] Open `VOXERA > 대시보드 열기`
+- [ ] Add one inbox row with `상태=실행전환`
+- [ ] Confirm `실행 보드` row creation and `문서 열기` / `일정 보기` buttons
+
+#### Next Sprint Prerequisites
+- Capture a real Apps Script modal screenshot after user applies both files
+- Build the equivalent Notion visual blueprint and implementation pass
+
+---
+
+### Sprint 19 ??Failure Analysis + Dev Lead Handoff Report
+- Date: 2026-03-22
+- Status: completed
+
+#### Goal
+Document the exact failure reasons from the Notion visual dashboard attempts and the Google Workspace sheet-cell dashboard attempts, then hand off the current accepted architecture and Make.com integration path in a single developer-facing report.
+
+#### Files Created
+- `docs/2026-03-22-notion-google-workspace-failure-analysis-and-handoff.md`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- No runtime architecture changed in this sprint
+- The accepted architecture was clarified and frozen in writing:
+  - Notion path: `Internal DB-first + Queue + Async Worker + Notion direct-write`
+  - Google Workspace path: `Sheets = main work surface`, `Docs/Calendar/Mail = conditional assets`, `Apps Script HTML Modal Dashboard = user UI`
+
+#### State Machine Changes
+- None
+
+#### Audio / Transport Changes
+- None
+- Constitutional rules preserved:
+  - AudioWorklet + PCM over WSS only
+  - exact 15-second cutoff remains reducer truth
+  - `clientRequestId` duplicate lock remains intact
+  - 8-state reducer unchanged
+
+#### Submission / Cost Defense Changes
+- None in runtime
+- The report explicitly preserves backend idempotency and direct-write decisions
+
+#### Known Risks
+- The handoff report reflects the actual current state, which means:
+  - Notion visual implementation is still not final
+  - Google Workspace production auto-copy/auto-connect flow is still not fully verified
+- Existing repository baseline test failures remain unrelated:
+  - insecure `ws://` fail-fast expectation mismatch
+  - non-http(s) `MAKE_WEBHOOK_URL` fail-fast expectation mismatch
+
+#### Manual QA
+- [ ] Open the handoff report and verify the following are clear to the dev lead:
+  - Why Notion direct-write replaced the Make.com path
+  - Why the SVG-to-Google-Sheets dashboard approach failed
+  - Why Sheets is the main dashboard and Docs / Calendar / Mail are conditional assets
+  - How Make.com should connect to the Google Workspace stack
+- [ ] Confirm KakaoTalk is explicitly deferred, not forgotten
+
+#### Next Sprint Prerequisites
+- Apply and test the Notion direct-write path end-to-end
+- Validate Google template duplication and binding strategy for lower-friction production onboarding
 
 ---
 
@@ -217,6 +341,118 @@ Build the project foundation, secure environment rules, initial state machine, a
 - [x] Route structure works
 - [x] Initial voice shell renders correctly
 - [x] No MediaRecorder usage introduced
+
+---
+
+### Sprint 2026-03-21 ??Google Workspace Visual Blueprint Refinement
+- Date: 2026-03-21
+- Status: in progress
+
+#### Goal
+Refine the Google Workspace visual-first blueprint until the SVG renders clean Korean text and stable alignment before any further Apps Script layout work.
+
+#### Files Modified
+- `docs/google-workspace-simple-blueprint.svg`
+- `integrations/google-workspace/Code.simple.ko.gs`
+- `integrations/google-workspace/Dashboard.html`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- No product runtime architecture change
+- Visual-first process reinforced: SVG approval before spreadsheet rendering implementation
+- Google Workspace simple KR script now renders the approved dashboard-first visual language into the actual `대시보드` sheet and preserves simplified execution/inbox surfaces
+- Apps Script now also supports a true HTML dashboard layer via sidebar/modal, so the spreadsheet can stay the data layer while the user sees a cleaner dashboard UI
+
+#### State Machine Changes
+- None
+
+#### Audio / Transport Changes
+- None
+
+#### Submission / Cost Defense Changes
+- None
+
+#### Known Risks
+- Notion visual blueprint is still not finalized
+- Google Workspace Apps Script layout still needs implementation after SVG approval
+
+#### Manual QA
+- [x] SVG XML parse validated
+- [x] Edge headless PNG render generated from SVG
+- [x] Korean text rendering validated in PNG output
+- [x] Hero, inbox cards, transition capsule, and KPI card alignment manually checked in raster render
+- [x] `Code.simple.ko.gs` syntax checked via `new Function(...)`
+
+#### Next Sprint Prerequisites
+- Get approval on `docs/google-workspace-simple-blueprint.svg`
+- Mirror approved layout into `integrations/google-workspace/Code.simple.ko.gs`
+- Produce Notion visual blueprint with the same dashboard-first pattern
+
+---
+
+### Sprint 13 ??Google Workspace Production Package
+- Date: 2026-03-21
+- Status: completed
+
+#### Goal
+Turn the Google Workspace automation research into an operations-ready package that cleanly separates Sheets, Docs, and Calendar responsibilities.
+
+#### Files Created
+- `docs/google-workspace-production-runbook.md`
+- `integrations/google-workspace/Code.gs`
+- `docs/channel-delivery-architecture.md`
+- `docs/notion-direct-write-api-spec.md`
+- `docs/google-workspace-install-step-by-step.md`
+- `integrations/google-workspace/Code.simple.ko.gs`
+- `docs/google-workspace-simple-ko.md`
+- `docs/google-workspace-simple-visual-spec.md`
+- `docs/google-workspace-simple-blueprint.svg`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a production-oriented Google Workspace runbook for VOXERA execution workflows.
+- Defined `Google Sheets = control plane`, `Google Docs = conditional detailed asset`, `Google Calendar = conditional schedule asset`.
+- Added a hardened Apps Script package with installable onEdit trigger guidance, webhook secret validation, lock-based dedupe, conditional Docs/Calendar creation, Gmail notification support, archive support, and dashboard feed rebuild logic.
+- Added a channel delivery architecture doc defining `Notion direct write`, `Google Mail via MailApp`, and `KakaoTalk via 알림톡/채널` as the preferred production paths.
+- Added an endpoint-level Notion direct-write backend spec.
+- Added a step-by-step Google Workspace installation guide for non-technical operators.
+- Added a Korean-first, simplified Google Workspace package for non-technical users with only three visible sheets and Korean labels.
+- Upgraded the simplified Google Workspace package into a dashboard-first variant with clickable Doc/Calendar chips, visible Korean labels, conditional formatting, and a dedicated summary dashboard sheet.
+- Added visual-first blueprint artifacts (Mermaid spec + SVG blueprint) so future Workspace changes can be reviewed visually before code changes.
+- Refined the visual blueprint into a launch-quality dashboard composition with a Korean hero title, aligned KPI cards, stronger `받은 음성함` / `실행 보드` emphasis, and a more polished `실행전환` transition treatment.
+
+#### State Machine Changes
+- None
+
+#### Audio / Transport Changes
+- None
+- Core front-end hard rules remain unchanged:
+  - AudioWorklet + PCM over WSS only
+  - exact 15-second cutoff
+  - `clientRequestId` duplicate lock
+  - fixed 8-state reducer
+
+#### Submission / Cost Defense Changes
+- No browser/runtime submission changes
+- Google Workspace package now documents a separate Apps Script webhook secret and source-level idempotency for Workspace-side ingestion
+
+#### Known Risks
+- Apps Script Web App request headers can vary by deployment shape; bearer secret handling should be validated against the real deployment endpoint.
+- Drive root-folder removal behavior can differ for shared-drive setups and may require environment-specific adjustment.
+- Calendar event deep links can vary by account/calendar type and should be smoke-tested in the owner workspace.
+
+#### Manual QA
+- [x] Review runbook for role separation between Sheets, Docs, and Calendar
+- [x] Review Apps Script code for secret validation and lock usage
+- [x] Confirm Dashboard Feed uses rebuild strategy rather than append-only writes
+
+#### Next Sprint Prerequisites
+- Paste `integrations/google-workspace/Code.gs` into Apps Script and run `setupSystem`
+- Fill `Config` sheet values in a real Google Workspace
+- Deploy Apps Script Web App and validate `doPost`
+- Wire Make.com or backend payload sender to the Web App endpoint
 - [x] State machine base behavior manually reviewed
 - [x] Secure env strategy present
 - [x] No Sprint 1 defects found in manual QA
@@ -753,6 +989,59 @@ Automate the dual-STT routing proof without any physical microphone or manual op
 
 ---
 
+### Sprint 12 - Notion Submit Cleanroom
+- Date: 2026-03-21
+- Status: completed
+
+#### Goal
+Add a cleanroom-safe Notion destination path to the existing submit contract so a connected Notion automation can receive browser-origin metadata without disturbing the fixed reducer, duplicate lock, or audio runtime.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `references/make-webhook-contract.md`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `src/shared/contracts/voice-submit.ts`
+- `tests/e2e/backend-reliability.spec.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+- `tests/e2e/voice-stt-routing-live.spec.ts`
+
+#### Architecture Changes
+- Extended the voice submit contract and downstream webhook payload with optional `notionDatabaseId` and `notionParentPageId`
+- Added a browser-side submit-target resolver that reads destination metadata from URL query params and forwards it only at submit time
+- Kept Notion routing outside reducer business truth so the 8-state machine remains unchanged
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- No audio pipeline change
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- No reducer or duplicate-lock behavior changed
+- `clientRequestId` is still created synchronously before async submit begins
+- Live/runtime tests now prove Notion destination metadata survives through the webhook payload
+
+#### Known Risks
+- Notion identifiers are currently supplied through URL query params, so any operator-facing control for selecting a Notion destination still needs a product surface
+- Real Make.com to Notion mapping still depends on the external scenario using the new payload fields
+
+#### Manual QA
+- [x] `pnpm typecheck`
+- [x] `pnpm lint`
+- [x] `pnpm test`
+- [x] `pnpm test:e2e`
+
+#### Next Sprint Prerequisites
+- Decide whether Notion destination selection should live in UI controls, operator presets, or server-side routing
+- Run one end-to-end Make.com to Notion smoke test with the new payload fields populated
+
+---
+
 ## Current Known Risks (Rolling Section)
 
 - Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
@@ -808,4 +1097,107 @@ After finishing a sprint, Codex must:
 3. Update Current Known Risks.
 4. Update Current Manual Regression Checklist if needed.
 ```
+
+---
+
+### Sprint Workspace Ops ??Google Main Dashboard Builder
+- Date: 2026-03-22
+- Status: partial completion
+
+#### Goal
+Prepare a production-ready Apps Script builder for a Google Sheets main dashboard while verifying whether Notion MCP can be used to create real workspace databases.
+
+#### Files Created
+- `integrations/google-workspace/dashboard-builder.gs`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a dedicated `dashboard-builder.gs` script that renames the first sheet to `🚀 VOXERA MAIN 통제실`, hides gridlines, paints `A1:Z100` with `#f8fafc`, and creates three large merged-cell action surfaces.
+- Added an optional binding helper for already-existing Google Sheets drawings using `Drawing.setOnAction()`.
+- Confirmed that the current session still cannot initialize the Notion MCP server because it returns `Auth required`.
+
+#### Known Risks
+- Google Apps Script can modify existing spreadsheet drawings but this flow still cannot programmatically create brand-new Drawing objects from code alone.
+- Notion physical DB creation remains blocked until MCP authentication is actually recognized by this running session.
+
+#### Manual QA
+- [x] Verify `dashboard-builder.gs` contains `🚀 VOXERA MAIN 통제실`
+- [x] Verify `setHiddenGridlines(true)` and `A1:Z100` background `#f8fafc`
+- [x] Verify three action handlers exist
+- [ ] Re-run Notion MCP after session-level auth is recognized
+
+#### Next Sprint Prerequisites
+- Restore Notion MCP availability in this session before attempting workspace DB creation.
+- Wire `dashboard-builder.gs` into the target spreadsheet Apps Script project and run `buildVoxeraMainDashboard()`.
+
+---
+
+### Sprint 17 - Notion Home Dashboard Blueprint 2nd Pass
+- Date: 2026-03-21
+- Status: completed
+
+#### Goal
+Redesign the Notion dashboard as an always-open home page rather than a modal-like surface, aligned with how Notion pages are actually used.
+
+#### Files Created
+- `docs/notion-home-dashboard-visual-spec.md`
+- `docs/notion-home-dashboard-blueprint.svg`
+- `docs/notion-home-dashboard-blueprint-render.png`
+
+#### Architecture Changes
+- Notion is now documented as an always-visible home dashboard, not a pop-up or modal interaction model
+- The visual model is:
+  - page title
+  - 4 KPI cards
+  - left `받은 음성함` linked database
+  - center `실행 전환` flow badge
+  - right `실행 보드` linked database
+  - bottom quick links
+
+#### Known Risks
+- This is still a visual blueprint only; actual Notion block placement and linked database arrangement are not yet applied
+- KPI cards may need to be approximated with callout/synced blocks depending on the final Notion page composition
+
+#### Manual QA
+- Open `docs/notion-home-dashboard-blueprint-render.png`
+- Confirm the page feels like a Notion home dashboard rather than a modal
+- Confirm `받은 음성함` and `실행 보드` are clearly separated
+- Confirm the bottom quick links are appropriate for a main page
+
+#### Next Sprint Prerequisites
+- Get approval on the 2nd Notion visual blueprint
+- Translate the approved blueprint into actual Notion page block placement
+
+---
+
+### Sprint 18 - Notion Direct-Write + Google Workspace Handoff Doc
+- Date: 2026-03-21
+- Status: completed
+
+#### Goal
+Create a developer handoff document that explains the Notion direct-write pivot and the Google Workspace integration model for next-day implementation/testing.
+
+#### Files Created
+- `docs/2026-03-21-notion-direct-write-google-workspace-handoff.md`
+
+#### Architecture Changes
+- None in runtime code
+- Documentation now clearly records:
+  - Notion direct-write as the preferred path over Make.com for Notion delivery
+  - Google Workspace as a Sheets-centered execution system with Docs/Calendar/Mail as attached assets
+
+#### Known Risks
+- The handoff document reflects the agreed target architecture; Notion direct-write runtime implementation still needs to be built/tested
+- KakaoTalk remains intentionally deferred pending business account approval
+
+#### Manual QA
+- Open the handoff doc
+- Verify the Notion decision rationale is clear enough for the engineering lead
+- Verify the Google Workspace setup/test sequence is clear enough to run tomorrow
+
+#### Next Sprint Prerequisites
+- Apply and test Notion direct-write flow
+- Apply and test Google Workspace flow end-to-end
 
