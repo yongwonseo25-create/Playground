@@ -1270,3 +1270,67 @@ After finishing a sprint, Codex must:
 - Promote the memory-runtime fallback paths to real Postgres/Redis validation on a Docker-enabled machine before wiring AWS-backed environments.
 - Connect the destination webhook path to the final V3 orchestration target and add observability around `charged`, `completed`, `webhook_failed`, and `insufficient_credits` transitions without ever persisting transcript payloads.
 
+---
+
+## 2026-03-22 - V4 Parallel Architecture Slices (Infra, Realtime, Memory)
+
+### Files Changed
+- `.env.local.example`
+- `eslint.config.mjs`
+- `package.json`
+- `tsconfig.json`
+- `db/migrations/0002_v4_infra.sql`
+- `src/server/config/v4-env.ts`
+- `src/server/config/v4-memory-env.ts`
+- `src/shared/contracts/v4-infra.ts`
+- `src/shared/contracts/v4-realtime.ts`
+- `src/shared/contracts/v4-memory.ts`
+- `src/server/v4/concurrency.ts`
+- `src/server/v4/idempotency-store.ts`
+- `src/server/v4/neon-http.ts`
+- `src/server/v4/notion-direct-write.ts`
+- `src/server/v4/sqs-lambda-worker.ts`
+- `src/server/v4/realtime/mongo-outbox.ts`
+- `src/server/v4/realtime/redis-streams-resume.ts`
+- `src/server/v4/realtime/resume-token.ts`
+- `src/server/v4/realtime/session-resume-service.ts`
+- `src/server/v4/memory/memory-store.ts`
+- `src/server/v4/memory/structured-output.ts`
+- `src/server/memory/v4-memory-extractor.ts`
+- `src/server/memory/v4-memory-service.ts`
+- `src/server/memory/v4-memory-store.ts`
+- `src/app/api/memory/extract/route.ts`
+- `src/app/api/memory/route.ts`
+- `src/app/api/v4/memory/delete/route.ts`
+- `src/app/api/v4/realtime/resume/route.ts`
+- `tests/e2e/v4-infra.spec.ts`
+- `tests/e2e/v4-realtime.spec.ts`
+- `tests/e2e/v4-memory.spec.ts`
+- `docs/sprint-summary.md`
+
+### Architecture Changes
+- Added a V4 infra slice that models SQS Lambda batch handling with maximum concurrency limits, hard-locks idempotency TTL to exactly 72 hours, uses Neon HTTP one-shot query execution with pooling disabled, and generates Notion direct-write payloads without persisting transcript payloads.
+- Added a V4 realtime slice with `resume_token` plus `last_seq` replay semantics, Redis Streams-style append/resume behavior, and a Mongo-style one-way outbox that now exports an explicit 24-hour TTL index definition alongside its in-memory adapter.
+- Added a V4 memory slice that forces OpenAI Structured Outputs through a strict JSON schema, hard-locks short-term memory to 14 days and preference memory to 90 days, exports physical Mongo TTL index definitions, and exposes a GDPR delete endpoint that hard-deletes a user memory set.
+- Kept the existing front-end constitution intact: `AudioWorklet + PCM over WSS` remains the only audio engine, the exact 15-second cutoff stays reducer-driven, `clientRequestId` duplicate locking remains synchronous, and the 8-state reducer was not restructured.
+- Replaced the placeholder `docs/V4_CONSTITUTION.md` scaffold with an actual written V4 constitution so the physical TTL, direct-write, zero-retention, and queue rules are documented in-repo.
+- Tightened repo-level verification boundaries so imported external UI experiments under `_IMPORTED_UI` do not poison repository lint/typecheck gates during V4 backend work.
+
+### Known Risks
+- The V4 infra, realtime, and memory slices are validated with in-memory/local-safe abstractions in this Codex environment. Real Neon, Redis Streams, Mongo TTL indexes, and OpenAI runtime behavior still need infrastructure-level verification on a machine with Docker and the intended backing services.
+- The repo now contains both richer `src/server/memory/*` services and the focused `src/server/v4/memory/*` primitives used by the strict V4 tests. They are consistent today, but future changes should avoid drifting the two memory surfaces apart.
+- Untracked reference folders such as `_IMPORTED_UI/` remain in the workspace; they are intentionally excluded from validation but should not be treated as production source.
+
+### Manual QA / Verification
+- `corepack pnpm typecheck`
+- `corepack pnpm lint`
+- `corepack pnpm test`
+- `corepack pnpm test:e2e`
+- `NEXT_PUBLIC_WSS_URL=ws://localhost:8787/voice-session NEXT_PUBLIC_APP_ENV=local MAKE_WEBHOOK_URL=http://127.0.0.1:8788/webhook MAKE_WEBHOOK_SECRET=voxera-local-secret corepack pnpm build`
+- With Docker and service stubs available, validate that a V4 infra worker batch writes only metadata to Notion, a realtime resume request replays only events after `last_seq`, and a memory delete request removes all records for the target user immediately.
+
+### Next Sprint Prerequisites
+- Replace the in-memory V4 infra/realtime adapters with LocalStack/Redis/Mongo-backed runtime verification while keeping the same contracts and zero-cost development posture.
+- Collapse or clearly separate the duplicated V4 memory service layers so the strict structured-output path and the route-layer memory service cannot drift.
+- Promote the physical TTL/index definitions into real deployment migrations or collection bootstrap scripts on the Docker-enabled machine so runtime storage matches the now-coded contract.
+
