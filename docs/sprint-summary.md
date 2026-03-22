@@ -119,6 +119,46 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 #### Goal
 Replace the failed sheet-cell dashboard imitation with a production-style Apps Script HTML modal dashboard for the Korean-first Google Workspace execution workspace.
 
+---
+
+### Sprint 17 ??Notion MCP Live Workspace Setup
+- Date: 2026-03-22
+- Status: completed with known MCP view limitation
+
+#### Goal
+Create live Notion workspace assets for Voxera using MCP instead of local mock planning only.
+
+#### Changed Assets
+- Created live databases in Notion workspace:
+  - `🎙️ VOXERA 음성 수신함`
+  - `📌 실행 보드`
+  - `⚙️ Agent Prompt DB`
+  - `📊 에이전트 실행 로그`
+- Created live pages in Notion workspace:
+  - `🗄️ VOXERA Backend DB`
+  - `🚀 VOXERA MAIN 대시보드`
+- Added `상태 보드` board view to `📌 실행 보드`
+- Seeded `⚙️ Agent Prompt DB` with three agent entries and common execution-log guidance
+
+#### Architecture Notes
+- Raw databases were moved under `🗄️ VOXERA Backend DB` so the main user surface is no longer the raw table root.
+- The main dashboard page was created as a workspace-level landing page with quick links and execution-flow sections.
+- MCP `create-pages` validation still blocked direct insertion of linked database blocks via `data-source-url`, so the dashboard currently uses mentions/links plus the separately created board view rather than a fully embedded linked DB block.
+
+#### Known Risks
+- `🚀 VOXERA MAIN 대시보드` is production-usable as a navigation landing page, but not yet the final ideal embedded linked-database dashboard.
+- `🎙️ VOXERA 음성 수신함` status property defaults to Notion native status values (`시작 전/진행 중/완료`) rather than the originally requested `NEW/DONE`.
+- If a stricter embedded dashboard is required, a follow-up pass should test alternate MCP block insertion patterns or finish the last mile manually inside Notion UI.
+
+#### Manual QA
+- Open the created dashboard page and confirm the quick links resolve to all four workspace databases.
+- Open `📌 실행 보드` and confirm `상태 보드` view exists and groups by `상태`.
+- Open `⚙️ Agent Prompt DB` and confirm the three seeded prompt rows include the execution-log sentence.
+
+#### Next Prerequisites
+- Decide whether the current dashboard landing page is acceptable or whether a manual final polish pass in Notion UI is required.
+- If needed, normalize status vocabulary for Voice Inbox and seed sample rows for demo/testing.
+
 #### Files Created
 - `integrations/google-workspace/Dashboard.html`
 
