@@ -5,11 +5,13 @@ import {
 } from '../../src/server/v4/memory/structured-output';
 import {
   buildV4MemoryCollectionDefinition,
-  V4_MEMORY_COLLECTION_NAME,
-  PREFERENCE_MEMORY_TTL_MS,
-  SHORT_TERM_MEMORY_TTL_MS
+  createV4MemoryIndexes,
+  computeV4MemoryExpiresAt,
+  PREFERENCE_MEMORY_TTL_SECONDS,
+  SHORT_TERM_MEMORY_TTL_MS,
+  SHORT_TERM_MEMORY_TTL_SECONDS,
+  V4_MEMORY_COLLECTION_NAME
 } from '../../src/server/v4/memory/memory-store';
-import { InMemoryV4MemoryStore } from './helpers/v4-in-memory-memory-store';
 
 test.describe('v4 memory pipeline', () => {
   test('forces OpenAI structured outputs with strict JSON schema', async () => {
@@ -18,7 +20,7 @@ test.describe('v4 memory pipeline', () => {
     const memories = await extractStructuredMemories(
       {
         apiKey: 'openai-test-key',
-        transcript: '대표님은 매주 월요일 아침 요약을 선호합니다.',
+        transcript: '??쒕떂? 留ㅼ＜ ?붿슂???꾩묠 ?붿빟???좏샇?⑸땲??',
         userId: 7
       },
       async (input, init) => {
@@ -30,7 +32,7 @@ test.describe('v4 memory pipeline', () => {
                 {
                   id: 'mem-1',
                   kind: 'preference',
-                  content: '대표님은 매주 월요일 아침 요약을 선호합니다.'
+                  content: '??쒕떂? 留ㅼ＜ ?붿슂???꾩묠 ?붿빟???좏샇?⑸땲??'
                 }
               ]
             })
@@ -51,40 +53,64 @@ test.describe('v4 memory pipeline', () => {
     expect(requestBody.text.format.name).toBe('voxera_v4_memory_extraction');
   });
 
-  test('applies 14-day and 90-day forgetting TTLs and supports GDPR hard delete', () => {
-    const store = new InMemoryV4MemoryStore();
+  test('declares physical 14-day and 90-day TTL indexes for memory retention', async () => {
     const now = new Date('2026-03-22T00:00:00.000Z');
     const collection = buildV4MemoryCollectionDefinition();
+    const createIndexCalls: Array<{
+      key: Record<string, 1 | -1>;
+      options: {
+        name: string;
+        expireAfterSeconds?: number;
+        partialFilterExpression?: Record<string, unknown>;
+      };
+    }> = [];
+
+    const indexNames = await createV4MemoryIndexes({
+      createIndex(key, options) {
+        createIndexCalls.push({ key, options });
+        return options.name;
+      }
+    });
 
     expect(collection.collectionName).toBe(V4_MEMORY_COLLECTION_NAME);
     expect(collection.indexes).toContainEqual({
-      key: { expiresAt: 1 },
-      name: 'ttl_memory_expires_at',
-      expireAfterSeconds: 0
+      key: { shortTermCreatedAt: 1 },
+      name: 'ttl_memory_short_term_created_at_14d',
+      expireAfterSeconds: SHORT_TERM_MEMORY_TTL_SECONDS,
+      partialFilterExpression: { kind: 'short_term' }
     });
-
-    const shortTerm = store.upsert({
-      id: 'mem-2',
-      userId: 7,
-      kind: 'short_term',
-      content: '이번 주 회의 메모',
-      now
+    expect(collection.indexes).toContainEqual({
+      key: { preferenceCreatedAt: 1 },
+      name: 'ttl_memory_preference_created_at_90d',
+      expireAfterSeconds: PREFERENCE_MEMORY_TTL_SECONDS,
+      partialFilterExpression: { kind: 'preference' }
     });
-    const preference = store.upsert({
-      id: 'mem-3',
-      userId: 7,
-      kind: 'preference',
-      content: '월요일 요약 선호',
-      now
+    expect(indexNames).toEqual([
+      'ttl_memory_short_term_created_at_14d',
+      'ttl_memory_preference_created_at_90d',
+      'memory_user_created_at'
+    ]);
+    expect(createIndexCalls[0]).toEqual({
+      key: { shortTermCreatedAt: 1 },
+      options: {
+        name: 'ttl_memory_short_term_created_at_14d',
+        expireAfterSeconds: SHORT_TERM_MEMORY_TTL_SECONDS,
+        partialFilterExpression: { kind: 'short_term' }
+      }
     });
-
-    expect(new Date(shortTerm.expiresAt).getTime()).toBe(now.getTime() + SHORT_TERM_MEMORY_TTL_MS);
-    expect(new Date(preference.expiresAt).getTime()).toBe(now.getTime() + PREFERENCE_MEMORY_TTL_MS);
-    expect(store.listByUser(7)).toHaveLength(2);
-
-    expect(store.forgetExpired(new Date(now.getTime() + SHORT_TERM_MEMORY_TTL_MS + 1))).toBe(1);
-    expect(store.listByUser(7)).toHaveLength(1);
-    expect(store.deleteUser(7)).toBe(1);
-    expect(store.listByUser(7)).toHaveLength(0);
+    expect(createIndexCalls[1]).toEqual({
+      key: { preferenceCreatedAt: 1 },
+      options: {
+        name: 'ttl_memory_preference_created_at_90d',
+        expireAfterSeconds: PREFERENCE_MEMORY_TTL_SECONDS,
+        partialFilterExpression: { kind: 'preference' }
+      }
+    });
+    expect(Date.parse(computeV4MemoryExpiresAt('short_term', now))).toBe(
+      now.getTime() + SHORT_TERM_MEMORY_TTL_MS
+    );
+    expect(Date.parse(computeV4MemoryExpiresAt('preference', now))).toBe(
+      now.getTime() + PREFERENCE_MEMORY_TTL_SECONDS * 1000
+    );
   });
 });

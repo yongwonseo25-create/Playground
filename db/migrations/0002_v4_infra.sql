@@ -8,4 +8,19 @@ CREATE TABLE IF NOT EXISTS v4_idempotency_keys (
   UNIQUE (idempotency_key, scope)
 );
 
+CREATE OR REPLACE FUNCTION purge_v4_idempotency_keys()
+RETURNS BIGINT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  deleted_count BIGINT;
+BEGIN
+  DELETE FROM v4_idempotency_keys
+  WHERE created_at < NOW() - INTERVAL '3 days';
+
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$;
+
 CREATE INDEX IF NOT EXISTS idx_v4_idempotency_keys_expires_at ON v4_idempotency_keys (expires_at);

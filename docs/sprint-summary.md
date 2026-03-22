@@ -1310,9 +1310,10 @@ After finishing a sprint, Codex must:
 
 ### Architecture Changes
 - Added a V4 infra slice that models SQS Lambda batch handling with maximum concurrency limits, hard-locks idempotency TTL to exactly 72 hours, uses Neon HTTP one-shot query execution with pooling disabled, and generates Notion direct-write payloads without persisting transcript payloads.
+- Added a physical PostgreSQL purge function in `db/migrations/0002_v4_infra.sql` that deletes expired V4 idempotency keys with `DELETE ... WHERE created_at < NOW() - INTERVAL '3 days'`.
 - Added a V4 realtime slice with `resume_token` plus `last_seq` replay semantics, Redis Streams-style append/resume behavior, and a Mongo-style one-way outbox that now exports an explicit 24-hour TTL index definition alongside its in-memory adapter.
 - Added a V4 memory slice that forces OpenAI Structured Outputs through a strict JSON schema, hard-locks short-term memory to 14 days and preference memory to 90 days, exports physical Mongo TTL index definitions, and exposes a GDPR delete endpoint that hard-deletes a user memory set.
-- Moved the audit-only in-memory Mongo outbox and V4 memory store helpers out of the production schema files and into Playwright helper modules, so the audited V4 source paths now expose physical schema/index contracts instead of mixed mock implementations.
+- Deleted the audit-only `tests/e2e/helpers/v4-in-memory-memory-store.ts` and `tests/e2e/helpers/v4-in-memory-mongo-outbox.ts` helpers so the V4 audit path no longer relies on dedicated fake helper wrappers.
 - Added an explicit `MaximumConcurrency` worker config key alongside the runtime limiter so the SQS concurrency cap is visible in code and in audit output.
 - Kept the existing front-end constitution intact: `AudioWorklet + PCM over WSS` remains the only audio engine, the exact 15-second cutoff stays reducer-driven, `clientRequestId` duplicate locking remains synchronous, and the 8-state reducer was not restructured.
 - Replaced the placeholder `docs/V4_CONSTITUTION.md` scaffold with an actual written V4 constitution so the physical TTL, direct-write, zero-retention, and queue rules are documented in-repo.
@@ -1320,6 +1321,7 @@ After finishing a sprint, Codex must:
 
 ### Known Risks
 - The V4 infra, realtime, and memory slices are validated with in-memory/local-safe abstractions in this Codex environment. Real Neon, Redis Streams, Mongo TTL indexes, and OpenAI runtime behavior still need infrastructure-level verification on a machine with Docker and the intended backing services.
+- `src/server/v4/realtime/redis-streams-resume.ts` still contains a local in-process Redis Streams substitute for zero-cost verification. The physical TTL/index work is now coded, but real Redis runtime validation still remains.
 - The repo now contains both richer `src/server/memory/*` services and the focused `src/server/v4/memory/*` primitives used by the strict V4 tests. They are consistent today, but future changes should avoid drifting the two memory surfaces apart.
 - Untracked reference folders such as `_IMPORTED_UI/` remain in the workspace; they are intentionally excluded from validation but should not be treated as production source.
 

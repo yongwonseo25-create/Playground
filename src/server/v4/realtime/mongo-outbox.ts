@@ -1,4 +1,5 @@
 const HOURS_TO_MS = 60 * 60 * 1000;
+
 export const MONGO_OUTBOX_TTL_MS = 24 * HOURS_TO_MS;
 export const MONGO_OUTBOX_TTL_SECONDS = 24 * 60 * 60;
 export const MONGO_OUTBOX_COLLECTION_NAME = 'voxera_realtime_outbox';
@@ -19,6 +20,13 @@ export type MongoCollectionIndexDefinition = {
   key: Record<string, 1 | -1>;
   name: string;
   expireAfterSeconds?: number;
+};
+
+export type MongoIndexableCollection = {
+  createIndex: (
+    key: Record<string, 1 | -1>,
+    options: { name: string; expireAfterSeconds?: number }
+  ) => Promise<string> | string;
 };
 
 export type RealtimeOutboxEnqueueInput = {
@@ -56,9 +64,9 @@ export function buildMongoOutboxCollectionDefinition() {
     },
     indexes: [
       {
-        key: { expiresAt: 1 },
-        name: 'ttl_outbox_expires_at_24h',
-        expireAfterSeconds: 0
+        key: { createdAt: 1 },
+        name: 'ttl_outbox_created_at_24h',
+        expireAfterSeconds: MONGO_OUTBOX_TTL_SECONDS
       },
       {
         key: { aggregateId: 1, createdAt: -1 },
@@ -66,6 +74,16 @@ export function buildMongoOutboxCollectionDefinition() {
       }
     ] satisfies MongoCollectionIndexDefinition[]
   };
+}
+
+export async function createMongoOutboxIndexes(collection: MongoIndexableCollection): Promise<string[]> {
+  return await Promise.all([
+    collection.createIndex(
+      { createdAt: 1 },
+      { name: 'ttl_outbox_created_at_24h', expireAfterSeconds: MONGO_OUTBOX_TTL_SECONDS }
+    ),
+    collection.createIndex({ aggregateId: 1, createdAt: -1 }, { name: 'outbox_aggregate_created_at' })
+  ]);
 }
 
 const ALLOWED_TRANSITIONS: Record<MongoOutboxStatus, MongoOutboxStatus[]> = {
