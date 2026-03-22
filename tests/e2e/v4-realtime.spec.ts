@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
   buildMongoOutboxCollectionDefinition,
-  InMemoryMongoOutbox,
   MONGO_OUTBOX_COLLECTION_NAME,
   MONGO_OUTBOX_TTL_MS,
   MONGO_OUTBOX_TTL_SECONDS
@@ -9,6 +8,7 @@ import {
 import { V4RealtimeSessionResumeService } from '../../src/server/v4/realtime/session-resume-service';
 import { InMemoryRedisStreamResumeStore } from '../../src/server/v4/realtime/redis-streams-resume';
 import { parseResumeToken } from '../../src/server/v4/realtime/resume-token';
+import { InMemoryMongoOutbox } from './helpers/v4-in-memory-mongo-outbox';
 
 test.describe('v4 realtime resilience', () => {
   test('issues resume tokens and replays only events after last_seq', () => {

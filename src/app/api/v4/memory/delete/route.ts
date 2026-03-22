@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSharedV4MemoryStore } from '@/server/v4/memory/memory-store';
+import { deleteMemories } from '@/server/memory/v4-memory-service';
 
 export const runtime = 'nodejs';
 
@@ -11,10 +11,10 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid GDPR delete request.' }, { status: 400 });
   }
 
-  const deletedCount = getSharedV4MemoryStore().deleteUser(userId);
+  const response = await deleteMemories({ userId });
   return NextResponse.json({
     ok: true,
     userId,
-    deletedCount
+    deletedCount: response.deletedCount
   });
 }

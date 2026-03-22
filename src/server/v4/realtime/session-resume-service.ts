@@ -2,12 +2,12 @@ import {
   InMemoryRedisStreamResumeStore,
   type RealtimeStreamEvent
 } from '@/server/v4/realtime/redis-streams-resume';
-import { InMemoryMongoOutbox } from '@/server/v4/realtime/mongo-outbox';
+import type { RealtimeOutboxStore } from '@/server/v4/realtime/mongo-outbox';
 
 export class V4RealtimeSessionResumeService {
   constructor(
     private readonly streamStore: InMemoryRedisStreamResumeStore,
-    private readonly outbox: InMemoryMongoOutbox
+    private readonly outbox: RealtimeOutboxStore
   ) {}
 
   publish(input: {

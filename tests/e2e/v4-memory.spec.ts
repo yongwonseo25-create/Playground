@@ -5,11 +5,11 @@ import {
 } from '../../src/server/v4/memory/structured-output';
 import {
   buildV4MemoryCollectionDefinition,
-  InMemoryV4MemoryStore,
   V4_MEMORY_COLLECTION_NAME,
   PREFERENCE_MEMORY_TTL_MS,
   SHORT_TERM_MEMORY_TTL_MS
 } from '../../src/server/v4/memory/memory-store';
+import { InMemoryV4MemoryStore } from './helpers/v4-in-memory-memory-store';
 
 test.describe('v4 memory pipeline', () => {
   test('forces OpenAI structured outputs with strict JSON schema', async () => {

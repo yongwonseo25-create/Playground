@@ -264,6 +264,7 @@ test.describe('v4 infra', () => {
       now: () => new Date('2026-03-22T00:00:00.000Z')
     });
     expect(worker.getWorkerConfig()).toEqual({
+      configKey: 'MaximumConcurrency',
       queueMode: 'sqs-standard-batch',
       maximumConcurrency: 2
     });

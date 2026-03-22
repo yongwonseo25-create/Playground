@@ -33,9 +33,12 @@ export type SqsLambdaWorkerDependencies = {
 };
 
 export type SqsLambdaWorkerConfigSnapshot = {
+  configKey: 'MaximumConcurrency';
   queueMode: 'sqs-standard-batch';
   maximumConcurrency: number;
 };
+
+export const SQS_MAXIMUM_CONCURRENCY_CONFIG_KEY = 'MaximumConcurrency' as const;
 
 function previewSql(sql: string): string {
   return sql.replace(/\s+/g, ' ').trim().slice(0, 240);
@@ -129,6 +132,7 @@ export class SqsLambdaWorker {
 
   getWorkerConfig(): SqsLambdaWorkerConfigSnapshot {
     return {
+      configKey: SQS_MAXIMUM_CONCURRENCY_CONFIG_KEY,
       queueMode: 'sqs-standard-batch',
       maximumConcurrency: this.maximumConcurrency
     };
