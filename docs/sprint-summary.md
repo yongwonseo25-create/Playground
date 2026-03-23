@@ -159,6 +159,66 @@ Create live Notion workspace assets for Voxera using MCP instead of local mock p
 - Decide whether the current dashboard landing page is acceptable or whether a manual final polish pass in Notion UI is required.
 - If needed, normalize status vocabulary for Voice Inbox and seed sample rows for demo/testing.
 
+---
+
+### Sprint 18 ??Master Asset Injection for Notion & Google Workspace
+- Date: 2026-03-23
+- Status: completed with known Google Sheets macro-binding limitation
+
+#### Goal
+Inject the supplied master brand assets into the live Notion workspace and prepare the Google Sheets control-room builder to render the same assets inside the dashboard canvas.
+
+#### Changed Assets
+- Updated live Notion assets:
+  - `🚀 VOXERA MAIN 대시보드` icon -> `5.png`
+  - `🚀 VOXERA MAIN 대시보드` cover -> `1.png`
+  - `🎙️ VOXERA 음성 수신함` icon -> `4.png`
+  - `⚙️ Agent Prompt DB` icon -> `3.png`
+- Updated local script:
+  - `integrations/google-workspace/dashboard-builder.gs`
+
+#### Architecture Notes
+- Local master assets were uploaded to temporary public URLs so Notion could consume them as external cover/icon resources.
+- `dashboard-builder.gs` now uses those asset URLs and `sheet.insertImage(blob, ...)` to render over-grid images on the control-room canvas while preserving `#f8fafc` background and hidden gridlines.
+- Existing drawing rebinding logic remains in place for users who manually replace the over-grid images with Drawings and want true Apps Script macro binding.
+
+#### Known Risks
+- Google Sheets Apps Script still does not expose a supported API to create brand-new Drawing buttons with assigned scripts entirely from code. Over-grid images can be rendered automatically, but fully clickable macro assignment still requires manual Drawing insertion or later UI interaction.
+- The temporary external URLs used for Notion asset injection should be treated as replaceable delivery URLs, not permanent CDN infrastructure.
+
+#### Manual QA
+- Open `🚀 VOXERA MAIN 대시보드` in Notion and confirm icon/cover changed to the supplied assets.
+- Open `🎙️ VOXERA 음성 수신함` and `⚙️ Agent Prompt DB` and confirm their icons changed.
+- Paste `integrations/google-workspace/dashboard-builder.gs` into Apps Script and run `buildVoxeraMainDashboard()`.
+- Confirm the main sheet keeps gridlines hidden, background `#f8fafc`, and renders the icon assets over the action zones.
+
+---
+
+### Sprint 19 ??GitHub Raw Asset Delivery Rule
+- Date: 2026-03-23
+- Status: completed
+
+#### Goal
+Replace temporary image hosting with a durable GitHub Raw CDN pipeline for Notion and Google Workspace asset injection.
+
+#### Changed Files
+- `assets/voxera/1.png`
+- `assets/voxera/2.png`
+- `assets/voxera/3.png`
+- `assets/voxera/4.png`
+- `assets/voxera/5.png`
+- `integrations/google-workspace/dashboard-builder.gs`
+- `docs/UI_CONSTITUTION.md`
+
+#### Architecture Notes
+- All UI assets are now expected to live in-repo and be referenced via `raw.githubusercontent.com`.
+- `dashboard-builder.gs` now points to GitHub Raw URLs rather than temporary third-party hosting.
+- Temporary hosts are considered invalid for future Notion or Google Workspace rendering work.
+
+#### Known Risks
+- Raw asset URLs depend on the pushed branch existing remotely.
+- If `main` is unavailable on the remote, the asset delivery branch must be created before Notion/GAS can consume the URLs.
+
 #### Files Created
 - `integrations/google-workspace/Dashboard.html`
 
