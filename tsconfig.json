@@ -27,6 +27,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@adapter/*": [
+        "./packages/adapter/src/*"
+      ],
+      "@ssce/*": [
+        "./apps/api/src/*"
       ]
     }
   },

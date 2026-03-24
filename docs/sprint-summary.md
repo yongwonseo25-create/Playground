@@ -99,6 +99,15 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Cost telemetry status: `stt_provider` and `audio_duration_sec` now flow from the WSS transcript result into `/api/voice/submit` and the downstream webhook payload
 - Destination metadata status: optional `spreadsheetId`, `slackChannelId`, `notionDatabaseId`, and `notionParentPageId` can now flow from browser query params through `/api/voice/submit` into the downstream webhook payload without touching reducer truth
 
+### SSCE Personalization Engine
+- Status: Prisma-backed local persistence, HTTP route wrappers, and Oracle-style semantic feedback extraction implemented in an isolated worktree
+- Core entities: `artifacts`, `style_signatures`, `style_events`, `reference_edges`
+- Validation strategy: all SSCE request/response payloads are parsed through shared Zod schemas in `packages/adapter/src/validators/ssce-zod.ts`
+- Storage strategy: `apps/api/src/routes/ssce-router.ts` now uses Prisma transactions against the physical SSCE tables instead of in-memory arrays
+- HTTP exposure: `apps/api/src/app/api/v1/ssce/*/route.ts` owns request parsing and response mapping, while `src/app/api/v1/ssce/*/route.ts` bridges those handlers into the active Next.js app
+- Feedback learning strategy: `apps/api/src/services/semantic-diff-oracle.ts` now computes lexical changes, structure changes, and tone deltas before it updates the four SSCE scope signatures
+- Local migration strategy: Prisma client generation is standard, while local schema application currently uses `apps/api/src/db/run-ssce-migrations.ts` over checked-in SQL migrations because Prisma's schema engine failed in this Windows environment
+
 ### Mobile UX
 - Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
 - One-handed usage support: yes
@@ -1149,6 +1158,8 @@ Add a cleanroom-safe Notion destination path to the existing submit contract so 
 - Return Zero polling cadence and timeout thresholds still need staging calibration for premium/high-risk override traffic
 - The 1.5-second final-transcript drain window may need tuning against real backend latency
 - A dedicated 15-second live soak and repeated-send duplicate regression are still pending
+- The SSCE local database path currently depends on the custom SQL migration runner because Prisma's schema engine errored on this Windows setup despite a valid Prisma schema
+- The SSCE Oracle is currently heuristic and contract-ready for a future Gemini/OpenAI backend, but it does not yet call a live model provider
 
 ---
 
@@ -1174,6 +1185,9 @@ Add a cleanroom-safe Notion destination path to the existing submit contract so 
 - [x] UI supports one-handed mobile use
 - [x] Step 1 -> Step 2 -> Step 3 -> Step 1 loop is Playwright-verified
 - [x] Make.com webhook signature, retry/backoff, timeout circuit breaker, duplicate block, and failure queue replay are mock-server verified
+- [x] SSCE `harvest`, `generate`, and `feedback` route handlers safe-parse request and response payloads through shared Zod contracts
+- [x] SSCE local migration scripts create the four physical tables before the Prisma-backed route tests run
+- [x] SSCE feedback updates now flow through the Oracle semantic-diff pipeline rather than a hardcoded diff skeleton
 
 ---
 
@@ -1425,4 +1439,230 @@ Run the new billing route against real Firebase Admin + Firestore + Secret Manag
 #### Next Sprint Prerequisites
 - Merge the isolated handoff branch or PR after final review
 - Rotate or confirm the Google AI Studio secret version after integration if this verification key should not remain active
+
+---
+
+### Sprint 3H - SSCE Database Skeleton And API Contracts
+- Date: 2026-03-24
+- Status: completed
+
+#### Goal
+Stand up the SSCE personalization/compounding backbone with four core tables, three validated API routes, and minimum route-level test skeletons without disturbing the existing voice runtime.
+
+#### Files Created
+- `apps/api/src/db/schema/ssce-schema.ts`
+- `apps/api/src/routes/ssce-router.ts`
+- `apps/api/src/routes/ssce-api.spec.ts`
+- `packages/adapter/src/validators/ssce-zod.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a portable SSCE ERD module that models `artifacts`, `style_signatures`, `style_events`, and `reference_edges` with explicit FK metadata and runtime FK assertions
+- Added an in-memory SSCE router surface for `harvest`, `generate`, and `feedback`, all of which validate input and output payloads through shared Zod contracts
+- Added a feedback diff skeleton that compares generated draft content against final artifact content and feeds mock signature updates back into the scoped signature store
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional voice states unchanged
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The SSCE implementation is intentionally storage-agnostic and currently uses in-memory mock persistence rather than a live database driver
+- The feedback diff logic is a deterministic mock skeleton, not a semantic AST/text-diff engine yet
+- The route spec test currently requires a small temporary CommonJS compile step because the repo does not have a dedicated TS unit-test runner configured
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `.\\node_modules\\.bin\\tsc apps\\api\\src\\routes\\ssce-api.spec.ts apps\\api\\src\\routes\\ssce-router.ts apps\\api\\src\\db\\schema\\ssce-schema.ts packages\\adapter\\src\\validators\\ssce-zod.ts --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck --outDir .codex-runtime\\ssce-test-dist`
+- [x] `node --test .codex-runtime\\ssce-test-dist\\apps\\api\\src\\routes\\ssce-api.spec.js`
+
+#### Next Sprint Prerequisites
+- Replace the in-memory SSCE store with the project’s eventual persistent adapter once the database package choice is finalized
+- Decide whether SSCE should surface as internal service handlers only or be wrapped by actual HTTP route files in `apps/api`
+
+---
+
+### Sprint 3I - SSCE Prisma Adapter And HTTP Endpoints
+- Date: 2026-03-24
+- Status: completed
+
+#### Goal
+Replace the SSCE in-memory store with a real Prisma-backed adapter, expose the three SSCE operations through Next.js App Router HTTP endpoints, and replace the ad-hoc test compile path with a normal TypeScript test runner.
+
+#### Files Created
+- `apps/api/src/db/schema.prisma`
+- `apps/api/src/db/ssce-prisma.ts`
+- `apps/api/src/db/migrations/0001_init_ssce.sql`
+- `apps/api/src/db/run-ssce-migrations.ts`
+- `apps/api/src/app/api/v1/ssce/route-helpers.ts`
+- `apps/api/src/app/api/v1/ssce/harvest/route.ts`
+- `apps/api/src/app/api/v1/ssce/generate/route.ts`
+- `apps/api/src/app/api/v1/ssce/feedback/route.ts`
+- `src/app/api/v1/ssce/harvest/route.ts`
+- `src/app/api/v1/ssce/generate/route.ts`
+- `src/app/api/v1/ssce/feedback/route.ts`
+- `vitest.config.ts`
+
+#### Files Modified
+- `apps/api/src/routes/ssce-router.ts`
+- `apps/api/src/routes/ssce-api.spec.ts`
+- `package.json`
+- `tsconfig.json`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Replaced the in-memory SSCE store with Prisma transactions that create and relate `artifacts`, `style_signatures`, `style_events`, and `reference_edges`
+- Added checked-in SQL migrations plus a small local migration runner so the SSCE schema can be materialized before tests and local HTTP smoke runs
+- Added App Router wrappers for `POST /api/v1/ssce/harvest`, `POST /api/v1/ssce/generate`, and `POST /api/v1/ssce/feedback`, all of which parse inbound JSON through Zod, delegate to the SSCE router, and normalize `200/400/500` responses
+- Replaced the temporary CommonJS compile workaround with a Vitest-based TypeScript test path wired through `package.json`
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional voice states unchanged
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- Prisma client generation works, but this Windows environment still rejects `prisma migrate dev` / `prisma db push` with a schema engine error, so local schema application currently depends on the checked-in SQL runner
+- The active Next.js app serves the root `src/app/api/v1/ssce/*` wrappers, which intentionally forward to the `apps/api` handlers so the SSCE contract can stay isolated without moving the main app structure
+- The SSCE feedback diff updater remains a skeleton and should be replaced with a real semantic style extraction pass before production compounding decisions depend on it
+
+#### Manual QA
+- [x] `corepack pnpm db:ssce:generate`
+- [x] `corepack pnpm db:ssce:migrate`
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:ssce`
+- [x] `corepack pnpm test:e2e`
+- [x] Local Next.js smoke run on port `3010` returned `200` from all three SSCE endpoints with persisted Prisma-backed records
+
+#### Next Sprint Prerequisites
+- Decide whether the Prisma datasource should remain local SQLite for development only or move to the eventual shared production database provider
+- Replace the feedback diff skeleton with a semantic comparison pipeline before signature compounding is used for customer-facing personalization
+
+---
+
+### Sprint 3J - SSCE Oracle Semantic Feedback And Git Hygiene
+- Date: 2026-03-24
+- Status: completed
+
+#### Goal
+Replace the SSCE feedback dummy diff skeleton with an Oracle-style semantic analysis pipeline and stop Windows line-ending/test-cache noise from polluting the worktree.
+
+#### Files Created
+- `apps/api/src/services/semantic-diff-oracle.ts`
+- `.gitattributes`
+
+#### Files Modified
+- `.gitignore`
+- `apps/api/src/routes/ssce-router.ts`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added `HeuristicSemanticDiffOracle` with a future-ready model adapter contract so Gemini/OpenAI-backed reasoning can later replace the local heuristic provider without changing the router contract
+- The feedback route now computes lexical changes, structure changes, tone deltas, and scope-specific trait updates before it writes back to `style_signatures`
+- Oracle analysis is persisted into `style_signatures.traits_json` and `style_events.payload_snapshot`, while the public response schema remains backward-compatible
+- Added repository-level line-ending normalization plus ignore rules for test/cache artifacts such as `.last-run.json`, `.runtime/`, `*.tsbuildinfo`, and the local SSCE SQLite file
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional voice states unchanged
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The Oracle currently uses heuristic NLP and document-structure cues. It is semantically richer than the old sentence-count diff, but still not equivalent to a live LLM judge
+- Prisma's schema engine issue on this Windows setup remains unresolved, so local schema application still depends on the checked-in SQL runner
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test:ssce`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified `git diff --name-only` no longer contains incidental `next-env.d.ts`, `.last-run.json`, or SQLite/cache noise after cleanup
+
+#### Next Sprint Prerequisites
+- Swap the heuristic Oracle provider for a live Gemini/OpenAI adapter if production-grade semantic judgment is required
+- Resolve the underlying Prisma schema-engine issue so SQL migration replay is no longer needed on this Windows path
+
+---
+
+### Sprint 3K - Live Gemini Oracle Verification, Handoff Prep, And UI Constitution
+- Date: 2026-03-24
+- Status: completed
+
+#### Goal
+Replace the heuristic-only Oracle path with a live Google AI Studio Gemini integration, prove the live path under the normal test command, and write the fixed UI constitution required for the frontend handoff.
+
+#### Files Created
+- `docs/UI_CONSTITUTION.md`
+
+#### Files Modified
+- `.gitignore`
+- `apps/api/src/services/semantic-diff-oracle.ts`
+- `apps/api/src/routes/ssce-api.spec.ts`
+- `package.json`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- `apps/api/src/services/semantic-diff-oracle.ts` now loads `GOOGLE_AI_STUDIO_KEY` from local env files, calls the Google AI Studio `generateContent` endpoint, and records live provider metadata plus token usage in test output
+- The Oracle now constrains Gemini with a dedicated JSON response contract and merges the returned semantic judgment with the deterministic baseline analyzer
+- If Gemini returns malformed JSON, the live path degrades to a repair-baseline result instead of failing the feedback route, so the system stays live-first while preserving deterministic feedback output
+- `apps/api/src/routes/ssce-api.spec.ts` now asserts that the feedback route uses the live Gemini provider prefix whenever a real key is present
+- `docs/UI_CONSTITUTION.md` now fixes the three frontend absolutes: five-box grouping, dark theme with real brand-color icons, and zero-UI microphone transition
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional voice states unchanged
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The live Gemini path is verified, but one happy-path case still needed repair-baseline fallback because Gemini emitted malformed JSON during the test run
+- `.env.local` contains the live API key only in the local worktree and must not be committed during handoff
+- Prisma's Windows schema-engine issue still exists, so local SSCE schema application continues to depend on the checked-in SQL runner
+
+#### Manual QA
+- [x] Injected `GOOGLE_AI_STUDIO_KEY` into local `.env.local`
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test:ssce`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified test logs showed live Gemini provider strings and token counts from the SSCE feedback path
+
+#### Next Sprint Prerequisites
+- Replace repair-baseline fallback with stricter structured output once a more reliable Gemini schema mode or judge prompt is chosen
+- Hand the merged backend state plus `docs/UI_CONSTITUTION.md` to the frontend agent before the first UI render sprint starts
 

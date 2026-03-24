@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./ssce.db"
+}
+
+model Artifact {
+  id                       String           @id @default(cuid())
+  workspaceId              String           @map("workspace_id")
+  externalId               String?          @unique @map("external_id")
+  title                    String?
+  content                  String
+  contentFormat            String           @map("content_format")
+  artifactKind             String           @map("artifact_kind")
+  destinationKey           String?          @map("destination_key")
+  recipientKey             String?          @map("recipient_key")
+  taskKey                  String?          @map("task_key")
+  structureOutline         String           @map("structure_outline")
+  metadataJson             String           @map("metadata")
+  createdAt                DateTime         @default(now()) @map("created_at")
+  updatedAt                DateTime         @updatedAt @map("updated_at")
+  sourceSignatures         StyleSignature[] @relation("SignatureSourceArtifact")
+  primaryStyleEvents       StyleEvent[]     @relation("PrimaryArtifactEvent")
+  generatedDraftStyleEvents StyleEvent[]    @relation("GeneratedDraftArtifactEvent")
+  finalStyleEvents         StyleEvent[]     @relation("FinalArtifactEvent")
+  sourceReferenceEdges     ReferenceEdge[]  @relation("ReferenceEdgeSource")
+  targetReferenceEdges     ReferenceEdge[]  @relation("ReferenceEdgeTarget")
+
+  @@index([workspaceId])
+  @@index([workspaceId, artifactKind])
+  @@map("artifacts")
+}
+
+model StyleSignature {
+  id               String    @id @default(cuid())
+  workspaceId      String    @map("workspace_id")
+  scopeType        String    @map("scope_type")
+  scopeKey         String    @map("scope_key")
+  destinationKey   String?   @map("destination_key")
+  recipientKey     String?   @map("recipient_key")
+  taskKey          String?   @map("task_key")
+  signatureVersion Int       @default(1) @map("signature_version")
+  signalCount      Int       @default(0) @map("signal_count")
+  confidenceScore  Float     @default(0) @map("confidence_score")
+  traitsJson       String    @map("traits_json")
+  sourceArtifactId String?   @map("source_artifact_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  sourceArtifact   Artifact? @relation("SignatureSourceArtifact", fields: [sourceArtifactId], references: [id], onDelete: SetNull)
+  styleEvents      StyleEvent[]
+
+  @@unique([workspaceId, scopeType, scopeKey])
+  @@index([workspaceId, scopeType])
+  @@index([destinationKey])
+  @@index([recipientKey])
+  @@index([taskKey])
+  @@map("style_signatures")
+}
+
+model StyleEvent {
+  id                      String          @id @default(cuid())
+  workspaceId             String          @map("workspace_id")
+  eventType               String          @map("event_type")
+  artifactId              String?         @map("artifact_id")
+  generatedDraftArtifactId String?        @map("generated_draft_artifact_id")
+  finalArtifactId         String?         @map("final_artifact_id")
+  signatureId             String?         @map("signature_id")
+  diffSummary             String?         @map("diff_summary")
+  payloadSnapshot         String          @map("payload_snapshot")
+  createdAt               DateTime        @default(now()) @map("created_at")
+  artifact                Artifact?       @relation("PrimaryArtifactEvent", fields: [artifactId], references: [id], onDelete: SetNull)
+  generatedDraftArtifact  Artifact?       @relation("GeneratedDraftArtifactEvent", fields: [generatedDraftArtifactId], references: [id], onDelete: SetNull)
+  finalArtifact           Artifact?       @relation("FinalArtifactEvent", fields: [finalArtifactId], references: [id], onDelete: SetNull)
+  signature               StyleSignature? @relation(fields: [signatureId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, eventType])
+  @@index([artifactId])
+  @@index([signatureId])
+  @@map("style_events")
+}
+
+model ReferenceEdge {
+  id               String   @id @default(cuid())
+  sourceArtifactId String   @map("source_artifact_id")
+  targetArtifactId String   @map("target_artifact_id")
+  edgeType         String   @map("edge_type")
+  weight           Float
+  rationale        String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  sourceArtifact   Artifact @relation("ReferenceEdgeSource", fields: [sourceArtifactId], references: [id], onDelete: Cascade)
+  targetArtifact   Artifact @relation("ReferenceEdgeTarget", fields: [targetArtifactId], references: [id], onDelete: Cascade)
+
+  @@index([sourceArtifactId])
+  @@index([targetArtifactId])
+  @@map("reference_edges")
+}

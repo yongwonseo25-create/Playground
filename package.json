@@ -10,8 +10,12 @@
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test tests/e2e/env-core.spec.ts tests/e2e/backend-reliability.spec.ts tests/e2e/dual-stt-router.spec.ts -c tests/playwright.env-core.config.ts",
+    "db:ssce:generate": "prisma generate --schema apps/api/src/db/schema.prisma",
+    "db:ssce:migrate": "node --experimental-strip-types --experimental-specifier-resolution=node apps/api/src/db/run-ssce-migrations.ts",
+    "test": "playwright test tests/e2e/env-core.spec.ts tests/e2e/backend-reliability.spec.ts tests/e2e/dual-stt-router.spec.ts -c tests/playwright.env-core.config.ts && corepack pnpm test:ssce",
     "test:billing-mcp": "playwright test tests/e2e/billing-mcp.spec.ts -c tests/playwright.env-core.config.ts",
+    "test:ssce": "corepack pnpm db:ssce:generate && corepack pnpm db:ssce:migrate && vitest run apps/api/src/routes/ssce-api.spec.ts",
+    "test:ssce:watch": "vitest apps/api/src/routes/ssce-api.spec.ts",
     "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts tests/e2e/voice-runtime-live.spec.ts tests/e2e/voice-cutoff-ui.spec.ts -c tests/playwright.config.ts",
     "test:e2e:routing": "playwright test tests/e2e/voice-stt-routing-live.spec.ts -c tests/playwright.routing.config.ts",
     "mcp:reviewer": "node --experimental-strip-types scripts/mcp-reviewer-client.ts",
@@ -19,6 +23,7 @@
     "verify:real-output": "node --experimental-strip-types scripts/verify-generate-output-real.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.7.0",
     "@google-cloud/secret-manager": "^6.1.1",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.2",
@@ -48,8 +53,10 @@
     "eslint": "^9.16.0",
     "eslint-config-next": "^16.0.0",
     "postcss": "^8.4.49",
+    "prisma": "^6.7.0",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.7.2",
+    "vitest": "^3.2.4",
     "ws": "^8.19.0"
   }
 }

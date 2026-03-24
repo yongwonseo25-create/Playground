@@ -6,3 +6,8 @@ pnpm-lock.yaml
 .env.local
 .env.*.local
 .env
+.runtime/
+*.tsbuildinfo
+.last-run.json
+apps/api/src/db/ssce.db
+temp/*.log
