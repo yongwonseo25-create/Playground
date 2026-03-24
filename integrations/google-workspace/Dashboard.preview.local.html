@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VOXERA 구글 워크스페이스 대시보드</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --bg-warm: #fffaf3;
+        --surface: #ffffff;
+        --navy: #22324a;
+        --muted: #6b8099;
+        --line: #dce7f3;
+        --blue-fill: #eaf6ff;
+        --blue-line: #8fd1ff;
+        --blue-text: #27507e;
+        --mint-fill: #eafbf5;
+        --mint-line: #9be3c2;
+        --mint-text: #1f6b4a;
+        --peach-fill: #fff5e9;
+        --peach-line: #ffca99;
+        --peach-text: #8b5314;
+        --violet-fill: #f4f0ff;
+        --violet-line: #cdb9ff;
+        --violet-text: #5f3ea1;
+        --pink-fill: #fff0f6;
+        --pink-line: #ffd4e2;
+        --pink-text: #a53d73;
+        --green-fill: #ecfbf1;
+        --green-line: #cfefda;
+        --green-text: #19683d;
+        --action-blue: #0b57d0;
+        --action-green: #188038;
+        --action-navy: #21324b;
+        --shadow: 0 18px 42px rgba(156, 178, 204, 0.18);
+        --radius-xl: 30px;
+        --radius-lg: 22px;
+        --radius-md: 18px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+        background: linear-gradient(135deg, var(--bg) 0%, var(--bg-warm) 100%);
+        color: var(--navy);
+      }
+
+      .wrap {
+        min-height: 100vh;
+        padding: 28px;
+      }
+
+      .shell {
+        max-width: 1480px;
+        margin: 0 auto;
+        background: var(--surface);
+        border-radius: 34px;
+        box-shadow: var(--shadow);
+        padding: 28px;
+      }
+
+      .hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        padding: 26px 30px;
+        border: 2px solid var(--line);
+        border-radius: var(--radius-xl);
+        background: linear-gradient(135deg, #fbfeff 0%, #fff8ee 100%);
+      }
+
+      .hero-copy {
+        min-width: 0;
+      }
+
+      .hero-title {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1.25;
+        word-break: keep-all;
+      }
+
+      .hero-subtitle {
+        margin: 10px 0 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .hero-nav {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .hero-pill {
+        appearance: none;
+        border: none;
+        cursor: pointer;
+        min-width: 120px;
+        padding: 11px 18px;
+        border-radius: 16px;
+        font-size: 14px;
+        font-weight: 700;
+        box-shadow: 0 10px 22px rgba(156, 178, 204, 0.12);
+      }
+
+      .pill-inbox { background: var(--mint-fill); border: 2px solid var(--mint-line); color: var(--mint-text); }
+      .pill-execution { background: var(--peach-fill); border: 2px solid var(--peach-line); color: var(--peach-text); }
+      .pill-settings { background: var(--violet-fill); border: 2px solid var(--violet-line); color: var(--violet-text); }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 24px;
+      }
+
+      .metric-card {
+        padding: 22px 18px;
+        border-radius: 28px;
+        text-align: center;
+        box-shadow: var(--shadow);
+        border: 2px solid transparent;
+      }
+
+      .metric-card h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .metric-card strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 30px;
+        line-height: 1;
+        font-weight: 800;
+      }
+
+      .metric-review { background: var(--blue-fill); border-color: #cbeaff; color: var(--blue-text); }
+      .metric-progress { background: #fff6e7; border-color: #ffe0b8; color: #8a5a18; }
+      .metric-due { background: var(--pink-fill); border-color: var(--pink-line); color: var(--pink-text); }
+      .metric-done { background: var(--green-fill); border-color: var(--green-line); color: var(--green-text); }
+
+      .main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 160px minmax(0, 1fr);
+        align-items: center;
+        gap: 24px;
+        margin-top: 30px;
+      }
+
+      .panel {
+        min-height: 450px;
+        border-radius: 30px;
+        background: #fff;
+        box-shadow: var(--shadow);
+        padding: 24px;
+      }
+
+      .panel-inbox {
+        border: 2px solid #beefd3;
+      }
+
+      .panel-execution {
+        border: 2px solid #ffd7b0;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 22px;
+      }
+
+      .panel-title {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 800;
+      }
+
+      .open-chip {
+        appearance: none;
+        border: none;
+        cursor: pointer;
+        min-height: 46px;
+        padding: 0 18px;
+        border-radius: 18px;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 800;
+        box-shadow: 0 12px 24px rgba(16, 83, 120, 0.12);
+      }
+
+      .open-chip:disabled {
+        cursor: default;
+        opacity: 0.5;
+        box-shadow: none;
+      }
+
+      .open-chip.inbox { background: #0f766e; }
+      .open-chip.doc { background: var(--action-blue); }
+      .open-chip.cal { background: var(--action-green); }
+      .open-chip.exec { background: var(--action-navy); }
+
+      .stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .soft-card {
+        background: #f7fcff;
+        border: 2px solid #d6eeff;
+        border-radius: 22px;
+        padding: 16px 18px;
+      }
+
+      .soft-card.peach {
+        background: #fff9f2;
+        border-color: #ffe1c2;
+      }
+
+      .soft-card-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .soft-card-grid.triple {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .label {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: #7b93ae;
+        font-weight: 700;
+      }
+
+      .label.peach {
+        color: #b28657;
+      }
+
+      .value {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1.35;
+        word-break: keep-all;
+      }
+
+      .value.small {
+        font-size: 16px;
+      }
+
+      .transition {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .transition-track {
+        position: relative;
+        width: 100%;
+        height: 88px;
+      }
+
+      .transition-line {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 4px;
+        transform: translateY(-50%);
+        background: linear-gradient(90deg, #f5d7ab 0%, #efba63 100%);
+        border-radius: 999px;
+      }
+
+      .transition-node {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        min-width: 124px;
+        min-height: 58px;
+        padding: 0 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #fff4de;
+        border: 2px solid #efba63;
+        box-shadow: 0 14px 24px rgba(239, 186, 99, 0.22);
+        font-size: 16px;
+        font-weight: 800;
+        color: #8b5a10;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .loading {
+        position: fixed;
+        inset: 0;
+        background: rgba(248, 251, 255, 0.88);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 20;
+        transition: opacity 0.2s ease;
+      }
+
+      .loading.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .loading-box {
+        min-width: 220px;
+        padding: 24px 28px;
+        border-radius: 22px;
+        background: #fff;
+        box-shadow: var(--shadow);
+        text-align: center;
+      }
+
+      .spinner {
+        width: 34px;
+        height: 34px;
+        margin: 0 auto 14px;
+        border-radius: 999px;
+        border: 4px solid #dce9f7;
+        border-top-color: #7baef0;
+        animation: spin 0.8s linear infinite;
+      }
+
+      .loading-box p {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (max-width: 1280px) {
+        .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .main {
+          grid-template-columns: 1fr;
+        }
+
+        .transition-track {
+          width: 100%;
+          height: 100px;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .wrap {
+          padding: 12px;
+        }
+
+        .shell {
+          padding: 14px;
+          border-radius: 24px;
+        }
+
+        .hero {
+          padding: 18px;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .hero-nav,
+        .actions,
+        .soft-card-grid,
+        .soft-card-grid.triple,
+        .metrics {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-pill,
+        .open-chip {
+          width: 100%;
+        }
+
+        .hero-title {
+          font-size: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="loading" id="loading">
+      <div class="loading-box">
+        <div class="spinner"></div>
+        <p>VOXERA 대시보드를 불러오는 중입니다...</p>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="shell">
+        <section class="hero">
+          <div class="hero-copy">
+            <h1 class="hero-title" id="title">VOXERA 구글 워크스페이스 대시보드</h1>
+            <p class="hero-subtitle" id="subtitle">검토부터 실행 전환까지 한 화면에서 관리</p>
+          </div>
+          <div class="hero-nav">
+            <button class="hero-pill pill-inbox" type="button" id="nav-inbox">받은 음성함</button>
+            <button class="hero-pill pill-execution" type="button" id="nav-execution">실행 보드</button>
+            <button class="hero-pill pill-settings" type="button" id="nav-settings">설정</button>
+          </div>
+        </section>
+
+        <section class="metrics">
+          <article class="metric-card metric-review">
+            <h3>검토할 음성</h3>
+            <strong id="metric-review">0</strong>
+          </article>
+          <article class="metric-card metric-progress">
+            <h3>진행 중 업무</h3>
+            <strong id="metric-progress">0</strong>
+          </article>
+          <article class="metric-card metric-due">
+            <h3>오늘 마감</h3>
+            <strong id="metric-due">0</strong>
+          </article>
+          <article class="metric-card metric-done">
+            <h3>완료한 업무</h3>
+            <strong id="metric-done">0</strong>
+          </article>
+        </section>
+
+        <section class="main">
+          <article class="panel panel-inbox">
+            <div class="panel-head">
+              <h2 class="panel-title" style="color:#205E47;">받은 음성함</h2>
+              <button class="open-chip inbox" type="button" id="open-inbox">받은 음성함 열기</button>
+            </div>
+
+            <div class="stack">
+              <div class="soft-card">
+                <p class="label">한 줄 요약</p>
+                <p class="value" id="inbox-summary">-</p>
+              </div>
+
+              <div class="soft-card-grid">
+                <div class="soft-card">
+                  <p class="label">말한 사람</p>
+                  <p class="value small" id="inbox-speaker">-</p>
+                </div>
+                <div class="soft-card">
+                  <p class="label">우선순위 / 마감일</p>
+                  <p class="value small" id="inbox-priority-due">-</p>
+                </div>
+              </div>
+
+              <div class="soft-card">
+                <p class="label">실행 항목</p>
+                <p class="value small" id="inbox-actions">-</p>
+              </div>
+            </div>
+          </article>
+
+          <div class="transition">
+            <div class="transition-track">
+              <div class="transition-line"></div>
+              <div class="transition-node">실행 전환</div>
+            </div>
+          </div>
+
+          <article class="panel panel-execution">
+            <div class="panel-head">
+              <h2 class="panel-title" style="color:#8A5316;">실행 보드</h2>
+            </div>
+
+            <div class="stack">
+              <div class="soft-card peach">
+                <p class="label peach">할 일</p>
+                <p class="value" id="exec-title">-</p>
+              </div>
+
+              <div class="soft-card-grid triple">
+                <div class="soft-card peach">
+                  <p class="label peach">담당자</p>
+                  <p class="value small" id="exec-owner">-</p>
+                </div>
+                <div class="soft-card peach">
+                  <p class="label peach">상태</p>
+                  <p class="value small" id="exec-status">-</p>
+                </div>
+                <div class="soft-card peach">
+                  <p class="label peach">마감일</p>
+                  <p class="value small" id="exec-due">-</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="open-chip doc" type="button" id="exec-doc">문서 열기</button>
+              <button class="open-chip cal" type="button" id="exec-cal">일정 보기</button>
+              <button class="open-chip exec" type="button" id="open-execution">실행 보드 열기</button>
+            </div>
+          </article>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const INITIAL_DATA = {"title": "VOXERA ?? ?????? ????", "subtitle": "???? ?? ???? ? ???? ??", "links": {"inbox": "#", "execution": "#", "settings": "#"}, "metrics": {"reviewCount": 12, "progressCount": 7, "dueTodayCount": 3, "doneCount": 18}, "inbox": {"summary": "????? ?? ??? ?? ??", "speaker": "???", "priorityDue": "?? / 2026-03-21", "actions": "?? ??? ?? ?? / ?? ?? ??"}, "execution": {"title": "????? ?? ??? ?? ??", "owner": "????", "status": "???", "dueDate": "2026-03-21", "docLabel": "?? ??", "docUrl": "#", "calendarLabel": "?? ??", "calendarUrl": "#"}};
+      let currentData = INITIAL_DATA;
+
+      function setLoading(hidden) {
+        document.getElementById('loading').classList.toggle('hidden', hidden);
+      }
+
+      function bindSheetButtons() {
+        document.getElementById('nav-inbox').onclick = () => moveToSheet('받은 음성함');
+        document.getElementById('nav-execution').onclick = () => moveToSheet('실행 보드');
+        document.getElementById('nav-settings').onclick = () => moveToSheet('설정');
+        document.getElementById('open-inbox').onclick = () => moveToSheet('받은 음성함');
+        document.getElementById('open-execution').onclick = () => moveToSheet('실행 보드');
+      }
+
+      function moveToSheet(sheetName) {
+        if (!(google && google.script && google.script.run)) return;
+        google.script.run
+          .withSuccessHandler(() => google.script.host.close())
+          .openSheetTab(sheetName);
+      }
+
+      function openExternalUrl(url) {
+        if (!url) return;
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+
+      function bindActionButtons(vm) {
+        const docButton = document.getElementById('exec-doc');
+        const calButton = document.getElementById('exec-cal');
+
+        docButton.disabled = !vm.execution.docUrl;
+        calButton.disabled = !vm.execution.calendarUrl;
+
+        docButton.onclick = () => openExternalUrl(vm.execution.docUrl);
+        calButton.onclick = () => openExternalUrl(vm.execution.calendarUrl);
+      }
+
+      function paint(vm) {
+        currentData = vm;
+        document.getElementById('title').textContent = vm.title || 'VOXERA 구글 워크스페이스 대시보드';
+        document.getElementById('subtitle').textContent = vm.subtitle || '';
+        document.getElementById('metric-review').textContent = String(vm.metrics.reviewCount || 0);
+        document.getElementById('metric-progress').textContent = String(vm.metrics.progressCount || 0);
+        document.getElementById('metric-due').textContent = String(vm.metrics.dueTodayCount || 0);
+        document.getElementById('metric-done').textContent = String(vm.metrics.doneCount || 0);
+
+        document.getElementById('inbox-summary').textContent = vm.inbox.summary || '-';
+        document.getElementById('inbox-speaker').textContent = vm.inbox.speaker || '-';
+        document.getElementById('inbox-priority-due').textContent = vm.inbox.priorityDue || '-';
+        document.getElementById('inbox-actions').textContent = vm.inbox.actions || '-';
+
+        document.getElementById('exec-title').textContent = vm.execution.title || '-';
+        document.getElementById('exec-owner').textContent = vm.execution.owner || '-';
+        document.getElementById('exec-status').textContent = vm.execution.status || '-';
+        document.getElementById('exec-due').textContent = vm.execution.dueDate || '-';
+
+        document.getElementById('exec-doc').textContent = vm.execution.docLabel || '문서 열기';
+        document.getElementById('exec-cal').textContent = vm.execution.calendarLabel || '일정 보기';
+
+        bindActionButtons(vm);
+      }
+
+      function refreshData() {
+        if (!(google && google.script && google.script.run)) {
+          paint(INITIAL_DATA);
+          setLoading(true);
+          return;
+        }
+
+        google.script.run
+          .withSuccessHandler((vm) => {
+            paint(vm || INITIAL_DATA);
+            setLoading(true);
+          })
+          .withFailureHandler(() => {
+            paint(INITIAL_DATA);
+            setLoading(true);
+          })
+          .refreshDashboardData();
+      }
+
+      bindSheetButtons();
+      paint(INITIAL_DATA);
+      refreshData();
+    </script>
+  </body>
+</html>

@@ -1,3 +1,4 @@
+﻿```md
 # Voxera Sprint Summary
 
 > This file is the persistent architecture memory for the Voxera front-end.
@@ -51,7 +52,7 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 - Status: stable foundation complete
 - Current routing approach: Next.js App Router with route groups
 - Current feature folder approach: feature-first structure centered on `features/voice-capture`
-- Current UI shell status: premium 3-step voice capture flow implemented and Playwright-verified
+- Current UI shell status: premium 3-step voice capture flow implemented and Playwright-verified with Step 1 neon trace waveform restored
 
 ### Voice State Machine
 - Status: implemented and stable
@@ -76,49 +77,261 @@ The following 8 states are fixed and must not be arbitrarily restructured:
   - reducer remains pure and side effects are externalized
 
 ### Audio Engine
-- Status: architecture fixed, implementation not yet started in code
-- Audio input approach: AudioWorklet + PCM only
-- Audio transport approach: secure WSS only
-- Audio cleanup strategy: planned, not yet implemented
-- Secure context requirement: mandatory
+- Status: live browser runtime implemented and Playwright-verified against a local WSS harness
+- Audio input approach: explicit `getUserMedia` -> `AudioWorklet` -> PCM16 frames
+- Audio transport approach: env-driven websocket control events plus raw PCM frames over WS/WSS, with `session.start.language` propagated to the backend STT router
+- Audio cleanup strategy: tracks, worklet graph, and audio context are torn down on stop/reset/unmount
+- Secure context requirement: mandatory and runtime-enforced
 
 ### Transport
-- Status: env and secure transport policy prepared
-- WSS endpoint strategy: env-driven
-- Webhook adapter strategy: `/api/voice/submit` remains live for transcript metadata delivery
-- Additional server route: `/api/v1/generate-output` now owns authenticated pay-per-output generation with Firestore-backed billing state
-- Env validation status: implemented for secure endpoint handling and extended with server-side Google AI Studio / Firebase config parsing
+- Status: live browser-to-WSS runtime flow implemented, with Whisper-default STT routing plus conditional Return Zero overrides on the WSS server
+- WSS endpoint strategy: `NEXT_PUBLIC_WSS_URL` is startup-validated and only allows `ws://` or `wss://`, with `wss://` enforced outside local
+- STT routing strategy: OpenAI Whisper is the default provider for all sessions, while Return Zero is used only for Korean sessions that opt into premium accuracy or high-risk workflows such as `sales_call` and `medical_note`
+- Webhook adapter strategy: `/api/voice/submit` safeParses the inbound request and outbound Make.com payload before `WebhookClient` send/queue handling
+- Env validation status: public and Next server envs fail fast at startup, while the standalone WSS server loads `.env.local`, keeps Whisper available as the safe default, and warns when Return Zero premium overrides cannot be honored
+- Automated routing QA status: a dedicated Playwright stack now boots Next dev plus the standalone WSS server, injects a synthetic microphone with fake media flags, and proves Whisper default versus Return Zero premium routing through captured webhook payloads
 
 ### Submission / Cost Defense
-- Status: live client submission wired to `/api/voice/submit`
+- Status: live `/api/voice/submit` fetch flow active and placeholder upload path removed
 - 15-second cutoff status: reducer timer remains the source of truth and auto-stops at the hard limit
-- `clientRequestId` lock status: generated synchronously before async live submission begins
-- Duplicate prevention strategy: upload button disables during `uploading`, reducer lock preserved for live route wiring
-- Live submit payload: transcript text and lightweight routing/session metadata are posted from the client after WSS transcription completes
-- Back-end billing path: `/api/v1/generate-output` now uses Firestore `reserve -> executing -> deducted/refunded` transitions so output billing is held before model execution and released on failure
-- Local reviewer path: stdio JSON-RPC reviewer client can pull MCP cloud updates and return allow/deny feedback with file line diagnostics
+- `clientRequestId` lock status: generated synchronously before async submit begins
+- Duplicate prevention strategy: reducer upload lock gates browser submit attempts and backend idempotency continues through `X-Idempotency-Key`
+- Cost telemetry status: `stt_provider` and `audio_duration_sec` now flow from the WSS transcript result into `/api/voice/submit` and the downstream webhook payload
+- Destination metadata status: optional `spreadsheetId`, `slackChannelId`, `notionDatabaseId`, and `notionParentPageId` can now flow from browser query params through `/api/voice/submit` into the downstream webhook payload without touching reducer truth
 
 ### Mobile UX
-- Status: premium 3-step capture flow complete
+- Status: premium 3-step capture flow complete with restored Step 1 neon trace waveform
 - One-handed usage support: yes
 - Safe-area support: baseline implemented
 - Accessibility status: touch targets, labels, and Playwright test ids applied
-- Error messaging status: inline Step 2 retry/cancel feedback available
-- Motion polish status: idle waveform silhouette preserved, mic breathing glow clarified, and footer copy now loops as a one-way marquee
-
-### Diagram Workflow
-- Status: Excalidraw intake workflow initialized
-- Source folder: `docs/diagrams/`
-- Intake file types:
-  - `.excalidraw`
-  - `.png`
-  - `.svg`
-- Interpretation policy: the newest relevant diagram acts as the visual brief for subsequent Codex implementation work
-- Rule file: `skills.md`
+- Error messaging status: inline Step 2 retry/cancel feedback available and transcript view now shows live runtime text only
 
 ---
 
 ## Sprint Log
+
+---
+
+### Sprint 16 ??Google Workspace Modal Dashboard Pivot
+- Date: 2026-03-21
+- Status: completed
+
+#### Goal
+Replace the failed sheet-cell dashboard imitation with a production-style Apps Script HTML modal dashboard for the Korean-first Google Workspace execution workspace.
+
+---
+
+### Sprint 17 ??Notion MCP Live Workspace Setup
+- Date: 2026-03-22
+- Status: completed with known MCP view limitation
+
+#### Goal
+Create live Notion workspace assets for Voxera using MCP instead of local mock planning only.
+
+#### Changed Assets
+- Created live databases in Notion workspace:
+  - `🎙️ VOXERA 음성 수신함`
+  - `📌 실행 보드`
+  - `⚙️ Agent Prompt DB`
+  - `📊 에이전트 실행 로그`
+- Created live pages in Notion workspace:
+  - `🗄️ VOXERA Backend DB`
+  - `🚀 VOXERA MAIN 대시보드`
+- Added `상태 보드` board view to `📌 실행 보드`
+- Seeded `⚙️ Agent Prompt DB` with three agent entries and common execution-log guidance
+
+#### Architecture Notes
+- Raw databases were moved under `🗄️ VOXERA Backend DB` so the main user surface is no longer the raw table root.
+- The main dashboard page was created as a workspace-level landing page with quick links and execution-flow sections.
+- MCP `create-pages` validation still blocked direct insertion of linked database blocks via `data-source-url`, so the dashboard currently uses mentions/links plus the separately created board view rather than a fully embedded linked DB block.
+
+#### Known Risks
+- `🚀 VOXERA MAIN 대시보드` is production-usable as a navigation landing page, but not yet the final ideal embedded linked-database dashboard.
+- `🎙️ VOXERA 음성 수신함` status property defaults to Notion native status values (`시작 전/진행 중/완료`) rather than the originally requested `NEW/DONE`.
+- If a stricter embedded dashboard is required, a follow-up pass should test alternate MCP block insertion patterns or finish the last mile manually inside Notion UI.
+
+#### Manual QA
+- Open the created dashboard page and confirm the quick links resolve to all four workspace databases.
+- Open `📌 실행 보드` and confirm `상태 보드` view exists and groups by `상태`.
+- Open `⚙️ Agent Prompt DB` and confirm the three seeded prompt rows include the execution-log sentence.
+
+#### Next Prerequisites
+- Decide whether the current dashboard landing page is acceptable or whether a manual final polish pass in Notion UI is required.
+- If needed, normalize status vocabulary for Voice Inbox and seed sample rows for demo/testing.
+
+---
+
+### Sprint 18 ??Master Asset Injection for Notion & Google Workspace
+- Date: 2026-03-23
+- Status: completed with known Google Sheets macro-binding limitation
+
+#### Goal
+Inject the supplied master brand assets into the live Notion workspace and prepare the Google Sheets control-room builder to render the same assets inside the dashboard canvas.
+
+#### Changed Assets
+- Updated live Notion assets:
+  - `🚀 VOXERA MAIN 대시보드` icon -> `5.png`
+  - `🚀 VOXERA MAIN 대시보드` cover -> `1.png`
+  - `🎙️ VOXERA 음성 수신함` icon -> `4.png`
+  - `⚙️ Agent Prompt DB` icon -> `3.png`
+- Updated local script:
+  - `integrations/google-workspace/dashboard-builder.gs`
+
+#### Architecture Notes
+- Local master assets were uploaded to temporary public URLs so Notion could consume them as external cover/icon resources.
+- `dashboard-builder.gs` now uses those asset URLs and `sheet.insertImage(blob, ...)` to render over-grid images on the control-room canvas while preserving `#f8fafc` background and hidden gridlines.
+- Existing drawing rebinding logic remains in place for users who manually replace the over-grid images with Drawings and want true Apps Script macro binding.
+
+#### Known Risks
+- Google Sheets Apps Script still does not expose a supported API to create brand-new Drawing buttons with assigned scripts entirely from code. Over-grid images can be rendered automatically, but fully clickable macro assignment still requires manual Drawing insertion or later UI interaction.
+- The temporary external URLs used for Notion asset injection should be treated as replaceable delivery URLs, not permanent CDN infrastructure.
+
+#### Manual QA
+- Open `🚀 VOXERA MAIN 대시보드` in Notion and confirm icon/cover changed to the supplied assets.
+- Open `🎙️ VOXERA 음성 수신함` and `⚙️ Agent Prompt DB` and confirm their icons changed.
+- Paste `integrations/google-workspace/dashboard-builder.gs` into Apps Script and run `buildVoxeraMainDashboard()`.
+- Confirm the main sheet keeps gridlines hidden, background `#f8fafc`, and renders the icon assets over the action zones.
+
+---
+
+### Sprint 19 ??GitHub Raw Asset Delivery Rule
+- Date: 2026-03-23
+- Status: completed
+
+#### Goal
+Replace temporary image hosting with a durable GitHub Raw CDN pipeline for Notion and Google Workspace asset injection.
+
+#### Changed Files
+- `assets/voxera/1.png`
+- `assets/voxera/2.png`
+- `assets/voxera/3.png`
+- `assets/voxera/4.png`
+- `assets/voxera/5.png`
+- `integrations/google-workspace/dashboard-builder.gs`
+- `docs/UI_CONSTITUTION.md`
+
+#### Architecture Notes
+- All UI assets are now expected to live in-repo and be referenced via `raw.githubusercontent.com`.
+- `dashboard-builder.gs` now points to GitHub Raw URLs rather than temporary third-party hosting.
+- Temporary hosts are considered invalid for future Notion or Google Workspace rendering work.
+
+#### Known Risks
+- Raw asset URLs depend on the pushed branch existing remotely.
+- If `main` is unavailable on the remote, the asset delivery branch must be created before Notion/GAS can consume the URLs.
+
+#### Files Created
+- `integrations/google-workspace/Dashboard.html`
+
+#### Files Modified
+- `integrations/google-workspace/Code.simple.ko.gs`
+- `docs/google-workspace-install-step-by-step.md`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Google Workspace dashboard rendering moved from sheet-cell styling to `showModalDialog()` + `Dashboard.html`
+- `Code.simple.ko.gs` now acts as a modal dashboard backend:
+  - menu registration
+  - data shaping
+  - sheet navigation actions
+  - webhook ingest
+  - inbox-to-execution conversion
+- first-visit UX now auto-opens the modal dashboard once per user per spreadsheet via `UserProperties`, then falls back to manual open from the `VOXERA` menu
+- `Dashboard.html` now owns the visual UI and loads live data with `google.script.run`
+- Spreadsheet is now treated as data/work surface only:
+  - `받은 음성함`
+  - `실행 보드`
+  - `설정`
+
+#### State Machine Changes
+- None
+
+#### Audio / Transport Changes
+- None
+- Constitutional rules preserved:
+  - AudioWorklet + PCM over WSS only
+  - exact 15-second cutoff remains reducer truth
+  - `clientRequestId` duplicate lock remains intact
+  - 8-state reducer unchanged
+
+#### Submission / Cost Defense Changes
+- None in app runtime
+- Google Workspace webhook ingestion remains protected by bearer secret validation
+
+#### Known Risks
+- Apps Script modal depends on `Dashboard` HTML file existing with the exact file name in the Apps Script project
+- If the spreadsheet is not refreshed after saving, the `VOXERA` menu may still reference stale code
+- Existing repository baseline test failures remain unrelated to this sprint:
+  - insecure `ws://` fail-fast expectation mismatch
+  - non-http(s) `MAKE_WEBHOOK_URL` fail-fast expectation mismatch
+
+#### Manual QA
+- [ ] Replace Apps Script `Code.gs` with `integrations/google-workspace/Code.simple.ko.gs`
+- [ ] Add HTML file named `Dashboard` and paste `integrations/google-workspace/Dashboard.html`
+- [ ] Run `setupSystem()`
+- [ ] Refresh the spreadsheet
+- [ ] Open `VOXERA > 대시보드 열기`
+- [ ] Add one inbox row with `상태=실행전환`
+- [ ] Confirm `실행 보드` row creation and `문서 열기` / `일정 보기` buttons
+
+#### Next Sprint Prerequisites
+- Capture a real Apps Script modal screenshot after user applies both files
+- Build the equivalent Notion visual blueprint and implementation pass
+
+---
+
+### Sprint 19 ??Failure Analysis + Dev Lead Handoff Report
+- Date: 2026-03-22
+- Status: completed
+
+#### Goal
+Document the exact failure reasons from the Notion visual dashboard attempts and the Google Workspace sheet-cell dashboard attempts, then hand off the current accepted architecture and Make.com integration path in a single developer-facing report.
+
+#### Files Created
+- `docs/2026-03-22-notion-google-workspace-failure-analysis-and-handoff.md`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- No runtime architecture changed in this sprint
+- The accepted architecture was clarified and frozen in writing:
+  - Notion path: `Internal DB-first + Queue + Async Worker + Notion direct-write`
+  - Google Workspace path: `Sheets = main work surface`, `Docs/Calendar/Mail = conditional assets`, `Apps Script HTML Modal Dashboard = user UI`
+
+#### State Machine Changes
+- None
+
+#### Audio / Transport Changes
+- None
+- Constitutional rules preserved:
+  - AudioWorklet + PCM over WSS only
+  - exact 15-second cutoff remains reducer truth
+  - `clientRequestId` duplicate lock remains intact
+  - 8-state reducer unchanged
+
+#### Submission / Cost Defense Changes
+- None in runtime
+- The report explicitly preserves backend idempotency and direct-write decisions
+
+#### Known Risks
+- The handoff report reflects the actual current state, which means:
+  - Notion visual implementation is still not final
+  - Google Workspace production auto-copy/auto-connect flow is still not fully verified
+- Existing repository baseline test failures remain unrelated:
+  - insecure `ws://` fail-fast expectation mismatch
+  - non-http(s) `MAKE_WEBHOOK_URL` fail-fast expectation mismatch
+
+#### Manual QA
+- [ ] Open the handoff report and verify the following are clear to the dev lead:
+  - Why Notion direct-write replaced the Make.com path
+  - Why the SVG-to-Google-Sheets dashboard approach failed
+  - Why Sheets is the main dashboard and Docs / Calendar / Mail are conditional assets
+  - How Make.com should connect to the Google Workspace stack
+- [ ] Confirm KakaoTalk is explicitly deferred, not forgotten
+
+#### Next Sprint Prerequisites
+- Apply and test the Notion direct-write path end-to-end
+- Validate Google template duplication and binding strategy for lower-friction production onboarding
 
 ---
 
@@ -165,8 +378,6 @@ Establish project rules, Codex constitution, guardrails, and sprint memory proto
 - [x] Confirm `.cursorrules` exists at repo root
 - [x] Confirm `docs/sprint-summary.md` exists
 - [x] Confirm Guardrail Block is available for prompt use
-
-- [x] `npm run build` with local-safe placeholder env values compiles successfully
 
 #### Next Sprint Prerequisites
 - Initialize Next.js app foundation
@@ -230,11 +441,121 @@ Build the project foundation, secure environment rules, initial state machine, a
 - [x] Route structure works
 - [x] Initial voice shell renders correctly
 - [x] No MediaRecorder usage introduced
+
+---
+
+### Sprint 2026-03-21 ??Google Workspace Visual Blueprint Refinement
+- Date: 2026-03-21
+- Status: in progress
+
+#### Goal
+Refine the Google Workspace visual-first blueprint until the SVG renders clean Korean text and stable alignment before any further Apps Script layout work.
+
+#### Files Modified
+- `docs/google-workspace-simple-blueprint.svg`
+- `integrations/google-workspace/Code.simple.ko.gs`
+- `integrations/google-workspace/Dashboard.html`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- No product runtime architecture change
+- Visual-first process reinforced: SVG approval before spreadsheet rendering implementation
+- Google Workspace simple KR script now renders the approved dashboard-first visual language into the actual `대시보드` sheet and preserves simplified execution/inbox surfaces
+- Apps Script now also supports a true HTML dashboard layer via sidebar/modal, so the spreadsheet can stay the data layer while the user sees a cleaner dashboard UI
+
+#### State Machine Changes
+- None
+
+#### Audio / Transport Changes
+- None
+
+#### Submission / Cost Defense Changes
+- None
+
+#### Known Risks
+- Notion visual blueprint is still not finalized
+- Google Workspace Apps Script layout still needs implementation after SVG approval
+
+#### Manual QA
+- [x] SVG XML parse validated
+- [x] Edge headless PNG render generated from SVG
+- [x] Korean text rendering validated in PNG output
+- [x] Hero, inbox cards, transition capsule, and KPI card alignment manually checked in raster render
+- [x] `Code.simple.ko.gs` syntax checked via `new Function(...)`
+
+#### Next Sprint Prerequisites
+- Get approval on `docs/google-workspace-simple-blueprint.svg`
+- Mirror approved layout into `integrations/google-workspace/Code.simple.ko.gs`
+- Produce Notion visual blueprint with the same dashboard-first pattern
+
+---
+
+### Sprint 13 ??Google Workspace Production Package
+- Date: 2026-03-21
+- Status: completed
+
+#### Goal
+Turn the Google Workspace automation research into an operations-ready package that cleanly separates Sheets, Docs, and Calendar responsibilities.
+
+#### Files Created
+- `docs/google-workspace-production-runbook.md`
+- `integrations/google-workspace/Code.gs`
+- `docs/channel-delivery-architecture.md`
+- `docs/notion-direct-write-api-spec.md`
+- `docs/google-workspace-install-step-by-step.md`
+- `integrations/google-workspace/Code.simple.ko.gs`
+- `docs/google-workspace-simple-ko.md`
+- `docs/google-workspace-simple-visual-spec.md`
+- `docs/google-workspace-simple-blueprint.svg`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added a production-oriented Google Workspace runbook for VOXERA execution workflows.
+- Defined `Google Sheets = control plane`, `Google Docs = conditional detailed asset`, `Google Calendar = conditional schedule asset`.
+- Added a hardened Apps Script package with installable onEdit trigger guidance, webhook secret validation, lock-based dedupe, conditional Docs/Calendar creation, Gmail notification support, archive support, and dashboard feed rebuild logic.
+- Added a channel delivery architecture doc defining `Notion direct write`, `Google Mail via MailApp`, and `KakaoTalk via 알림톡/채널` as the preferred production paths.
+- Added an endpoint-level Notion direct-write backend spec.
+- Added a step-by-step Google Workspace installation guide for non-technical operators.
+- Added a Korean-first, simplified Google Workspace package for non-technical users with only three visible sheets and Korean labels.
+- Upgraded the simplified Google Workspace package into a dashboard-first variant with clickable Doc/Calendar chips, visible Korean labels, conditional formatting, and a dedicated summary dashboard sheet.
+- Added visual-first blueprint artifacts (Mermaid spec + SVG blueprint) so future Workspace changes can be reviewed visually before code changes.
+- Refined the visual blueprint into a launch-quality dashboard composition with a Korean hero title, aligned KPI cards, stronger `받은 음성함` / `실행 보드` emphasis, and a more polished `실행전환` transition treatment.
+
+#### State Machine Changes
+- None
+
+#### Audio / Transport Changes
+- None
+- Core front-end hard rules remain unchanged:
+  - AudioWorklet + PCM over WSS only
+  - exact 15-second cutoff
+  - `clientRequestId` duplicate lock
+  - fixed 8-state reducer
+
+#### Submission / Cost Defense Changes
+- No browser/runtime submission changes
+- Google Workspace package now documents a separate Apps Script webhook secret and source-level idempotency for Workspace-side ingestion
+
+#### Known Risks
+- Apps Script Web App request headers can vary by deployment shape; bearer secret handling should be validated against the real deployment endpoint.
+- Drive root-folder removal behavior can differ for shared-drive setups and may require environment-specific adjustment.
+- Calendar event deep links can vary by account/calendar type and should be smoke-tested in the owner workspace.
+
+#### Manual QA
+- [x] Review runbook for role separation between Sheets, Docs, and Calendar
+- [x] Review Apps Script code for secret validation and lock usage
+- [x] Confirm Dashboard Feed uses rebuild strategy rather than append-only writes
+
+#### Next Sprint Prerequisites
+- Paste `integrations/google-workspace/Code.gs` into Apps Script and run `setupSystem`
+- Fill `Config` sheet values in a real Google Workspace
+- Deploy Apps Script Web App and validate `doPost`
+- Wire Make.com or backend payload sender to the Web App endpoint
 - [x] State machine base behavior manually reviewed
 - [x] Secure env strategy present
 - [x] No Sprint 1 defects found in manual QA
-
-- [x] `npm run build` with local-safe placeholder env values compiles successfully
 
 #### Next Sprint Prerequisites
 - implement backend / Make.com integration entry flow
@@ -275,8 +596,6 @@ Integrate the front-end with the backend entrypoint and Make.com workflow safely
 #### Manual QA
 - TBD
 
-- [x] `npm run build` with local-safe placeholder env values compiles successfully
-
 #### Next Sprint Prerequisites
 - webhook submission flow verification
 - duplicate-submit regression tests
@@ -314,8 +633,6 @@ Implement the real-time microphone pipeline using AudioWorklet + PCM over WSS an
 
 #### Manual QA
 - TBD
-
-- [x] `npm run build` with local-safe placeholder env values compiles successfully
 
 #### Next Sprint Prerequisites
 - mobile lifecycle hardening
@@ -377,8 +694,6 @@ Polish the mobile-first voice UI/UX and finalize production readiness.
 - [x] `npm run test:e2e`
 - [x] Verified Step 1 -> Step 2 -> Step 3 -> Step 1 loop in Playwright
 
-- [x] `npm run build` with local-safe placeholder env values compiles successfully
-
 #### Next Sprint Prerequisites
 - wire real AudioWorklet session lifecycle into the reducer
 - connect WSS / webhook transport to live upload and transcript data
@@ -386,27 +701,27 @@ Polish the mobile-first voice UI/UX and finalize production readiness.
 
 ---
 
-### Sprint 5 - Voice Motion Detail Polish
-- Date: 2026-03-10
+### Sprint 5 - Step 1 Neon Waveform Recovery
+- Date: 2026-03-11
 - Status: completed
 
 #### Goal
-Tune only the requested visual details in the capture screen without changing reducer logic, state transitions, timing truth, or submission locking.
+Restore the lost Step 1 waveform styling without touching the Step 2 / Step 3 centered transcript layout or any reducer-driven voice logic.
 
 #### Files Created
 - None
 
 #### Files Modified
+- `docs/sprint-summary.md`
 - `src/features/voice-capture/components/voice-capture-screen.tsx`
-- `docs/sprint-summary.md`
 
 #### Architecture Changes
-- No architecture or routing changes
-- UI polish remained isolated to the Step 1 visual layer and footer motion
+- Replaced the old bottom-anchored bar waveform with a center-baseline neon blue vertical trace waveform in Step 1 only
+- Removed the Step 1 mic-area English helper copy while keeping Step 2 / Step 3 layout structure intact
 
 #### State Machine Changes
 - None
-- Preserved all 8 constitutional states and existing reducer-driven timing behavior
+- Preserved all 8 constitutional states without restructuring
 
 #### Audio / Transport Changes
 - None
@@ -414,84 +729,426 @@ Tune only the requested visual details in the capture screen without changing re
 
 #### Submission / Cost Defense Changes
 - None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+- Exact 15-second cutoff and `clientRequestId` duplicate lock remain untouched
 
 #### Known Risks
-- Reference image `8.jpg` was not present in the workspace, so tuning was implemented from the user's written spec
-- Final visual fidelity should still be manually checked against the intended reference asset if it is later provided
+- Visual waveform pacing is tuned for the current premium shell and may need a design pass after real AudioWorklet data is wired in
 
 #### Manual QA
-- [x] `npm run typecheck`
 - [x] `npm run lint`
-- [x] `npm run test`
-- [x] `npm run test:e2e`
-- [x] Verify idle waveform remains vertically sculpted before recording starts
-- [x] Verify recording waveform color/glow matches the neon blue mic button
-- [x] Verify mic breathing reads as brightness pulsing without messy glow spread
-- [x] Verify footer copy loops left-to-right continuously with no yoyo motion
-
-- [x] `npm run build` with local-safe placeholder env values compiles successfully
+- [x] `npm run build`
 
 #### Next Sprint Prerequisites
-- Validate motion polish against the missing visual reference asset
-- Continue preserving reducer/state-machine ownership as live audio transport is added
+- Verify the restored Step 1 waveform against live audio transport once AudioWorklet + WSS runtime lands
 
 ---
 
-### Sprint 6 - Excalidraw Intake Workflow
-- Date: 2026-03-12
+### Sprint 6 - Make.com Webhook Contract Extraction
+- Date: 2026-03-13
 - Status: completed
 
 #### Goal
-Establish a repository-level workflow so Excalidraw and exported design assets can be dropped into a shared folder and interpreted as the visual brief for Codex implementation work.
+Extract the exact webhook payload/header/signature contract from the implemented `POST /api/voice/submit` route and publish an integration guide for Make.com verification and GPT handoff.
 
 #### Files Created
-- `docs/diagrams/README.md`
-- `skills.md`
+- `references/make-webhook-contract.md`
 
 #### Files Modified
 - `docs/sprint-summary.md`
 
 #### Architecture Changes
-- Added a diagram intake layer centered on `docs/diagrams/` for `.excalidraw`, `.png`, and `.svg` design sources
-- Added repository-level interpretation rules so diagram-driven work remains aligned with Voxera guardrails
+- No runtime architecture change
+- Added explicit integration reference for Make.com receiver contract and signature verification flow
 
 #### State Machine Changes
 - None
-- Preserved all 8 constitutional states
+- Preserved all 8 constitutional states without restructuring
 
 #### Audio / Transport Changes
-- None
+- No audio pipeline change
 - AudioWorklet + PCM over WSS-only architecture preserved
 
 #### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+- No reducer/upload lock implementation change
+- Documented webhook-side idempotency handling using `X-Idempotency-Key` for downstream duplicate prevention
 
 #### Known Risks
-- Diagram intake is workflow-based and depends on the user placing files in `docs/diagrams/`
-- Image exports may omit behavioral nuance that exists only in the original `.excalidraw` annotations
+- Make.com module/runtime differences may require minor mapping adjustments for raw body extraction and JS code module inputs
+- End-to-end validation with real Make scenario remains pending
 
 #### Manual QA
-- [ ] Place a sample `.excalidraw`, `.png`, or `.svg` file in `docs/diagrams/`
-- [ ] Ask Codex to implement from that file and confirm the file is treated as the source brief
+- [x] Contract values cross-checked against:
+  - `src/app/api/voice/submit/route.ts`
+  - `src/server/reliability/WebhookClient.ts`
+  - `src/server/webhook/WebhookSigner.ts`
 
 #### Next Sprint Prerequisites
-- Add the first real Excalidraw artifact and validate the interpretation workflow against a live implementation task
+- Run live Make.com scenario test with production-like secret and replay-window policy
+- Add receiver-side duplicate handling to Make Data Store or equivalent
 
 ---
+
+### Sprint 7 - Make.com Mock Reliability Verification
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Replace manual Make.com validation risk with automated mock-receiver verification for HMAC signature handling, retry/backoff, circuit breaker behavior, duplicate blocking, and failure queue recovery.
+
+#### Files Created
+- `tests/e2e/helpers/make-webhook-mock-server.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `package.json`
+- `tests/e2e/backend-reliability.spec.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+
+#### Architecture Changes
+- Added a reusable Make.com mock receiver that validates `X-Webhook-Signature` against the raw JSON body and can emit `200`, `500`, or timeout behavior per request
+- Promoted backend reliability verification into the default `pnpm test` path so webhook contract regressions fail CI-level local verification immediately
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without restructuring
+
+#### Audio / Transport Changes
+- No audio pipeline change
+- AudioWorklet + PCM over WSS-only architecture preserved
+- Webhook sender contract is now exercised against a real HTTP mock instead of transport stubs
+
+#### Submission / Cost Defense Changes
+- No reducer or upload-lock runtime behavior changed
+- Added automated proof that duplicate webhook sends are blocked by idempotency key before a second outbound request is made
+- Added automated proof that failure queue items persist, back off, and flush after receiver recovery
+
+#### Known Risks
+- Real Make.com module wiring can still differ from the mock in raw-body access or scenario configuration despite matching the documented contract
+- Front-end live upload flow is still backed by placeholder transport, so browser-to-backend submission remains separately pending
+
+#### Manual QA
+- [x] `corepack pnpm install`
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+
+#### Next Sprint Prerequisites
+- Run one staging smoke test against a real Make.com scenario using the documented raw-body and HMAC mapping
+- Replace placeholder upload transport with live backend submission while preserving the reducer-owned 15-second cutoff and duplicate lock
+
+---
+
+### Sprint 8 - Live WSS Runtime and Zod Contract Hardening
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Replace the placeholder browser submission path with a real AudioWorklet + PCM over WSS runtime, harden env startup validation, and unify `/api/voice/submit` plus Make.com payload handling behind shared Zod contracts.
+
+#### Files Created
+- `public/audio/voxera-pcm16-capture.worklet.js`
+- `src/features/voice-capture/services/realtime-voice-session.ts`
+- `src/features/voice-capture/services/submit-voice-capture.ts`
+- `src/shared/contracts/common.ts`
+- `src/shared/contracts/voice-submit.ts`
+- `tests/e2e/helpers/live-voice-runtime.ts`
+- `tests/e2e/helpers/synthetic-microphone.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `next.config.ts`
+- `package.json`
+- `src/app/api/voice/submit/route.ts`
+- `src/features/voice-capture/components/voice-capture-screen.tsx`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `src/features/voice-capture/state/voice-capture-reducer.ts`
+- `src/features/voice-capture/types/voice-types.ts`
+- `src/shared/config/env-core.ts`
+- `src/shared/config/env.client.ts`
+- `src/shared/config/env.ts`
+- `src/shared/contracts/voice.ts`
+- `tests/e2e/env-core.spec.ts`
+- `tests/e2e/voice-capture-flow.spec.ts`
+- `tests/playwright.config.ts`
+- `src/features/voice-capture/services/upload-placeholder.ts` (removed)
+
+#### Architecture Changes
+- Added shared Zod contracts for submit request/response, Make.com payloads, websocket control events, websocket transcript events, and standard error issue formatting
+- Split env parsing into public/server fail-fast paths so invalid `NEXT_PUBLIC_WSS_URL`, `MAKE_WEBHOOK_URL`, or missing webhook secret stop startup immediately
+- Replaced the browser placeholder path with a real `AudioWorklet` capture service that opens the configured websocket, streams PCM16 frames, receives transcript events, and posts the final transcript through `/api/voice/submit`
+
+#### State Machine Changes
+- Preserved all 8 constitutional states without renaming or merging
+- Added reducer-managed runtime metadata (`connection`, `sessionId`, `pcmFrameCount`, `transcriptFinalized`) without bypassing the reducer with UI-only flags
+- Kept reducer-driven 15-second stop truth while runtime shutdown remains an externalized side effect
+
+#### Audio / Transport Changes
+- Added the production code path for `AudioWorklet` capture and PCM16 websocket streaming
+- Added validated `session.start` / `session.stop` control events and validated `session.ready` / transcript server events
+- Added a live Playwright harness that accepts websocket audio and webhook submit traffic end-to-end
+
+#### Submission / Cost Defense Changes
+- Removed the fake upload delay placeholder service
+- `/api/voice/submit` now rejects invalid JSON/request bodies with Zod issue details and validates the outbound Make.com payload before send/queue
+- `clientRequestId` is still created synchronously before async submit and the webhook idempotency key remains intact
+
+#### Known Risks
+- The production/staging WSS backend must implement the same JSON control and transcript event schema as the local harness
+- The current stop flow waits up to 1.5 seconds for a final transcript event; slower runtimes may need an explicit backend ack or longer drain policy
+- A dedicated 15-second full-duration soak test against the real backend is still pending
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Verified a live browser session connects to the local WSS harness, streams PCM frames, receives `transcript.final`, and submits the Make.com payload through `/api/voice/submit`
+
+#### Next Sprint Prerequisites
+- Run a staging smoke test against the real WSS backend and confirm transcript finalization latency
+- Add a dedicated live duplicate-submit regression around repeated Step 2 send taps
+- Add a 15-second full-duration soak that proves no capture leaks past the reducer cutoff
+
+---
+
+### Sprint 9 - Dual STT Routing Fortress
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Route live WSS PCM sessions to Return Zero for Korean traffic and OpenAI Whisper for other languages, while hardening the WSS server with Return Zero Zod contracts, startup fail-fast rules, and timeout-driven circuit breaking.
+
+#### Files Created
+- `.env.local`
+- `scripts/lib/dual-stt-router.mjs`
+- `tests/e2e/dual-stt-router.spec.ts`
+
+#### Files Modified
+- `.env.local.example`
+- `docs/sprint-summary.md`
+- `package.json`
+- `scripts/voice-wss-server.mjs`
+- `src/features/voice-capture/services/realtime-voice-session.ts`
+- `src/shared/contracts/voice.ts`
+
+#### Architecture Changes
+- Added a standalone dual STT router module for the WSS server that prefers Return Zero for `ko-KR`/`ko-*` traffic and falls back to Whisper on provider failure
+- Added Zod validation for Return Zero JWT auth responses, job submission responses, and transcription result payloads, plus normalized router error formatting
+- Added `.env.local` loading in the WSS server so local Return Zero credentials are available without extra boot flags
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- `session.start` now carries a validated `language` field from the browser runtime to the WSS backend
+- The standalone WSS server now emits `session.ready` with `acceptedAt` plus schema-aligned `transcript.final` and `session.error` events
+- Return Zero timeouts now feed a dedicated circuit breaker so repeated upstream failures fall back to Whisper instead of hammering the Korean STT provider
+
+#### Submission / Cost Defense Changes
+- No reducer or submission-lock behavior changed
+- Exact 15-second cutoff and synchronous `clientRequestId` locking remain reducer-owned and untouched
+
+#### Known Risks
+- Return Zero staging behavior still needs one live smoke run to tune polling cadence and confirm no 429 pressure under real latency
+- The production WSS server must keep honoring the `session.start.language` contract or Korean traffic will drop to Whisper fallback
+- Dedicated live duplicate-submit and 15-second full-duration soak coverage are still pending against the real backend
+
+#### Manual QA
+- [x] `corepack pnpm install`
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] `node --check scripts/lib/dual-stt-router.mjs`
+- [x] `node --check scripts/voice-wss-server.mjs`
+
+#### Next Sprint Prerequisites
+- Run one staging smoke test against the real Return Zero credentials and confirm Korean transcripts complete without repeated fallback
+- Add a live regression that hits the standalone WSS server directly instead of only the local harness
+- Add the pending 15-second soak and repeated-send duplicate regression in the live runtime path
+
+---
+
+### Sprint 10 - Whisper Default Cost Rollback
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Rollback the always-Korean Return Zero policy to a Whisper-default router, keep Return Zero as an opt-in premium override, and add provider/duration cost metrics without disturbing the reducer-owned runtime rules.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `scripts/lib/dual-stt-router.mjs`
+- `scripts/voice-wss-server.mjs`
+- `src/app/api/voice/submit/route.ts`
+- `src/features/voice-capture/services/realtime-voice-session.ts`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `src/shared/contracts/voice.ts`
+- `src/shared/contracts/voice-submit.ts`
+- `tests/e2e/dual-stt-router.spec.ts`
+- `tests/e2e/helpers/live-voice-runtime.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+
+#### Architecture Changes
+- Inserted a provider-interface layer plus a single router decision point in the standalone STT module so Whisper remains the default and Return Zero is only selected for Korean premium/high-risk overrides
+- Added WSS routing hints (`premium_ko_accuracy`, `workflow`) and downstream cost telemetry (`stt_provider`, `audio_duration_sec`) across transcript events and `/api/voice/submit`
+- Added Whisper retry-once behavior before fail-fast, while Return Zero override failures now fall back safely to Whisper
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- Browser `session.start` events now optionally carry premium-accuracy and workflow hints sourced from URL query params
+- `transcript.final` now carries provider and duration telemetry so the browser submit path can forward cost metrics without moving business truth into the UI
+- Return Zero no longer owns Korean traffic by default; only explicit premium/high-risk Korean sessions route there
+
+#### Submission / Cost Defense Changes
+- No reducer or duplicate-lock behavior changed
+- `/api/voice/submit` and the Make.com payload now persist `stt_provider` and `audio_duration_sec` for downstream cost analysis
+
+#### Known Risks
+- Premium/high-risk override inputs currently come from WSS payload/query hints and still need a dedicated product-surface control if operators should toggle them from the UI
+- Return Zero premium routing still needs one staging smoke test with real credentials to confirm polling cadence under real load
+- Dedicated live duplicate-submit and 15-second full-duration soak coverage remain pending against the real backend
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] `corepack pnpm exec playwright test tests/e2e/dual-stt-router.spec.ts tests/e2e/env-core.spec.ts -c tests/playwright.env-core.config.ts` in an isolated Git worktree
+- [x] `corepack pnpm exec playwright test tests/e2e/voice-runtime-live.spec.ts tests/e2e/voice-capture-flow.spec.ts -c tests/playwright.config.ts` in an isolated Git worktree
+
+#### Next Sprint Prerequisites
+- Decide where premium/high-risk override controls should live in the operator UX
+- Run one staging smoke test on a real premium Korean session and confirm `stt_provider` / `audio_duration_sec` persistence downstream
+- Add the pending 15-second soak and repeated-send duplicate regression in the live runtime path
+
+---
+
+### Sprint 11 - Synthetic Microphone Routing Automation
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Automate the dual-STT routing proof without any physical microphone or manual operator input by booting a local dev stack, injecting a synthetic microphone, and verifying Whisper-default versus Return Zero premium routing end-to-end.
+
+#### Files Created
+- `tests/fixtures/fake-mic.wav`
+- `tests/e2e/voice-cutoff-ui.spec.ts`
+- `tests/e2e/helpers/live-stt-routing-stack.ts`
+- `tests/e2e/helpers/mock-stt-wss-server.mjs`
+- `tests/e2e/voice-stt-routing-live.spec.ts`
+- `tests/playwright.routing.config.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `package.json`
+- `tests/e2e/helpers/synthetic-microphone.ts`
+
+#### Architecture Changes
+- Added a test-only runtime stack that starts the real standalone WSS server behind mocked upstream STT fetches and captures downstream webhook payloads for assertion
+- Added a dedicated Playwright routing config that boots Next dev, enables Chrome fake-media flags, feeds a deterministic WAV file through `--use-file-for-fake-audio-capture`, and points the browser runtime at the standalone `/voice-session` WSS server
+- Extended the synthetic microphone helper so tests can also force browser locale/language and exercise Korean premium routing without physical hardware
+- Added desktop plus Pixel 5 projects so routing and UI delivery can be proven under touch/mobile viewport conditions as well as desktop
+- Added a separate harness-backed UI cutoff test that uses the stable `/voice` runtime harness to prove the reducer-owned 15-second stop and Make.com delivery on both desktop and mobile
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved during automated testing
+- Synthetic browser audio now feeds the real WSS control/audio protocol while mocked upstream STT providers emit deterministic Whisper and Return Zero transcripts
+
+#### Submission / Cost Defense Changes
+- No reducer or duplicate-lock behavior changed
+- Automated routing verification now asserts `stt_provider`, `audio_duration_sec`, and full dummy transcript text in the real `/api/voice/submit` response and downstream webhook payload
+- Added a mobile-capable UI test that waits for the reducer-owned 15-second auto-stop before sending and verifies the Make.com webhook still receives the transcript without UI collapse
+
+#### Known Risks
+- The new routing automation still uses mocked upstream Whisper/Return Zero HTTP responses, so one final staging smoke test against real providers remains necessary
+- The dedicated 15-second full-duration soak and repeated-send duplicate regression are still pending against the live backend
+
+#### Manual QA
+- [x] `corepack pnpm test:e2e:routing`
+- [x] Verified desktop and Pixel 5 logs plus webhook payloads preserve dummy transcript text and show `stt_provider=whisper` / `return-zero`
+- [x] Verified the UI automation path auto-stops after the 15-second cutoff window and still reaches the Make.com webhook
+
+#### Next Sprint Prerequisites
+- Replace the upstream HTTP mocks with a staging smoke test when provider credentials and quota windows are ready
+- Add the pending 15-second soak and repeated-send duplicate regression in the live runtime path
+
+---
+
+### Sprint 12 - Notion Submit Cleanroom
+- Date: 2026-03-21
+- Status: completed
+
+#### Goal
+Add a cleanroom-safe Notion destination path to the existing submit contract so a connected Notion automation can receive browser-origin metadata without disturbing the fixed reducer, duplicate lock, or audio runtime.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `references/make-webhook-contract.md`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `src/shared/contracts/voice-submit.ts`
+- `tests/e2e/backend-reliability.spec.ts`
+- `tests/e2e/voice-runtime-live.spec.ts`
+- `tests/e2e/voice-stt-routing-live.spec.ts`
+
+#### Architecture Changes
+- Extended the voice submit contract and downstream webhook payload with optional `notionDatabaseId` and `notionParentPageId`
+- Added a browser-side submit-target resolver that reads destination metadata from URL query params and forwards it only at submit time
+- Kept Notion routing outside reducer business truth so the 8-state machine remains unchanged
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states without renaming or restructuring
+
+#### Audio / Transport Changes
+- No audio pipeline change
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- No reducer or duplicate-lock behavior changed
+- `clientRequestId` is still created synchronously before async submit begins
+- Live/runtime tests now prove Notion destination metadata survives through the webhook payload
+
+#### Known Risks
+- Notion identifiers are currently supplied through URL query params, so any operator-facing control for selecting a Notion destination still needs a product surface
+- Real Make.com to Notion mapping still depends on the external scenario using the new payload fields
+
+#### Manual QA
+- [x] `pnpm typecheck`
+- [x] `pnpm lint`
+- [x] `pnpm test`
+- [x] `pnpm test:e2e`
+
+#### Next Sprint Prerequisites
+- Decide whether Notion destination selection should live in UI controls, operator presets, or server-side routing
+- Run one end-to-end Make.com to Notion smoke test with the new payload fields populated
+
+---
+
 ## Current Known Risks (Rolling Section)
 
-- AudioWorklet runtime path is not yet implemented
-- WSS runtime path is not yet implemented
-- backend / Make.com integration not yet tested end-to-end
-- duplicate lock must be verified again once webhook upload is added
-- timeout and upload flow must be verified together once live network flow exists
-- current premium UI still needs broader real-device validation against live backend latency
-- queue fallback can still surface as pending-success UI when webhook delivery is deferred
-- diagram intake depends on source files being added to `docs/diagrams/`
-- Firestore wallet collections, Firebase Auth service credentials, and Google Secret Manager bindings must be provisioned before `/api/v1/generate-output` can be exercised against real cloud state
-- The stdio reviewer currently enforces targeted static rules (Zod gate + hardcoded secret detection) but not full semantic diff review
+- Real Make.com scenario wiring still needs one staging smoke run even though the documented contract is now local-harness verified
+- The real WSS backend must match the shared websocket event schema now enforced in the browser runtime
+- Return Zero polling cadence and timeout thresholds still need staging calibration for premium/high-risk override traffic
+- The 1.5-second final-transcript drain window may need tuning against real backend latency
+- A dedicated 15-second live soak and repeated-send duplicate regression are still pending
 
 ---
 
@@ -500,19 +1157,23 @@ Establish a repository-level workflow so Excalidraw and exported design assets c
 - [x] No MediaRecorder exists anywhere in the codebase
 - [x] No blob/timeslice recording exists
 - [x] Audio architecture remains AudioWorklet + PCM over WSS only
+- [x] Browser runtime streams PCM to a live WSS harness and receives `transcript.final`
+- [x] `/api/voice/submit` and Make.com payloads are Zod `safeParse`-guarded in the live path
+- [x] Whisper is the default STT provider and Korean traffic uses Return Zero only for premium/high-risk overrides
+- [x] Return Zero auth/result payloads remain Zod-validated before transcript use
+- [x] Return Zero override failures fall back to Whisper and Whisper retries once before fail-fast
+- [x] `stt_provider` and `audio_duration_sec` persist through `/api/voice/submit` and the downstream webhook payload
+- [x] Synthetic microphone automation can prove Whisper default and Return Zero premium routing without physical microphone hardware
+- [x] Desktop and mobile automation both prove the dummy transcript reaches the Make.com webhook without field loss
 - [ ] Recording cannot exceed 15 seconds in runtime flow
 - [ ] Submission locks before async upload in live flow
 - [ ] Duplicate `clientRequestId` upload is blocked in live flow
-- [x] Front-end posts metadata-only payloads to `/api/voice/submit`
 - [x] 8-state reducer architecture remains intact
 - [x] No insecure `ws://` remains in production code paths
 - [x] No permission popup infinite loop exists in current shell logic
 - [x] UI supports one-handed mobile use
 - [x] Step 1 -> Step 2 -> Step 3 -> Step 1 loop is Playwright-verified
-- [ ] Excalidraw artifacts in `docs/diagrams/` are treated as the source brief for diagram-driven tasks
-- [x] `/api/v1/generate-output` request bodies are Zod-validated before billing logic runs
-- [x] Firestore billing route uses reserve then deduct/refund instead of direct charge
-- [x] Local stdio MCP reviewer can pull updates and emit allow/deny diagnostics with line numbers
+- [x] Make.com webhook signature, retry/backoff, timeout circuit breaker, duplicate block, and failure queue replay are mock-server verified
 
 ---
 
@@ -535,1592 +1196,112 @@ After finishing a sprint, Codex must:
 2. Update Current Architecture Snapshot.
 3. Update Current Known Risks.
 4. Update Current Manual Regression Checklist if needed.
-
-### Zero-Touch Design Automation Addendum
-- Idea source folder: `docs/ideas/`
-- Blueprint output folder: `docs/blueprints/`
-- Component output folder: `src/components/generated/`
-- Watch script: `scripts/auto-design.js`
-- Runtime requirement: local `ANTHROPIC_API_KEY`, network access, and installed `chokidar`
-
-### Sprint 7 - Zero-Touch Text-to-SVG Automation
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Establish a local watcher that converts one-line text briefs into an SVG blueprint and a generated React component in a single automated flow.
-
-#### Files Created
-- `docs/ideas/README.md`
-- `docs/blueprints/README.md`
-- `scripts/auto-design.js`
-
-#### Files Modified
-- `package.json`
-- `skills.md`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Added a zero-touch design intake path rooted at `docs/ideas/`
-- Added automated SVG blueprint output at `docs/blueprints/`
-- Added generated React component output at `src/components/generated/`
-- Added a local watcher script that performs a two-stage Claude generation flow
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The watcher requires `ANTHROPIC_API_KEY` and runtime network access
-- Generated code may still need manual review before being merged into production paths
-- `chokidar` was declared in `package.json` but not installed in this environment
-
-#### Manual QA
-- [ ] Add a one-line `.txt` brief to `docs/ideas/`
-- [ ] Run `node scripts/auto-design.js`
-- [ ] Confirm a matching `.svg` file appears in `docs/blueprints/`
-- [ ] Confirm a matching generated component appears in `src/components/generated/`
-
-#### Next Sprint Prerequisites
-- Install dependencies and validate the live Claude call path
-- Decide when generated components should be promoted from `src/components/generated/` into feature-owned UI
-
-### Sprint 8 - Warm Landing Zero-Touch Verification
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Self-verify the zero-touch watcher by generating a warm landing brief, producing SVG and React outputs, and wiring the generated landing into the marketing route with a Free Trial modal trigger.
-
-#### Files Created
-- `docs/ideas/warm-landing.txt`
-- `docs/blueprints/warm-landing.svg`
-- `docs/blueprints/warm-landing.json`
-- `src/components/generated/WarmLandingGenerated.tsx`
-- `src/features/marketing/components/free-trial-modal.tsx`
-
-#### Files Modified
-- `scripts/auto-design.js`
-- `src/features/marketing/components/marketing-landing.tsx`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Verified the zero-touch watcher can ingest a local idea brief and emit blueprint plus component artifacts
-- Promoted the generated warm landing into the marketing route for live browser rendering
-- Added a local Free Trial modal so the warm landing mic and CTA can toggle a VIP-style modal state
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- Remote Claude generation was not exercised because `ANTHROPIC_API_KEY` was unavailable in this environment
-- The current warm landing uses a local fallback generator path for deterministic offline output
-
-#### Manual QA
-- [x] Confirmed `docs/ideas/`, `docs/blueprints/`, and `src/components/` exist
-- [x] Ran `node scripts/auto-design.js` and generated `warm-landing` blueprint and component artifacts
-- [x] Verified `npm run typecheck`
-- [x] Verified `npm run lint`
-- [x] Verified `npm run test`
-- [ ] Open the local marketing route in a browser and confirm mic click opens the VIP modal
-
-#### Next Sprint Prerequisites
-- Add `ANTHROPIC_API_KEY` and re-run the watcher to validate the remote Claude path
-- Decide whether the warm landing becomes the default marketing page or a campaign-specific route
-
-### Sprint 9 - OpenAI-Keyed S.T.R.U.C.T. Warm Landing Regeneration
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Load a live API key from `.env`, run the S.T.R.U.C.T. translation path for `warm-landing`, and regenerate the Visual PRD, SVG, and TSX outputs.
-
-#### Files Created
-- `.env`
-
-#### Files Modified
-- `.gitignore`
-- `scripts/auto-design.js`
-- `docs/blueprints/warm-landing.visual-prd.md`
-- `docs/blueprints/warm-landing.svg`
-- `src/components/generated/WarmLandingGenerated.tsx`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Added local `.env` loading to the zero-touch watcher
-- Added a Visual PRD generation stage ahead of SVG and TSX generation
-- Verified remote provider metadata can record `openai / gpt-4o` generation for warm landing artifacts
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The remote model response introduced mojibake in Korean copy, so final render artifacts were normalized against the original brief after the remote translation stage
-- `.env` now contains a live secret and must remain uncommitted
-
-#### Manual QA
-- [x] Loaded API credentials from `.env`
-- [x] Generated a remote `openai / gpt-4o` Visual PRD for `warm-landing`
-- [x] Rewrote the final SVG and TSX artifacts to preserve exact Korean copy from the brief
-- [x] Verified `npm run typecheck`
-- [x] Verified `npm run lint`
-- [x] Verified `npm run test`
-
-#### Next Sprint Prerequisites
-- Decide whether to automate post-generation Unicode normalization for multilingual briefs
-- Consider adding a one-shot CLI mode to `auto-design.js` so remote generation can complete without watcher timeouts
-
-### Sprint 10 - V-DD Landing Skill Authoring
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Add a reusable local skill that forces V-DD landing-page work to flow through S.T.R.U.C.T reverse-design and SVG blueprinting before implementation.
-
-#### Files Created
-- `.agents/skills/v-dd-landing-rendering/SKILL.md`
-- `.agents/skills/v-dd-landing-rendering/agents/openai.yaml`
-
-#### Files Modified
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Added a repository-local skill for landing-page generation workflow guidance
-- Formalized a pre-code sequence of S.T.R.U.C.T spec -> SVG blueprint -> implementation for V-DD landing work
-- Standardized fixed `max-w-*` container usage and `break-keep` text handling in the new skill rules
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The new skill governs future agent behavior but does not retroactively rewrite existing generated landing assets
-- The skill does not yet bundle helper scripts for automatic SVG emission, so blueprint generation still depends on the active agent following the instructions
-
-#### Manual QA
-- [x] Initialized the skill with `init_skill.py`
-- [x] Rewrote `SKILL.md` with the required workflow and constraints
-- [x] Validated the skill folder with `quick_validate.py`
-
-#### Next Sprint Prerequisites
-- Use the new skill on a live landing-page brief and confirm the output order remains S.T.R.U.C.T -> SVG -> code
-
-### Sprint 11 - Visual Auto-Launch Rule
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Persist an automatic visual preview rule so frontend work ends with a running local server and an opened browser, not just code completion.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `skills.md`
-- `.agents/skills/v-dd-landing-rendering/SKILL.md`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Added a repository-level Visual Auto-Launch rule for frontend and UI tasks
-- Extended the V-DD landing skill so local preview boot and browser popup are part of completion behavior
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- Automatic browser launch assumes port `3000` remains the active local preview target
-- Background dev servers can linger if they are not intentionally shut down after review
-
-#### Manual QA
-- [x] Added repository rule text for automatic visual launch
-- [x] Added matching behavior to the V-DD landing skill
-- [ ] Start the dev server and confirm the browser opens to the warm landing automatically
-
-#### Next Sprint Prerequisites
-- If multiple frontend apps are added later, define route-aware preview selection rules per app
-
-### Sprint 12 - Node Browser Launcher And V-DD Blueprint Delivery
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Add a Node-based browser launcher that bypasses shell popup limits and use the V-DD workflow to deliver blueprint-only SVG visuals for new landing concepts without writing TSX.
-
-#### Files Created
-- `scripts/open-browser.js`
-- `docs/blueprints/warm-landing-revival.visual-prd.md`
-- `docs/blueprints/warm-landing-revival.svg`
-- `docs/blueprints/b2b-cold-bento.visual-prd.md`
-- `docs/blueprints/b2b-cold-bento.svg`
-
-#### Files Modified
-- `skills.md`
-- `.agents/skills/v-dd-landing-rendering/SKILL.md`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Added a Node fallback launcher for visual QA targets such as local preview URLs and generated SVG blueprint files
-- Extended the V-DD skill and repository rules so blueprint-only work can auto-open SVGs even when shell popup commands are blocked
-- Added two new blueprint artifacts that stop at S.T.R.U.C.T spec plus SVG planning output
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- Browser opening still depends on the local OS honoring child-process launch behavior from Node
-- The generated SVGs are planning blueprints and not pixel-perfect final UI renders
-
-#### Manual QA
-- [x] Created `scripts/open-browser.js`
-- [x] Generated warm and B2B Visual PRDs
-- [x] Generated warm and B2B SVG blueprint files
-- [ ] Confirm both SVG files open in the local browser/windowing environment
-
-#### Next Sprint Prerequisites
-- Convert the approved SVG blueprint into production landing code only after visual sign-off
-
-### Sprint 13 - Open Package Browser Launcher Rewrite
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Replace the brittle child-process browser launcher with an `open` package-based launcher that resolves paths absolutely and opens multiple visual QA targets reliably.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `package.json`
-- `package-lock.json`
-- `scripts/open-browser.js`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Swapped the visual QA launcher from manual OS process spawning to the `open` library
-- Standardized absolute-path conversion with `path.resolve()` and `pathToFileURL()` before browser dispatch
-- Added Promise-based multi-target opening so one command can launch multiple SVG tabs
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- Successful process launch still does not let the agent introspect the user's desktop to visually prove the tabs are frontmost
-- `npm install` updated lockfile state in a repository that otherwise prefers `pnpm`
-
-#### Manual QA
-- [x] Installed `open`
-- [x] Rewrote `scripts/open-browser.js` to use `open`
-- [x] Re-ran the launcher on both SVG blueprint files without shell errors
-
-#### Next Sprint Prerequisites
-- If visual QA expands further, add a tiny launcher self-test that records opened targets to a local log
-
-### Sprint 14 - Native Final B2B SVG Delivery
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Deliver a final B2B cold landing SVG blueprint aligned to the approved hybrid Hero + Vercel Bento concept and open it with the VS Code native tab workflow.
-
-#### Files Created
-- `docs/blueprints/final-b2b-landing.svg`
-
-#### Files Modified
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Added a final single-file B2B blueprint artifact tuned for VS Code native SVG review
-- Adopted the VS Code CLI file-open path as the approved visual QA mechanism for SVG blueprint review
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- Native VS Code tab opening confirms editor delivery, but final visual polish still depends on human review of the rendered SVG
-
-#### Manual QA
-- [x] Generated `docs/blueprints/final-b2b-landing.svg`
-- [x] Opened the SVG via `code docs/blueprints/final-b2b-landing.svg`
-
-#### Next Sprint Prerequisites
-- Convert the approved final B2B SVG into implementation work only after visual sign-off
-
-### Sprint 15 - Final B2B SVG Detail Correction
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Correct the final B2B blueprint's CTA fit, hero spacing, motion annotation, and bento lighting details before any implementation work begins.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `docs/blueprints/final-b2b-landing.svg`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Refined the SVG-only final B2B blueprint with explicit motion comments and stronger spacing/spec fidelity
-- Kept review flow on VS Code native SVG tabs with no React or TSX work introduced
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The SVG now better documents intended motion, but actual animation timing still needs implementation after sign-off
-
-#### Manual QA
-- [x] Expanded CTA geometry so the text sits fully inside each button
-- [x] Increased the copy-to-mic vertical separation past the requested 96px gap
-- [x] Added implementation comment text for staggered EQ and pulse/glow mic motion
-- [x] Reworked bento cards to 1px / 5% white borders with spotlight-style radial fills
-- [x] Re-opened `final-b2b-landing.svg` in VS Code
-
-#### Next Sprint Prerequisites
-- Translate the approved SVG motion annotations into production animation only after final visual approval
-
-### Sprint 16 - Final B2B SVG Centering Revision
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Rework the final B2B SVG so the hero copy becomes a strict centered 2-line statement, the CTA pair shares a unified filled tone, and the mic/EQ cluster expands to a perfectly centered 7-by-7 arrangement with stronger spacing separation.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `docs/blueprints/final-b2b-landing.svg`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Tightened the SVG blueprint's hero alignment and spacing rules without introducing any code implementation work
-- Switched Korean SVG labels to numeric character references to avoid shell mojibake during review workflows
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- Character references improve file stability in tooling, but visual approval is still required inside the editor render surface
-
-#### Manual QA
-- [x] Replaced the hero line with a forced 2-line centered copy block
-- [x] Unified both CTA buttons with a single filled gradient tone
-- [x] Preserved more than 120px of safe space between the CTA group and the mic plate
-- [x] Expanded EQ bars to 7 left + 7 right and aligned them to the mic center axis
-- [x] Re-opened `final-b2b-landing.svg` in VS Code
-
-#### Next Sprint Prerequisites
-- Wait for final visual sign-off before any production implementation work
-
-### Sprint 17 - Final B2B Real Image Embedding
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Replace the synthetic mic drawing in the final B2B SVG with the user-provided local mic image and hard-align the top and bottom groups to a shared center axis.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `docs/blueprints/final-b2b-landing.svg`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Swapped the blueprint's center mic from vector stand-in geometry to a real local raster asset embedded with SVG `<image>`
-- Tightened the hero and mic/EQ groups around a single `center x = 800` alignment rule
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The SVG now depends on the local image file `docs/blueprints/unnamed (2).jpg` remaining present beside the blueprint
-
-#### Manual QA
-- [x] Confirmed the local mic reference file exists in `docs/blueprints/`
-- [x] Embedded the reference image in `final-b2b-landing.svg` with `<image>`
-- [x] Re-aligned the top copy/CTA group and bottom mic/EQ group to `center x = 800`
-- [x] Split EQ gradients to mint-left and purple-right
-
-#### Next Sprint Prerequisites
-- Lock the final approved asset filename if the user wants to remove spaces from the current image path
-
-### Sprint 18 - Final B2B Base64 Embedding
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Eliminate local-path fragility by embedding the approved mic reference JPG directly into the final B2B SVG as a Base64 data URI while preserving the shared center axis.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `docs/blueprints/final-b2b-landing.svg`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Replaced the relative file reference inside the final B2B SVG with an inline `data:image/jpeg;base64,...` payload
-- Preserved the `center x = 800` alignment rule for both the top content group and the bottom mic/EQ group
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The final SVG file is now much larger because it carries the full raster asset inline
-
-#### Manual QA
-- [x] Read the local JPG from `docs/blueprints/unnamed (2).jpg`
-- [x] Encoded the JPG to Base64 and embedded it directly in `final-b2b-landing.svg`
-- [x] Re-opened the SVG via VS Code native file opening
-
-#### Next Sprint Prerequisites
-- Proceed only after visual sign-off on the fully self-contained final SVG artifact
-
-### Sprint 19 - Final B2B Center Axis Correction
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Correct the final B2B SVG center-axis math so the top copy/CTA group and the bottom mic/EQ group share the same vertical center line with the mic image placed by `center - width / 2`.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `docs/blueprints/final-b2b-landing.svg`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Kept the final B2B artifact as a self-contained SVG with embedded Base64 JPG
-- Re-centered the CTA pair around `center x = 800`
-- Preserved the mic image at `x = 600` for a `400px`-wide asset, matching `800 - 400 / 2`
-- Repositioned the left/right 7-bar EQ groups to remain symmetric around the same center axis
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- None
-
-#### Manual QA
-- [x] Verified the mic image remains embedded as Base64
-- [x] Verified the mic image origin is `x=600` for a `400px` width asset on an `x=800` center line
-- [x] Verified the CTA pair and EQ bars were repositioned to align with the shared center axis
-- [x] Re-opened the SVG via VS Code native file opening
-
-#### Next Sprint Prerequisites
-- Proceed only after visual sign-off on the corrected center-axis layout
-
-### Sprint 20 - Final B2B Mike Image And Copy Refresh
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Swap the final B2B mic asset to the newly provided `MIKE_IMAGE.jpg` via inline Base64 and replace the upper headline/subcopy with the approved Korean launch copy while preserving the existing center axis and EQ layout.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `docs/blueprints/final-b2b-landing.svg`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Replaced the embedded JPG payload inside the central `<image>` tag with the new `MIKE_IMAGE.jpg` Base64 data URI
-- Kept the mic placement, center axis, CTA positions, and 7+7 EQ bar coordinates unchanged
-- Replaced the upper content copy with a 2-line headline and 2-line subcopy centered at `x = 800`
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- None
-
-#### Manual QA
-- [x] Verified `docs/blueprints/MIKE_IMAGE.jpg` exists and was read locally
-- [x] Replaced the existing SVG `<image>` payload with a new `data:image/jpeg;base64,...` string
-- [x] Replaced the upper text block with the approved 2-line headline and 2-line subcopy
-- [x] Re-opened the SVG through VS Code native file opening
-
-#### Next Sprint Prerequisites
-- Proceed only after visual sign-off on the updated mic branding and approved launch copy
-
-### Sprint 21 - Final B2B Copy Reduction And Aurora EQ Rollback
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Reduce visual noise in the final B2B SVG by removing the subcopy block and restoring the 14 EQ bars to a shared multi-color aurora gradient without changing the approved image placement or layout.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `docs/blueprints/final-b2b-landing.svg`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Removed the 2-line subcopy block entirely from the hero area
-- Replaced the split mint/purple EQ gradients with a single multi-color aurora gradient applied to all 14 bars
-- Preserved the mic Base64 asset, center axis, CTA placement, and EQ geometry
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- None
-
-#### Manual QA
-- [x] Verified the subcopy `<text>` block was removed from the hero area
-- [x] Verified all 14 EQ bars now use the same multi-color aurora gradient
-- [x] Re-opened the SVG through VS Code native file opening
-
-#### Next Sprint Prerequisites
-- Proceed only after visual sign-off on the simplified hero and aurora EQ color treatment
-
-### Sprint 22 - Final B2B Headline Box Tightening And EQ Reference Restore
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Tighten the headline box to the actual copy width and restore the original short multi-color EQ cluster using the provided waveform reference image.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `docs/blueprints/final-b2b-landing.svg`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Reduced the headline card width and kept the headline text centered on `x = 800`
-- Replaced the wide 14-bar aurora treatment with a compact reference-style left/right EQ cluster positioned around the mic
-- Preserved the embedded mic image, overall hero frame, CTA placement, and center-axis rule
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- None
-
-#### Manual QA
-- [x] Opened `docs/blueprints/?뚰삎 ?덊띁?곗뒪.jpg` and restored the short multi-color EQ cluster based on it
-- [x] Reduced the headline box width and kept its text centered on the mic axis
-- [x] Re-opened the SVG through VS Code native file opening
-
-#### Next Sprint Prerequisites
-- Proceed only after visual sign-off on the tightened headline box and restored EQ reference look
-
-### Sprint 23 - One-Page Landing Code Dump
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Render the approved final B2B blueprint into a single continuous TSX landing file for production implementation prep.
-
-#### Files Created
-- `temp/stitch_dump.tsx`
-
-#### Files Modified
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Added a one-page landing TSX dump that mirrors the approved hero, trust rail, and bento layout in a single continuous view
-- Embedded the approved mic JPG as a Base64 data URI inside the dump component to avoid file-path fragility
-- Preserved repository constitutional rules by keeping voice/audio state architecture untouched
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- `stitch-mcp` was not available in this session, so the dump was generated locally instead of through `generate_ui_v3`
-- The dump file is not yet wired into the app route tree
-
-#### Manual QA
-- [x] Generated a single long-page TSX component in `temp/stitch_dump.tsx`
-- [x] Embedded the approved mic image as Base64 inside the dump
-- [x] Preserved the approved center-aligned hero, trust rail, and bento composition in one continuous page
-
-#### Next Sprint Prerequisites
-- Decide whether to replace the current marketing entry component with the new dump or refactor it into reusable sections
-
-### Sprint 24 - Stitch MCP Remote Connection Verification
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Verify the local Google auth state against Stitch, register the remote Stitch MCP endpoint in Codex config, and produce a real Stitch-generated landing artifact.
-
-#### Files Created
-- `temp/stitch-create-response.json`
-- `temp/stitch-generate-response.json`
-- `temp/stitch-real.html`
-- `temp/stitch-real.png`
-
-#### Files Modified
-- `docs/sprint-summary.md`
-
-#### External Config Modified
-- `C:\Users\Master\.codex\config.toml`
-
-#### Architecture Changes
-- Confirmed the local machine already had Stitch setup metadata at `C:\Users\Master\.stitch-mcp-auto\config.json` pointing to project `upbeat-aura-484502-r2`
-- Verified the remote Stitch MCP endpoint at `https://stitch.googleapis.com/mcp` responds to authenticated MCP initialization and tool discovery
-- Registered the Stitch MCP endpoint in Codex config and generated a real Stitch screen artifact via the remote MCP HTTP interface
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The currently exposed Stitch MCP tools are `create_project`, `generate_screen_from_text`, `edit_screens`, etc.; `generate_ui_v3` is not exposed on this endpoint
-- The current Codex session did not hot-inject a new `stitch-mcp` tool after config update, so the real generation was executed by direct authenticated MCP HTTP calls instead of an in-session tool binding
-- Stitch's generated copy diverged from the approved Korean blueprint in parts, so the artifact should be treated as a real vendor render baseline, not a final approved production implementation
-
-#### Manual QA
-- [x] Confirmed ADC token auth works with `https://stitch.googleapis.com/mcp`
-- [x] Confirmed `tools/list` exposes live Stitch tools for the authenticated project
-- [x] Created a real Stitch project and generated a desktop landing screen
-- [x] Downloaded the Stitch HTML and screenshot artifacts locally and opened them in VS Code
-
-#### Next Sprint Prerequisites
-- Decide whether to iterate inside Stitch using `edit_screens` or to port the approved SVG spec directly into production React/Next code
-
-### Sprint 25 - Marketing Landing Layout Correction
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Replace the generated placeholder marketing page with a sectioned production landing and correct hero alignment, waveform rendering, and bento grid ordering against the approved B2B blueprint.
-
-#### Files Created
-- `public/images/mike-image.jpg`
-- `src/components/sections/HeroSection.tsx`
-- `src/components/sections/TrustRailSection.tsx`
-- `src/components/sections/BentoGridSection.tsx`
-
-#### Files Modified
-- `src/features/marketing/components/marketing-landing.tsx`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Replaced the old generated warm landing entry with a section-based B2B marketing page
-- Added a centered hero section with the approved mic image, compact multi-color EQ clusters, and unified CTA styling
-- Rebuilt the lower bento area so the four workflow cards share the same width and height and the KPI card renders visibly without empty placeholder space
-- Preserved voice capture architecture by limiting changes to the marketing route only
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The current QA loop verified the landing at `localhost:3000` with Agent Browser desktop viewport; additional mobile-specific visual polish may still be desirable
-- `src/components/generated/WarmLandingGenerated.tsx` still exists on disk but is no longer wired into the marketing route
-
-#### Manual QA
-- [x] Ran `agent-browser --headed open http://localhost:3000`
-- [x] Captured multiple headed screenshots after each correction pass
-- [x] Verified card box parity with Agent Browser: all four feature cards reported `227.5 x 214`
-- [x] Verified hero and mic center alignment with Agent Browser boxes: hero center `640`, mic center `640`, delta `0`
-
-#### Next Sprint Prerequisites
-- Decide whether to keep refining this landing as the main marketing entry or fold the remaining proof/support sections from the approved SVG into separate reusable sections
-
-### Sprint 26 - Marketing Polish Cleanup
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Remove blueprint instruction leakage from the marketing UI and polish the hero CTA, trust marquee, mic frame, and closing strip for production presentation quality.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `src/components/sections/HeroSection.tsx`
-- `src/components/sections/TrustRailSection.tsx`
-- `src/components/sections/BentoGridSection.tsx`
-- `src/shared/styles/globals.css`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Removed the temporary hero badge and workflow instruction copy from the rendered UI
-- Added a rotating glow border treatment to the primary CTA via global CSS
-- Smoothed the trust marquee by extending the repeated content set and adjusting the animation distance
-- Masked the embedded mic image corner watermark and removed the closing strip badge
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- Agent Browser screenshots in this environment occasionally pad the unused viewport with white canvas, so DOM inspection was used alongside screenshots for confirmation
-
-#### Manual QA
-- [x] Confirmed the hero badge was removed and the subcopy now renders as two intentional lines
-- [x] Confirmed the workflow instruction text was replaced with `Voice OS ?듭떖 湲곕뒫`
-- [x] Confirmed the closing strip badge was removed and the closing line is forced onto one line
-- [x] Re-verified the page in the headed local browser session at `http://localhost:3000`
-
-#### Next Sprint Prerequisites
-- If needed, tighten the remaining typography and section density after stakeholder sign-off on the current production-facing copy
-
-### Sprint 27 - Marketing Copy Overhaul And EQ Motion Upgrade
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Execute the second-round UI surgery by replacing blueprint-like text with production copy, enforcing exact hero subcopy line breaks, and increasing EQ visual motion intensity.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `src/components/sections/HeroSection.tsx`
-- `src/components/sections/BentoGridSection.tsx`
-- `src/shared/styles/globals.css`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Updated hero subcopy into two intentional lines split after `?뚯꽦 ?ㅽ뻾 ?뚮옯?쇱쓣,`
-- Upgraded EQ bars from mild motion to stronger CSS keyframe rhythm with per-bar duration and delay variance
-- Replaced bento top label/headline with production copy: `VOICE-FIRST WORKFLOW` and `蹂듭옟???낅젰 怨쇱젙?? ??踰덉쓽 ?뚯꽦?쇰줈`
-- Replaced all four workflow card title/body pairs with the approved killer copy set
-- Removed residual instructional workflow heading text from the right bento block
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- Agent Browser viewport screenshots in this environment continue to include gray padded areas outside the rendered page; DOM inspection and text assertions were used alongside screenshots
-
-#### Manual QA
-- [x] Confirmed hero subcopy line break appears exactly after `?뚯꽦 ?ㅽ뻾 ?뚮옯?쇱쓣,`
-- [x] Confirmed old bento texts (`6-Column Bento Grid`, `?ㅽ뻾 吏?쒖? ?댁쁺 ?ㅺ퀎瑜?..`, workflow instruction copy) are removed
-- [x] Confirmed new killer-copy card titles and bodies are rendered
-- [x] Confirmed EQ bars now render with per-bar animation duration/delay and dynamic height variance in browser inspection
-
-#### Next Sprint Prerequisites
-- Tune card typography density at smaller desktop widths if stakeholders request stronger readability at 1366x768
-
-### Sprint 28 - Third Surgery Cleanup (Mask Removal + Motion Smoothing)
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Remove the fake black watermark mask, replace it with real image crop behavior, smooth EQ motion for premium B2B tone, and eliminate the last two blueprint-instruction texts from the rendered landing.
-
-#### Files Created
-- `temp/sprint28-after-fix.png`
-
-#### Files Modified
-- `src/components/sections/HeroSection.tsx`
-- `src/components/sections/BentoGridSection.tsx`
-- `src/shared/styles/globals.css`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Hero mic container now uses `overflow-hidden` + scaled image crop (`scale-105`) instead of an overlaid dark circle mask
-- EQ bars keep the existing structure while switching to slower `1.6s~2.45s` animation durations with `ease-in-out`
-- Removed residual instruction labels from production UI: `1. KPI Card` and `Closing Proof Strip`
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- Hero/KPI/body copy appears mojibake in this terminal code page, but browser-rendered Korean text is validated through Agent Browser snapshot output
-- Current EQ cluster count remains `5 + 5`; if product direction still requires `7 + 7`, apply as a follow-up visual task
-
-#### Manual QA
-- [x] `corepack pnpm typecheck`
-- [x] `corepack pnpm lint`
-- [x] `corepack pnpm test`
-- [x] `agent-browser open http://localhost:3000 --headed`
-- [x] `agent-browser screenshot temp/sprint28-after-fix.png --full`
-- [x] `agent-browser eval` confirmed:
-  - black mask element absent
-  - `1. KPI Card` text absent
-  - `Closing Proof Strip` text absent
-  - EQ animation durations within `1.6s~2.45s` and timing function `ease-in-out`
-
-#### Next Sprint Prerequisites
-- If needed, re-run final visual sign-off on mobile viewport with Agent Browser and tune typography scale only
-
-### Sprint 29 - Bento Removal And Z-Pattern Rebuild
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Keep the approved hero and trust bar unchanged, remove the dense bento grid, and rebuild the lower body as four wide alternating Z-pattern sections with premium dark glassmorphism mock panels.
-
-#### Files Created
-- `temp/sprint29-z-pattern.png`
-
-#### Files Modified
-- `src/components/sections/BentoGridSection.tsx`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Replaced the prior bento-kpi/workflow layout with four vertical `grid-cols-2` zigzag sections
-- Enforced alternating composition per section: text-left/mock-right then mock-left/text-right
-- Introduced deep-dark glassmorphism mock containers with thin mint/purple neon borders and internal metric visualization
-- Preserved top-of-page structure by leaving `HeroSection` and `TrustRailSection` wiring unchanged in `marketing-landing.tsx`
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The new section-copy and mock density are tuned for desktop first; additional mobile typography tightening may be requested after visual sign-off
-- Terminal code page can still display Korean as mojibake while browser rendering remains correct
-
-#### Manual QA
-- [x] `corepack pnpm typecheck`
-- [x] `corepack pnpm lint`
-- [x] `corepack pnpm test`
-- [x] `agent-browser open http://localhost:3000 --headed`
-- [x] `agent-browser snapshot --json` confirmed all 4 requested section headlines are rendered
-- [x] `agent-browser get count "[data-testid='kpi-card']" --json` returned `0`
-- [x] `agent-browser get count "[data-testid='z-pattern-mock']" --json` returned `4`
-- [x] `agent-browser screenshot temp/sprint29-z-pattern.png --full`
-
-#### Next Sprint Prerequisites
-- If stakeholders request stronger visual hierarchy, tune per-section spacing/typography without reintroducing dense card clustering
-
-### Sprint 30 - Watermark Crop Hardening And Z-Pattern Infographic Upgrade
-- Date: 2026-03-12
-- Status: completed
-
-#### Goal
-Keep approved hero/trust behavior intact while applying strict watermark crop rules on the mic image and upgrading the 4-section Z-pattern area with fixed Korean line breaks and infographic visuals.
-
-#### Files Created
-- `temp/sprint30-zpattern-infographic.png`
-
-#### Files Modified
-- `src/components/sections/HeroSection.tsx`
-- `src/components/sections/BentoGridSection.tsx`
-- `src/shared/styles/globals.css`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Applied top-left anchored mic crop using `origin-top-left` + `scale-[1.15]` while preserving parent `overflow-hidden`
-- Converted all four body sections to fixed 2-line title + fixed 2-line paragraph copy with explicit `<br />` placement
-- Preserved responsive Z-pattern structure with mobile `flex-col` and desktop `md:grid-cols-2` alternation
-- Replaced generic mock blocks with four dedicated infographic renderers:
-  - multi-color waveform + typing line
-  - dummy text to neon-mint bullet conversion
-  - neon wire links from mic core to Kakao/Notion/Google pills
-  - speech bubbles stacking into a lower grid block
-- Added dedicated animation classes/keyframes in global styles for infographic motion
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The CLI terminal still shows occasional mojibake for Korean literals, but browser rendering/snapshot output confirms the copy is correct
-- Additional micro-polish (animation pacing, icon detail) may be requested after visual stakeholder pass
-
-#### Manual QA
-- [x] `corepack pnpm typecheck`
-- [x] `corepack pnpm lint`
-- [x] `corepack pnpm test`
-- [x] `agent-browser open http://localhost:3000 --headed`
-- [x] `agent-browser snapshot --json` verified all four updated section headlines and bodies
-- [x] `agent-browser get count "[data-testid='z-pattern-mock']" --json` returned `4`
-- [x] `agent-browser get count "[data-testid='kpi-card']" --json` returned `0`
-- [x] `agent-browser screenshot temp/sprint30-zpattern-infographic.png --full`
-
-#### Next Sprint Prerequisites
-- If requested, tune only infographic detail polish without changing approved text breaks or hero/trust alignment
-
-### Sprint 31 - Pure-Code Hero Mic And Reference-Matched Z-Pattern Refinement
-- Date: 2026-03-13
-- Status: completed
-
-#### Goal
-Match the provided `1.jpg` direction by replacing image-based mic rendering with a pure-code hologram component, tightening hero CTA/trust details, and enforcing fixed copy line breaks plus responsive Z-pattern section behavior.
-
-#### Files Created
-- `src/components/sections/VoiceHologramMic.tsx`
-- `temp/sprint31-hero-zpattern-final.png`
-
-#### Files Modified
-- `src/components/sections/HeroSection.tsx`
-- `src/components/sections/TrustRailSection.tsx`
-- `src/components/sections/BentoGridSection.tsx`
-- `src/shared/styles/globals.css`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Replaced hero mic image usage with a pure SVG/CSS `VoiceHologramMic` component including neon `VOICE` hologram text and bilateral EQ bars
-- Preserved solid-gradient primary CTA and converted secondary CTA to transparent outline style
-- Refined trust rail into a thin white rounded outline marquee with evenly spaced `KAKAO / NOTION / GOOGLE / NAVER MEMO`
-- Rebuilt lower body sections with fixed line-break copy and responsive behavior:
-  - mobile: `flex-col-reverse` (`?대?吏 -> ?띿뒪??)
-  - desktop: `md:grid-cols-2` zigzag alternation
-- Kept four infographic motifs and upgraded animation primitives in global CSS (`voxera-mic-eq`, wire flow, stacking glow, typing, waveform)
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- Visual parity is tuned to the provided static screenshot direction; additional pixel tweaks may still be requested per device viewport
-- Terminal output may still show Korean mojibake while browser-rendered copy remains correct
-
-#### Manual QA
-- [x] `corepack pnpm typecheck`
-- [x] `corepack pnpm lint`
-- [x] `corepack pnpm test`
-- [x] `agent-browser open http://localhost:3000 --headed`
-- [x] `agent-browser snapshot --json` verified updated hero/CTA/trust/section copy rendering
-- [x] `agent-browser get count "[data-testid='z-pattern-mock']" --json` returned `4`
-- [x] `agent-browser get count "img[alt='Voxera microphone core']" --json` returned `0`
-- [x] `agent-browser screenshot temp/sprint31-hero-zpattern-final.png --full`
-
-#### Next Sprint Prerequisites
-- If requested, run one more contrast/spacing pass at target viewport(s) while preserving fixed copy breaks and pure-code mic architecture
-
-### Sprint 32 - 3.jpg Blueprint-Only SVG Draft And File Popup
-- Date: 2026-03-13
-- Status: completed
-
-#### Goal
-Pause production UI coding and generate a single SVG blueprint artifact that captures the requested hero/mic/trust/Z-pattern card details from the latest reference, then force-open it for visual confirmation.
-
-#### Files Created
-- `docs/blueprints/landing_blueprint.svg`
-- `temp/landing_blueprint-svg-popup.png`
-
-#### Files Modified
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Added a blueprint-only SVG artifact (no Next.js component wiring) with:
-  - two-line hero headline and fixed subcopy line break
-  - gradient primary CTA + outlined secondary CTA
-  - rounded mic container with internal mic + side waveform depiction
-  - rounded trust rail with spaced brand sequence
-  - four large horizontal neon-stroked cards arranged in alternating Z-pattern composition
-  - card-internal mock text/diagram details for waveform, checklist conversion, network wireframe, and tag-stack UI
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- This sprint intentionally stops at static SVG blueprint output; production motion/interaction parity still requires later React implementation
-- Agent Browser full-page screenshot on local SVG timed out once; non-full screenshot succeeded
-
-#### Manual QA
-- [x] Created `docs/blueprints/landing_blueprint.svg`
-- [x] Opened `file:///C:/Users/Master/Documents/Playground/docs/blueprints/landing_blueprint.svg` with Agent Browser
-- [x] `agent-browser snapshot --json` confirmed `file://` origin and expected blueprint text coverage
-- [x] Captured popup proof screenshot at `temp/landing_blueprint-svg-popup.png`
-
-#### Next Sprint Prerequisites
-- Await visual sign-off on the blueprint before converting to production TSX/Next.js code
-
-### Sprint 33 - Separate 2D Diagram Landing Route
-- Date: 2026-03-13
-- Status: completed
-
-#### Goal
-Create a brand-new landing page from the provided 2D diagram brief in a separate file/route so it is isolated from the existing marketing landing work and immediately previewable.
-
-#### Files Created
-- `src/features/marketing/components/landing-2d-diagram.tsx`
-- `src/app/(marketing)/landing-2d/page.tsx`
-- `temp/landing-2d-preview.png`
-
-#### Files Modified
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Added an isolated marketing route at `/landing-2d`
-- Implemented a dedicated 2D-diagram-styled landing component containing:
-  - Hero container + mic center visual + dual CTA
-  - Problems 2x2 grid cards
-  - How-It-Works 3-step flow with arrows
-  - Impact metric split cards + partner block + footer
-- Left existing landing implementations untouched
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- The source diagram text file showed mojibake in this shell, so Korean copy was normalized from readable intent where necessary
-- This route is an isolated draft surface and is not yet linked from the main landing entry
-
-#### Manual QA
-- [x] `corepack pnpm typecheck`
-- [x] `corepack pnpm lint`
-- [x] `corepack pnpm test`
-- [x] `agent-browser open http://localhost:3000/landing-2d --headed`
-- [x] `agent-browser snapshot --json` confirmed expected section/heading content
-- [x] Captured preview screenshot at `temp/landing-2d-preview.png`
-
-#### Next Sprint Prerequisites
-- After stakeholder review, either keep `/landing-2d` as standalone campaign route or promote selected sections into reusable shared components
-
-### Sprint 34 - Fixed Blueprint Reset (Wireframe Mic + Zero Overflow)
-- Date: 2026-03-13
-- Status: completed
-
-#### Goal
-Stop production coding, reset the previous broken visual layout direction, and deliver a corrected single SVG blueprint focused on high-end wireframe mic rendering and strict text overflow control.
-
-#### Files Created
-- `docs/blueprints/landing_fixed_blueprint.svg`
-- `temp/landing_fixed_blueprint-popup.png`
-
-#### Files Modified
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Added a blueprint-only SVG with:
-  - Minimal wireframe microphone replacing bulky 3D style
-  - Neon mint/cyber-purple EQ cluster around mic
-  - Four large rounded Z-pattern cards with explicit inner safe padding and overflow-safe text layout intent
-  - Reset notes block codifying `overflow-hidden`, `p-8/p-10`, `flex-col`, `justify-center`, `break-keep`, `text-balance`, `leading-relaxed`
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- None
-- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
-
-#### Known Risks
-- This output is static SVG blueprint only; motion and runtime behavior still require later implementation in real UI code
-
-#### Manual QA
-- [x] Opened `file:///C:/Users/Master/Documents/Playground/docs/blueprints/landing_fixed_blueprint.svg` in Agent Browser
-- [x] Verified file-origin snapshot content with hero/trust/mic/Z-pattern/reset notes present
-- [x] Captured popup proof screenshot at `temp/landing_fixed_blueprint-popup.png`
-
-#### Next Sprint Prerequisites
-- Await visual sign-off on `landing_fixed_blueprint.svg` before converting to production React/Next implementation
-
-### Sprint 3A - AudioWorklet + WSS + Server STT Bridge
-- Date: 2026-03-13
-- Status: completed
-
-#### Goal
-Implement constitutional audio path (AudioWorklet PCM over WSS), then bridge transcript + routing ids to Make.com via Next.js API route.
-
-#### Files Created
-- `public/audio/pcm-worklet-processor.js`
-- `src/app/api/voice/submit/route.ts`
-- `scripts/voice-wss-server.mjs`
-- `scripts/dev-test-server.mjs`
-
-#### Files Modified
-- `src/features/voice-capture/state/use-voice-capture-machine.ts`
-- `src/features/voice-capture/state/voice-capture-reducer.ts`
-- `src/features/voice-capture/types/voice-types.ts`
-- `tests/playwright.config.ts`
-- `.env.local`
-- `package.json`
-- `package-lock.json`
-
-#### Architecture Changes
-- Client now captures microphone PCM frames via AudioWorklet and streams them to WSS in real time.
-- Added WS server ingestion + Whisper transcription step.
-- Added Next API route `/api/voice/submit` for server-side webhook forwarding.
-
-#### State Machine Changes
-- Fixed 8-state model preserved.
-- Added reducer events for transcript and routing metadata updates.
-
-#### Submission / Cost Defense Changes
-- 15-second stop remains reducer/timer source of truth.
-- Submit still uses synchronous lock (`clientRequestId`) before async request.
-
-#### Known Risks
-- In local/development mode, webhook and STT include mocked fallback behavior when keys/endpoints are unavailable.
-- Production requires valid `OPENAI_API_KEY` and reachable `MAKE_WEBHOOK_URL`.
-
-#### Manual QA
-- [x] Step1 start/stop triggers live WSS session commands
-- [x] Transcript lands in Step2 preview via server message
-- [x] Submit button waits for server ACK and transitions to success
-- [x] E2E voice flow passes with WSS test stack
+```
 
 ---
 
-### Sprint 3B - HMAC + Circuit Breaker + Failure Queue Hardening
-- Date: 2026-03-13
-- Status: completed
+### Sprint Workspace Ops ??Google Main Dashboard Builder
+- Date: 2026-03-22
+- Status: partial completion
 
 #### Goal
-Add webhook signing, retry/circuit protections, and durable failure queueing without touching voice UI components.
+Prepare a production-ready Apps Script builder for a Google Sheets main dashboard while verifying whether Notion MCP can be used to create real workspace databases.
 
 #### Files Created
-- `.agents/skills/retry-break-handler-template/SKILL.md`
-- `src/server/webhook/WebhookSigner.ts`
-- `src/server/reliability/circuitBreaker.ts`
-- `src/server/reliability/WebhookClient.ts`
-- `src/server/queue/failureQueue.ts`
-- `tests/e2e/backend-reliability.spec.ts`
+- `integrations/google-workspace/dashboard-builder.gs`
 
 #### Files Modified
-- `src/app/api/voice/submit/route.ts`
-- `.env.local`
-- `.env.local.example`
 - `docs/sprint-summary.md`
 
 #### Architecture Changes
-- Added server-side HMAC-SHA256 generation for webhook calls (`X-Webhook-Signature` + timestamp header).
-- Added retry client with exponential backoff and circuit breaker integration.
-- Added file-durable JSONL failure queue with 1s polling worker.
-- Refactored `/api/voice/submit` to:
-  - try immediate webhook send first
-  - enqueue on failure
-  - return `acceptedForRetry: true` when queued
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- Submission flow now includes backend reliability fallback (queue) while retaining existing client-side duplicate lock (`clientRequestId`).
+- Added a dedicated `dashboard-builder.gs` script that renames the first sheet to `🚀 VOXERA MAIN 통제실`, hides gridlines, paints `A1:Z100` with `#f8fafc`, and creates three large merged-cell action surfaces.
+- Added an optional binding helper for already-existing Google Sheets drawings using `Drawing.setOnAction()`.
+- Confirmed that the current session still cannot initialize the Notion MCP server because it returns `Auth required`.
 
 #### Known Risks
-- Queue durability currently uses local filesystem JSONL; distributed/multi-instance production requires shared durable store (e.g., DB/Redis).
-- In local/dev, missing webhook secret/url still returns mocked success path by existing route policy.
-- Existing unrelated lint warning remains in `use-voice-capture-machine.ts` (missing hook dependency).
+- Google Apps Script can modify existing spreadsheet drawings but this flow still cannot programmatically create brand-new Drawing objects from code alone.
+- Notion physical DB creation remains blocked until MCP authentication is actually recognized by this running session.
 
 #### Manual QA
-- [x] `corepack pnpm typecheck`
-- [x] `corepack pnpm lint`
-- [x] `corepack pnpm test`
-- [x] `corepack pnpm exec playwright test tests/e2e/backend-reliability.spec.ts -c tests/playwright.env-core.config.ts`
-- [x] `corepack pnpm test:e2e`
+- [x] Verify `dashboard-builder.gs` contains `🚀 VOXERA MAIN 통제실`
+- [x] Verify `setHiddenGridlines(true)` and `A1:Z100` background `#f8fafc`
+- [x] Verify three action handlers exist
+- [ ] Re-run Notion MCP after session-level auth is recognized
 
 #### Next Sprint Prerequisites
-- Promote queue storage from local JSONL to centralized persistent store for horizontal scale.
-- Add replay protection window validation on receiver side for timestamp/signature.
+- Restore Notion MCP availability in this session before attempting workspace DB creation.
+- Wire `dashboard-builder.gs` into the target spreadsheet Apps Script project and run `buildVoxeraMainDashboard()`.
 
 ---
 
-### Sprint 3C - Mobile Feedback Compatibility Hardening
-- Date: 2026-03-13
+### Sprint 17 - Notion Home Dashboard Blueprint 2nd Pass
+- Date: 2026-03-21
 - Status: completed
 
 #### Goal
-Guarantee backend-response feedback UI safety on mobile and desktop while preserving the backend reliability stack.
+Redesign the Notion dashboard as an always-open home page rather than a modal-like surface, aligned with how Notion pages are actually used.
 
 #### Files Created
-- `tests/e2e/mobile-feedback-ui.spec.ts`
-
-#### Files Modified
-- `.agents/skills/retry-break-handler-template/SKILL.md`
-- `scripts/voice-wss-server.mjs`
-- `src/app/layout.tsx`
-- `src/features/voice-capture/components/voice-capture-screen.tsx`
-- `src/features/voice-capture/state/use-voice-capture-machine.ts`
-- `tests/e2e/backend-reliability.spec.ts`
-- `tests/e2e/voice-capture-flow.spec.ts`
-- `tests/playwright.config.ts`
-- `docs/sprint-summary.md`
+- `docs/notion-home-dashboard-visual-spec.md`
+- `docs/notion-home-dashboard-blueprint.svg`
+- `docs/notion-home-dashboard-blueprint-render.png`
 
 #### Architecture Changes
-- WS submit ack now carries `acceptedForRetry` and `reason` from `/api/voice/submit`.
-- Client now shows a background-processing toast when queue fallback is used.
-- Added bounded/balanced feedback UI classes for alert/notice containers:
-  - `max-w-md`
-  - `break-keep`
-  - `text-balance`
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- None
-- AudioWorklet + PCM over WSS-only architecture preserved
-
-#### Submission / Cost Defense Changes
-- Queue fallback metadata is now propagated to UX feedback without weakening duplicate lock behavior.
+- Notion is now documented as an always-visible home dashboard, not a pop-up or modal interaction model
+- The visual model is:
+  - page title
+  - 4 KPI cards
+  - left `받은 음성함` linked database
+  - center `실행 전환` flow badge
+  - right `실행 보드` linked database
+  - bottom quick links
 
 #### Known Risks
-- Mobile full-mic flow remains intentionally scoped to desktop test project; mobile projects validate feedback container safety path.
-- Existing unrelated lint warning remains in `use-voice-capture-machine.ts` (`react-hooks/exhaustive-deps`).
+- This is still a visual blueprint only; actual Notion block placement and linked database arrangement are not yet applied
+- KPI cards may need to be approximated with callout/synced blocks depending on the final Notion page composition
 
 #### Manual QA
-- [x] `corepack pnpm typecheck`
-- [x] `corepack pnpm lint`
-- [x] `corepack pnpm test`
-- [x] `corepack pnpm exec playwright test tests/e2e/backend-reliability.spec.ts -c tests/playwright.env-core.config.ts`
-- [x] `corepack pnpm exec playwright test tests/e2e/mobile-feedback-ui.spec.ts -c tests/playwright.config.ts`
-- [x] `corepack pnpm test:e2e`
+- Open `docs/notion-home-dashboard-blueprint-render.png`
+- Confirm the page feels like a Notion home dashboard rather than a modal
+- Confirm `받은 음성함` and `실행 보드` are clearly separated
+- Confirm the bottom quick links are appropriate for a main page
 
 #### Next Sprint Prerequisites
-- If required, add a dedicated mobile real-microphone hardware runbook for non-fake-device environments.
+- Get approval on the 2nd Notion visual blueprint
+- Translate the approved blueprint into actual Notion page block placement
 
-### Sprint 3D - Front-End Live Submission Transport
-- Date: 2026-03-13
+---
+
+### Sprint 18 - Notion Direct-Write + Google Workspace Handoff Doc
+- Date: 2026-03-21
 - Status: completed
 
 #### Goal
-Remove the placeholder front-end upload path and weld the voice capture UI to the real `POST /api/voice/submit` route without weakening the 15-second cutoff, duplicate lock, or fixed 8-state reducer.
+Create a developer handoff document that explains the Notion direct-write pivot and the Google Workspace integration model for next-day implementation/testing.
 
 #### Files Created
-- None
-
-#### Files Modified
-- `src/features/voice-capture/components/voice-capture-screen.tsx`
-- `src/features/voice-capture/services/upload-placeholder.ts`
-- `src/features/voice-capture/state/use-voice-capture-machine.ts`
-- `src/features/voice-capture/state/voice-capture-reducer.ts`
-- `src/features/voice-capture/types/voice-types.ts`
-- `docs/sprint-summary.md`
+- `docs/2026-03-21-notion-direct-write-google-workspace-handoff.md`
 
 #### Architecture Changes
-- Replaced the placeholder submit service with a live client-side transport that posts to `/api/voice/submit`
-- Kept AudioWorklet + PCM over WSS for capture/transcript generation while moving final submission ownership to the browser
-- HTTP submit is now limited to transcript text and lightweight metadata while audio remains on the WSS path
-
-#### State Machine Changes
-- Preserved all 8 constitutional states
-- Added success metadata fields so queued backend delivery can render as a pending-success outcome without adding new reducer states
-
-#### Audio / Transport Changes
-- No MediaRecorder path introduced
-- AudioWorklet + PCM over WSS-only architecture preserved
-- Final submit no longer waits for a WSS `session.submit` ack; it now calls `/api/voice/submit` directly after transcript readiness
-
-#### Submission / Cost Defense Changes
-- `clientRequestId` is still created synchronously before async submission begins
-- Added front-end guards for three failure modes:
-  - transcript-not-ready race after stop
-  - empty PCM payload submission
-  - queued backend retry response (`acceptedForRetry: true`) without breaking success UI
+- None in runtime code
+- Documentation now clearly records:
+  - Notion direct-write as the preferred path over Make.com for Notion delivery
+  - Google Workspace as a Sheets-centered execution system with Docs/Calendar/Mail as attached assets
 
 #### Known Risks
-- Browser/network verification used fake-device microphone input; a physical-device microphone pass is still recommended before production rollout
+- The handoff document reflects the agreed target architecture; Notion direct-write runtime implementation still needs to be built/tested
+- KakaoTalk remains intentionally deferred pending business account approval
 
 #### Manual QA
-- [x] `corepack pnpm typecheck`
-- [x] `corepack pnpm lint`
-- [x] `corepack pnpm test`
-- [x] `corepack pnpm test:e2e`
-- [x] Temporary Playwright verification confirmed one real browser `POST /api/voice/submit` request with:
-  - `clientRequestId`
-  - transcript text
-  - `pcmFrameCount`
-  - routing/session metadata only
-
-### Sprint 3E - Metadata-Only Submit Correction
-- Date: 2026-03-13
-- Status: completed
-
-#### Goal
-Remove the unconstitutional Base64 PCM HTTP payload and restore strict transport separation: audio over WSS only, text and metadata over `POST /api/voice/submit`.
-
-#### Files Created
-- None
-
-#### Files Modified
-- `src/features/voice-capture/components/voice-capture-screen.tsx`
-- `src/features/voice-capture/services/upload-placeholder.ts`
-- `src/features/voice-capture/state/use-voice-capture-machine.ts`
-- `docs/sprint-summary.md`
-
-#### Architecture Changes
-- Removed client-side PCM chunk buffering for HTTP submission
-- Kept WSS as the sole audio path and reduced `/api/voice/submit` to transcript plus lightweight metadata
-
-#### State Machine Changes
-- None
-- Preserved all 8 constitutional states
-
-#### Audio / Transport Changes
-- Audio continues to stream only through AudioWorklet + PCM over WSS
-- HTTP submit now carries only:
-  - `clientRequestId`
-  - `transcriptText`
-  - `spreadsheetId`
-  - `slackChannelId`
-  - `sessionId`
-  - `pcmFrameCount`
-
-#### Submission / Cost Defense Changes
-- Preserved synchronous `clientRequestId` locking before async submit
-- Preserved queue-fallback success/pending UI behavior without sending any audio bytes over HTTP
-
-#### Known Risks
-- Browser/network verification still uses fake-device microphone input; one physical-device manual pass remains recommended
-- `docs/backend-architecture.md` was referenced in the task brief but is not present in this workspace
-
-#### Manual QA
-- [x] `corepack pnpm typecheck`
-- [x] `corepack pnpm lint`
-- [x] `corepack pnpm test`
-- [x] `corepack pnpm test:e2e`
-- [x] Temporary browser verification confirmed `POST /api/voice/submit` payload keys are exactly:
-  - `clientRequestId`
-  - `pcmFrameCount`
-  - `sessionId`
-  - `slackChannelId`
-  - `spreadsheetId`
-  - `transcriptText`
-- [x] Temporary browser verification confirmed `pcmPayloadBase64` is absent
+- Open the handoff doc
+- Verify the Notion decision rationale is clear enough for the engineering lead
+- Verify the Google Workspace setup/test sequence is clear enough to run tomorrow
 
 #### Next Sprint Prerequisites
-- Run one real hardware microphone pass and visually confirm the same metadata-only payload in DevTools Network
+- Apply and test Notion direct-write flow
+- Apply and test Google Workspace flow end-to-end
 
-#### Next Sprint Prerequisites
-- Run one hardware-backed microphone pass on mobile and desktop browsers against the live stack
-- Decide whether PCM payload should remain client-posted JSON or move to a more compact binary submission contract later
+---
 
 ### Sprint 3F - Firestore Billing Commit Engine And Stdio MCP Reviewer
 - Date: 2026-03-24
@@ -2138,6 +1319,7 @@ Add a back-end pay-per-output billing route with Firestore reserve/execute/deduc
 - `src/server/config/server-env.ts`
 - `src/server/firebase/admin.ts`
 - `src/server/generation/google-ai-studio-generator.ts`
+- `src/server/mcp/contracts.ts`
 - `src/server/mcp/json-rpc.ts`
 - `src/server/mcp/reviewer-agent.ts`
 - `src/server/mcp/reviewer-static-analysis.ts`
@@ -2176,7 +1358,6 @@ Add a back-end pay-per-output billing route with Firestore reserve/execute/deduc
 - Added response revalidation hints (`wallet:{uid}`, `billing:{uid}`) for cache/SWR refresh wiring
 
 #### Known Risks
-- Real cloud validation still requires live Firebase credentials, wallet seed data, and a Secret Manager secret version populated with a valid Google AI Studio key
 - The reviewer rules are intentionally narrow and should be expanded if the bridge starts sending broader diff shapes or non-TypeScript assets
 
 #### Manual QA
@@ -2191,6 +1372,8 @@ Add a back-end pay-per-output billing route with Firestore reserve/execute/deduc
 - Provision Firestore `wallets/{uid}` documents and service credentials, then run one end-to-end authenticated call against `/api/v1/generate-output`
 - Decide whether the MCP bridge contract should stay polling-based or move to server-pushed notifications once the cloud side stabilizes
 
+---
+
 ### Sprint 3G - Real Cloud Verification And Safe Handoff
 - Date: 2026-03-24
 - Status: completed
@@ -2200,11 +1383,11 @@ Run the new billing route against real Firebase Admin + Firestore + Secret Manag
 
 #### Files Created
 - `scripts/verify-generate-output-real.ts`
-- `src/server/mcp/contracts.ts`
 
 #### Files Modified
 - `docs/sprint-summary.md`
 - `package-lock.json`
+- `package.json`
 
 #### Architecture Changes
 - Added an executable real-cloud verification path that seeds a Firestore wallet, mints a Firebase custom token, boots Next locally, and exercises `POST /api/v1/generate-output` against live Google infrastructure
@@ -2242,3 +1425,4 @@ Run the new billing route against real Firebase Admin + Firestore + Secret Manag
 #### Next Sprint Prerequisites
 - Merge the isolated handoff branch or PR after final review
 - Rotate or confirm the Google AI Studio secret version after integration if this verification key should not remain active
+

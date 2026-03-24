@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  font-family: "Pretendard", sans-serif;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  background-color: #FAFAF9;
+  color: #1E293B;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  word-break: keep-all;
+}
