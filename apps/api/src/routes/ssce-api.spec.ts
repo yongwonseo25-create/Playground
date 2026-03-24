@@ -244,6 +244,7 @@ describe('SSCE HTTP routes', () => {
 
     if (process.env.GOOGLE_AI_STUDIO_KEY || process.env.GEMINI_API_KEY) {
       expect(oracleProvider).toMatch(/^google-ai-studio-gemini:/);
+      expect(oracleProvider).not.toContain('repair-baseline');
     } else {
       expect(oracleProvider).toBe('heuristic-oracle-v1');
     }

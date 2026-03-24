@@ -790,6 +790,8 @@ export function buildSemanticDiffOraclePrompt(input: SemanticDiffOracleInput) {
 
 const DEFAULT_GOOGLE_AI_STUDIO_MODEL = 'gemini-2.5-flash';
 const DEFAULT_GOOGLE_AI_STUDIO_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const MAX_GEMINI_ORACLE_TEXT_LENGTH = 480;
+const MAX_GEMINI_ORACLE_NOTE_LENGTH = 160;
 
 type OracleRuntimeConfig = {
   apiKey: string | null;
@@ -820,135 +822,123 @@ type GeminiGenerateContentResponse = {
   };
 };
 
-const geminiOracleJudgmentSchema = z
-  .object({
-    lexical_additions: z
-      .union([z.array(z.string()), z.string()])
-      .transform((value) =>
-        (Array.isArray(value) ? value : value.split(','))
-          .map((item) => item.trim())
-          .filter(Boolean)
-          .slice(0, 6)
-      )
-      .default([]),
-    lexical_removals: z
-      .union([z.array(z.string()), z.string()])
-      .transform((value) =>
-        (Array.isArray(value) ? value : value.split(','))
-          .map((item) => item.trim())
-          .filter(Boolean)
-          .slice(0, 6)
-      )
-      .default([]),
-    lexical_reinforcements: z
-      .union([z.array(z.string()), z.string()])
-      .transform((value) =>
-        (Array.isArray(value) ? value : value.split(','))
-          .map((item) => item.trim())
-          .filter(Boolean)
-          .slice(0, 6)
-      )
-      .default([]),
-    structure_additions: z
-      .union([z.array(z.string()), z.string()])
-      .transform((value) =>
-        (Array.isArray(value) ? value : value.split(','))
-          .map((item) => item.trim())
-          .filter(Boolean)
-          .slice(0, 6)
-      )
-      .default([]),
-    structure_removals: z
-      .union([z.array(z.string()), z.string()])
-      .transform((value) =>
-        (Array.isArray(value) ? value : value.split(','))
-          .map((item) => item.trim())
-          .filter(Boolean)
-          .slice(0, 6)
-      )
-      .default([]),
-    primary_tone_shift: z.string().trim().default('stable'),
-    secondary_tone_shifts: z
-      .union([z.array(z.string()), z.string()])
-      .transform((value) =>
-        (Array.isArray(value) ? value : value.split(','))
-          .map((item) => item.trim())
-          .filter(Boolean)
-          .slice(0, 3)
-      )
-      .default([]),
-    rationale: z.string().trim().default('Gemini did not supply a rationale.'),
-    summary: z.string().trim().default('Gemini did not supply a summary.')
-  })
-  .passthrough();
+const toneShiftOptions = [
+  'stable',
+  'more_directness',
+  'less_directness',
+  'more_concision',
+  'less_concision',
+  'more_formality',
+  'less_formality',
+  'more_warmth',
+  'less_warmth',
+  'more_urgency',
+  'less_urgency',
+  'more_analytical',
+  'less_analytical',
+  'more_structure',
+  'less_structure'
+] as const;
 
-type GeminiOracleJudgment = z.infer<typeof geminiOracleJudgmentSchema>;
+const secondaryToneShiftOptions = [
+  'more_directness',
+  'less_directness',
+  'more_concision',
+  'less_concision',
+  'more_formality',
+  'less_formality',
+  'more_warmth',
+  'less_warmth',
+  'more_urgency',
+  'less_urgency',
+  'more_analytical',
+  'less_analytical',
+  'more_structure',
+  'less_structure'
+] as const;
+
+const compactOracleArraySchema = z.array(z.string().trim().min(1)).max(4);
+
+const geminiOracleWireSchema = z
+  .object({
+    a: compactOracleArraySchema
+      .default([]),
+    r: compactOracleArraySchema
+      .default([]),
+    f: compactOracleArraySchema
+      .default([]),
+    sa: compactOracleArraySchema
+      .default([]),
+    sr: compactOracleArraySchema
+      .default([]),
+    p: z.enum(toneShiftOptions).default('stable'),
+    s: z
+      .array(z.enum(secondaryToneShiftOptions))
+      .max(2)
+      .default([]),
+  })
+  .strict();
+
+type GeminiOracleWire = z.infer<typeof geminiOracleWireSchema>;
 
 const geminiOracleResponseJsonSchema = {
   type: 'object',
   additionalProperties: false,
-  required: [
-    'lexical_additions',
-    'lexical_removals',
-    'lexical_reinforcements',
-    'structure_additions',
-    'structure_removals',
-    'primary_tone_shift',
-    'secondary_tone_shifts',
-    'rationale',
-    'summary'
-  ],
+  required: ['a', 'r', 'f', 'sa', 'sr', 'p', 's'],
   properties: {
-    lexical_additions: {
+    a: {
       type: 'array',
+      description: 'Lowercase content terms that appear in the final artifact but not the generated draft.',
       items: {
         type: 'string'
       },
-      maxItems: 6
+      maxItems: 4
     },
-    lexical_removals: {
+    r: {
       type: 'array',
+      description: 'Lowercase content terms removed from the generated draft in the final artifact.',
       items: {
         type: 'string'
       },
-      maxItems: 6
+      maxItems: 4
     },
-    lexical_reinforcements: {
+    f: {
       type: 'array',
+      description: 'Lowercase content terms that became more emphasized in the final artifact.',
       items: {
         type: 'string'
       },
-      maxItems: 6
+      maxItems: 4
     },
-    structure_additions: {
+    sa: {
       type: 'array',
+      description: 'Short section labels added to the final artifact structure.',
       items: {
         type: 'string'
       },
-      maxItems: 6
+      maxItems: 4
     },
-    structure_removals: {
+    sr: {
       type: 'array',
+      description: 'Short section labels removed from the final artifact structure.',
       items: {
         type: 'string'
       },
-      maxItems: 6
+      maxItems: 4
     },
-    primary_tone_shift: {
-      type: 'string'
+    p: {
+      type: 'string',
+      description: 'Primary durable tone shift label.',
+      enum: toneShiftOptions
     },
-    secondary_tone_shifts: {
+    s: {
       type: 'array',
+      description: 'Secondary durable tone shift labels.',
       items: {
-        type: 'string'
+        type: 'string',
+        enum: secondaryToneShiftOptions
       },
-      maxItems: 3
-    },
-    rationale: {
-      type: 'string'
-    },
-    summary: {
-      type: 'string'
+      maxItems: 2
     }
   }
 } as const;
@@ -1063,61 +1053,79 @@ function readOracleRuntimeConfig(env = process.env): OracleRuntimeConfig {
   };
 }
 
-function extractJsonObject(text: string) {
-  const trimmed = text.trim();
-
-  try {
-    return JSON.parse(trimmed) as unknown;
-  } catch {
-    const start = trimmed.indexOf('{');
-    const end = trimmed.lastIndexOf('}');
-    if (start === -1 || end === -1 || end <= start) {
-      throw new Error('Gemini response did not contain a parseable JSON object.');
-    }
-
-    return JSON.parse(trimmed.slice(start, end + 1)) as unknown;
-  }
-}
-
-function normalizeStringArray(value: unknown, fallback: string[], limit = 6) {
-  if (!Array.isArray(value)) {
-    return fallback;
+function compactGeminiOracleText(content: string, maxLength: number) {
+  const normalized = content.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
   }
 
-  return value.filter((item): item is string => typeof item === 'string').slice(0, limit);
+  return `${normalized.slice(0, maxLength - 1)}…`;
 }
 
 function mergeGeminiJudgmentWithBaseline(
-  judgment: GeminiOracleJudgment,
+  judgment: GeminiOracleWire,
   fallback: SemanticDiffOracleResult,
   model: string
 ): SemanticDiffOracleResult {
+  const rationaleParts = [];
+
+  if (judgment.a.length > 0) {
+    rationaleParts.push(`Gemini confirmed lexical additions around ${judgment.a.slice(0, 2).join(', ')}`);
+  }
+
+  if (judgment.f.length > 0) {
+    rationaleParts.push(`Gemini confirmed stronger emphasis on ${judgment.f.slice(0, 2).join(', ')}`);
+  }
+
+  if (judgment.sa.length > 0 || judgment.sr.length > 0) {
+    rationaleParts.push(
+      `Gemini confirmed structure edits across ${[...judgment.sa, ...judgment.sr].slice(0, 2).join(', ')}`
+    );
+  }
+
+  if (judgment.p !== 'stable') {
+    rationaleParts.push(`Gemini classified the primary tone shift as ${judgment.p.replace(/_/g, ' ')}`);
+  }
+
+  const diffSummaryParts = [];
+  if (judgment.a.length > 0) {
+    diffSummaryParts.push(`lexical additions ${judgment.a.slice(0, 2).join(', ')}`);
+  }
+  if (judgment.sa.length > 0) {
+    diffSummaryParts.push(`new sections ${judgment.sa.slice(0, 2).join(', ')}`);
+  }
+  if (judgment.p !== 'stable') {
+    diffSummaryParts.push(`tone ${judgment.p.replace(/_/g, ' ')}`);
+  }
+
   const globalSignals =
-    judgment.primary_tone_shift !== 'stable'
+    judgment.p !== 'stable'
       ? [
           {
-            trait_key: `tone.${judgment.primary_tone_shift.replace('more_', '').replace('less_', '')}`,
-            evidence: judgment.rationale,
+            trait_key: `tone.${judgment.p.replace('more_', '').replace('less_', '')}`,
+            evidence:
+              rationaleParts[0] ??
+              'Gemini confirmed a durable tone shift from the accepted user edits.',
             weight: clamp(0.58 + fallback.tone_delta.intensity_score * 0.2)
           },
           ...fallback.scope_updates.global.trait_signals
         ].slice(0, 6)
       : fallback.scope_updates.global.trait_signals;
   const destinationSignals =
-    judgment.structure_additions.length > 0
+    judgment.sa.length > 0
       ? [
           {
             trait_key: 'format.semantic_sectioning',
-            evidence: `Gemini highlighted new sections: ${judgment.structure_additions.slice(0, 3).join(', ')}.`,
+            evidence: `Gemini highlighted new sections: ${judgment.sa.slice(0, 3).join(', ')}.`,
             weight: clamp(0.5 + fallback.structure_changes.structure_score * 0.2)
           },
           ...fallback.scope_updates.destination.trait_signals
         ].slice(0, 6)
       : fallback.scope_updates.destination.trait_signals;
   const taskSignals =
-    judgment.lexical_additions.length > 0
+    judgment.a.length > 0
       ? [
-          ...judgment.lexical_additions.slice(0, 2).map((keyword) => ({
+          ...judgment.a.slice(0, 2).map((keyword) => ({
             trait_key: `lexicon.${keyword.replace(/[^\p{L}\p{N}-]+/gu, '_')}`,
             evidence: `Gemini marked "${keyword}" as a reinforced task lexicon choice.`,
             weight: clamp(0.46 + fallback.lexical_changes.lexical_shift_score * 0.2)
@@ -1129,24 +1137,15 @@ function mergeGeminiJudgmentWithBaseline(
   return semanticDiffOracleResultSchema.parse({
     provider: `google-ai-studio-gemini:${model}`,
     lexical_changes: {
-      added_keywords: normalizeStringArray(
-        judgment.lexical_additions,
-        fallback.lexical_changes.added_keywords
-      ),
-      removed_keywords: normalizeStringArray(
-        judgment.lexical_removals,
-        fallback.lexical_changes.removed_keywords
-      ),
-      reinforced_keywords: normalizeStringArray(
-        judgment.lexical_reinforcements,
-        fallback.lexical_changes.reinforced_keywords
-      ),
+      added_keywords: judgment.a.length > 0 ? judgment.a : fallback.lexical_changes.added_keywords,
+      removed_keywords: judgment.r.length > 0 ? judgment.r : fallback.lexical_changes.removed_keywords,
+      reinforced_keywords: judgment.f.length > 0 ? judgment.f : fallback.lexical_changes.reinforced_keywords,
       lexical_shift_score: clamp(
         Math.max(
           fallback.lexical_changes.lexical_shift_score,
-          (judgment.lexical_additions.length +
-            judgment.lexical_removals.length +
-            judgment.lexical_reinforcements.length) /
+          (judgment.a.length +
+            judgment.r.length +
+            judgment.f.length) /
             10
         )
       ),
@@ -1154,58 +1153,54 @@ function mergeGeminiJudgmentWithBaseline(
       sentence_delta: fallback.lexical_changes.sentence_delta
     },
     structure_changes: {
-      added_sections: normalizeStringArray(
-        judgment.structure_additions,
-        fallback.structure_changes.added_sections
-      ),
-      removed_sections: normalizeStringArray(
-        judgment.structure_removals,
-        fallback.structure_changes.removed_sections
-      ),
+      added_sections: judgment.sa.length > 0 ? judgment.sa : fallback.structure_changes.added_sections,
+      removed_sections: judgment.sr.length > 0 ? judgment.sr : fallback.structure_changes.removed_sections,
       reordered_sections: fallback.structure_changes.reordered_sections,
       heading_delta: fallback.structure_changes.heading_delta,
       list_delta: fallback.structure_changes.list_delta,
       structure_score: clamp(
         Math.max(
           fallback.structure_changes.structure_score,
-          (judgment.structure_additions.length + judgment.structure_removals.length) / 10
+          (judgment.sa.length + judgment.sr.length) / 10
         )
       )
     },
     tone_delta: {
       before: fallback.tone_delta.before,
       after: fallback.tone_delta.after,
-      primary_shift: judgment.primary_tone_shift || fallback.tone_delta.primary_shift,
-      secondary_shifts: normalizeStringArray(
-        judgment.secondary_tone_shifts,
-        fallback.tone_delta.secondary_shifts,
-        3
-      ),
+      primary_shift: judgment.p,
+      secondary_shifts: judgment.s,
       intensity_score: clamp(
         Math.max(
           fallback.tone_delta.intensity_score,
           0.15 +
-            judgment.secondary_tone_shifts.length * 0.08 +
-            (judgment.primary_tone_shift !== 'stable' ? 0.12 : 0)
+            judgment.s.length * 0.08 +
+            (judgment.p !== 'stable' ? 0.12 : 0)
         )
       ),
-      rationale: judgment.rationale || fallback.tone_delta.rationale
+      rationale:
+        rationaleParts.length > 0
+          ? `${rationaleParts.join('; ')}.`
+          : fallback.tone_delta.rationale
     },
     diff_summary: {
       added_sentences: fallback.diff_summary.added_sentences,
       removed_sentences: fallback.diff_summary.removed_sentences,
       changed_structure_sections: Math.max(
         fallback.diff_summary.changed_structure_sections,
-        judgment.structure_additions.length + judgment.structure_removals.length
+        judgment.sa.length + judgment.sr.length
       ),
-      summary: judgment.summary || fallback.diff_summary.summary
+      summary:
+        diffSummaryParts.length > 0
+          ? `Gemini confirmed ${diffSummaryParts.join(', ')}.`
+          : fallback.diff_summary.summary
     },
     scope_updates: {
       global: {
         ...fallback.scope_updates.global,
         summary:
-          judgment.primary_tone_shift !== 'stable'
-            ? `Gemini confirmed a global tone shift: ${judgment.primary_tone_shift.replace(/_/g, ' ')}.`
+          judgment.p !== 'stable'
+            ? `Gemini confirmed a global tone shift: ${judgment.p.replace(/_/g, ' ')}.`
             : fallback.scope_updates.global.summary,
         trait_signals: globalSignals,
         signal_count_delta: globalSignals.length
@@ -1213,8 +1208,8 @@ function mergeGeminiJudgmentWithBaseline(
       destination: {
         ...fallback.scope_updates.destination,
         summary:
-          judgment.structure_additions.length > 0
-            ? `Gemini confirmed destination structure edits around ${judgment.structure_additions.slice(0, 3).join(', ')}.`
+          judgment.sa.length > 0
+            ? `Gemini confirmed destination structure edits around ${judgment.sa.slice(0, 3).join(', ')}.`
             : fallback.scope_updates.destination.summary,
         trait_signals: destinationSignals,
         signal_count_delta: destinationSignals.length
@@ -1223,32 +1218,13 @@ function mergeGeminiJudgmentWithBaseline(
       task: {
         ...fallback.scope_updates.task,
         summary:
-          judgment.lexical_additions.length > 0
-            ? `Gemini confirmed task-level lexical emphasis on ${judgment.lexical_additions.slice(0, 3).join(', ')}.`
+          judgment.a.length > 0
+            ? `Gemini confirmed task-level lexical emphasis on ${judgment.a.slice(0, 3).join(', ')}.`
             : fallback.scope_updates.task.summary,
         trait_signals: taskSignals,
         signal_count_delta: taskSignals.length
       }
     }
-  });
-}
-
-function buildGeminiRepairBaselineResult(
-  text: string,
-  error: unknown,
-  fallback: SemanticDiffOracleResult,
-  model: string
-) {
-  const message = error instanceof Error ? error.message : 'unknown Gemini parse failure';
-  const preview = text.replace(/\s+/g, ' ').slice(0, 240);
-
-  console.warn(
-    `[ssce-oracle] provider=google-ai-studio-gemini:${model} repair=baseline reason=${message} preview=${preview}`
-  );
-
-  return semanticDiffOracleResultSchema.parse({
-    ...fallback,
-    provider: `google-ai-studio-gemini:${model}:repair-baseline`
   });
 }
 
@@ -1274,55 +1250,38 @@ function buildGeminiOraclePrompt(
   input: SemanticDiffOracleInput,
   baseline: SemanticDiffOracleResult
 ) {
-  return [
-    'You are the Voxera SSCE Oracle.',
-    'Compare the generated draft and the final artifact, then return a single JSON object only.',
-    'Use the artifact texts and feedback notes to infer durable style changes.',
-    'Rules:',
-    '- lexical_additions, lexical_removals, lexical_reinforcements: lowercase content terms only',
-    '- structure_additions and structure_removals should use short section labels',
-    '- primary_tone_shift should be stable or a more_/less_ tone dimension such as more_formality',
-    '- rationale and summary must each stay within one short sentence',
-    '- return valid JSON only with the exact keys from the sample object',
-    '',
-    '[Scope]',
-    `workspace=${input.context.workspace_id}`,
-    `destination=${input.context.destination_key ?? 'n/a'}`,
-    `recipient=${input.context.recipient_key ?? 'n/a'}`,
-    `task=${input.context.task_key ?? 'n/a'}`,
-    '',
-    '[Feedback Notes]',
-    input.feedback_notes ?? 'n/a',
-    '',
-    '[Accepted Reference Artifact IDs]',
-    input.accepted_reference_artifact_ids.join(', ') || 'none',
-    '',
-    '[Generated Draft]',
-    input.generated_draft.content,
-    '',
-    '[Final Artifact]',
-    input.final_artifact.content,
-    '',
-    '[Heuristic Baseline]',
-    `summary=${baseline.diff_summary.summary}`,
-    `primary_shift=${baseline.tone_delta.primary_shift}`,
-    `added_keywords=${baseline.lexical_changes.added_keywords.join(', ') || 'none'}`,
-    `removed_keywords=${baseline.lexical_changes.removed_keywords.join(', ') || 'none'}`,
-    `structure_additions=${baseline.structure_changes.added_sections.join(', ') || 'none'}`,
-    '',
-    '[JSON Shape]',
-    JSON.stringify({
-      lexical_additions: ['kpi'],
-      lexical_removals: ['hello'],
-      lexical_reinforcements: ['owners'],
-      structure_additions: ['actions'],
-      structure_removals: ['greeting'],
-      primary_tone_shift: 'more_directness',
-      secondary_tone_shifts: ['more_formality'],
-      rationale: 'Final artifact is tighter and more action-oriented.',
-      summary: 'Oracle detected sharper KPI-led structure and more direct CTA wording.'
-    })
-  ].join('\n');
+  return JSON.stringify({
+    task: 'Classify only durable style edits from the accepted final artifact. Return schema keys exactly.',
+    keys: {
+      a: 'added lexical terms',
+      r: 'removed lexical terms',
+      f: 'reinforced lexical terms',
+      sa: 'added structure labels',
+      sr: 'removed structure labels',
+      p: 'primary tone shift',
+      s: 'secondary tone shifts'
+    },
+    input: {
+      w: input.context.workspace_id,
+      d: input.context.destination_key ?? 'n/a',
+      r: input.context.recipient_key ?? 'n/a',
+      t: input.context.task_key ?? 'n/a',
+      n: compactGeminiOracleText(input.feedback_notes ?? 'none', MAX_GEMINI_ORACLE_NOTE_LENGTH),
+      refs: input.accepted_reference_artifact_ids.slice(0, 4),
+      draft: compactGeminiOracleText(input.generated_draft.content, MAX_GEMINI_ORACLE_TEXT_LENGTH),
+      final: compactGeminiOracleText(input.final_artifact.content, MAX_GEMINI_ORACLE_TEXT_LENGTH),
+      draft_outline: input.generated_draft.structure_outline.slice(0, 4),
+      final_outline: input.final_artifact.structure_outline.slice(0, 4),
+      base: {
+        a: baseline.lexical_changes.added_keywords.slice(0, 2),
+        r: baseline.lexical_changes.removed_keywords.slice(0, 2),
+        f: baseline.lexical_changes.reinforced_keywords.slice(0, 2),
+        sa: baseline.structure_changes.added_sections.slice(0, 2),
+        sr: baseline.structure_changes.removed_sections.slice(0, 2),
+        p: baseline.tone_delta.primary_shift
+      }
+    }
+  });
 }
 
 export class HeuristicSemanticDiffOracle implements SemanticDiffOracle {
@@ -1357,6 +1316,15 @@ export class GoogleAiStudioSemanticDiffOracle implements SemanticDiffOracle {
         'x-goog-api-key': this.config.apiKey
       },
       body: JSON.stringify({
+        systemInstruction: {
+          role: 'system',
+          parts: [
+            {
+              text:
+                'You are the Voxera SSCE Oracle. Return one JSON object that matches the schema exactly. No markdown, no prose, no code fences.'
+            }
+          ]
+        },
         contents: [
           {
             role: 'user',
@@ -1369,10 +1337,16 @@ export class GoogleAiStudioSemanticDiffOracle implements SemanticDiffOracle {
         ],
         generationConfig: {
           temperature: 0,
-          topP: 0.8,
-          maxOutputTokens: 320,
+          topP: 0.1,
+          topK: 1,
+          candidateCount: 1,
+          seed: 7,
+          maxOutputTokens: 180,
           responseMimeType: 'application/json',
-          responseJsonSchema: geminiOracleResponseJsonSchema
+          responseJsonSchema: geminiOracleResponseJsonSchema,
+          thinkingConfig: {
+            thinkingBudget: 0
+          }
         }
       })
     });
@@ -1386,15 +1360,9 @@ export class GoogleAiStudioSemanticDiffOracle implements SemanticDiffOracle {
 
     const payload = (await response.json()) as GeminiGenerateContentResponse;
     const text = extractGeminiText(payload);
-    let result: SemanticDiffOracleResult;
-
-    try {
-      const rawCandidate = extractJsonObject(text);
-      const judgment = geminiOracleJudgmentSchema.parse(rawCandidate);
-      result = mergeGeminiJudgmentWithBaseline(judgment, baseline, this.config.model);
-    } catch (error) {
-      result = buildGeminiRepairBaselineResult(text, error, baseline, this.config.model);
-    }
+    const rawCandidate = JSON.parse(text) as unknown;
+    const judgment = geminiOracleWireSchema.parse(rawCandidate);
+    const result = mergeGeminiJudgmentWithBaseline(judgment, baseline, this.config.model);
 
     console.info(
       `[ssce-oracle] provider=${result.provider} promptTokens=${payload.usageMetadata?.promptTokenCount ?? 0} totalTokens=${payload.usageMetadata?.totalTokenCount ?? 0} primaryShift=${result.tone_delta.primary_shift}`
