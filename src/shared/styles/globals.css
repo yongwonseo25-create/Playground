@@ -39,6 +39,269 @@ body {
     radial-gradient(circle at 90% 0%, hsl(36 100% 50% / 0.1), transparent 40%);
 }
 
+.voxera-glow-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.voxera-glow-button::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    rgba(125, 211, 252, 0.08),
+    rgba(34, 211, 238, 0.9),
+    rgba(139, 92, 246, 0.95),
+    rgba(192, 132, 252, 0.86),
+    rgba(125, 211, 252, 0.08)
+  );
+  animation: voxera-rotate-border 3.2s linear infinite;
+}
+
+.voxera-glow-button::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #33145e 0%, #5b21b6 48%, #22d3ee 100%);
+  z-index: 0;
+}
+
+.voxera-eq-bar {
+  transform-origin: center bottom;
+  animation-name: voxera-eq-jump;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes voxera-rotate-border {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes voxera-eq-jump {
+  0% {
+    transform: scaleY(0.4) translateY(14px);
+    opacity: 0.72;
+  }
+
+  22% {
+    transform: scaleY(1.15) translateY(-8px);
+    opacity: 1;
+  }
+
+  48% {
+    transform: scaleY(0.58) translateY(9px);
+    opacity: 0.8;
+  }
+
+  74% {
+    transform: scaleY(1.28) translateY(-10px);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scaleY(0.42) translateY(12px);
+    opacity: 0.74;
+  }
+}
+
+.z-voice-wave {
+  transform-origin: center bottom;
+  animation: z-wave-pulse 2s ease-in-out infinite;
+}
+
+.z-typing-line {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid rgba(110, 231, 183, 0.9);
+  animation: z-typing-width 4s steps(42, end) infinite, z-caret-blink 0.8s step-end infinite;
+}
+
+.z-dummy-line {
+  animation: z-dummy-fade 2.1s ease-in-out infinite;
+}
+
+.z-mint-tag {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: z-tag-rise 2.8s ease-in-out infinite;
+}
+
+.z-logo-pill {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 999px;
+  color: rgb(226 232 240 / 0.95);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  padding: 6px 10px;
+}
+
+.z-neon-wire {
+  position: absolute;
+  display: block;
+  height: 2px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, rgba(45, 212, 191, 0.15) 0%, rgba(34, 211, 238, 0.92) 50%, rgba(196, 181, 253, 0.1) 100%);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+  animation: z-wire-flow 2.2s linear infinite;
+}
+
+.z-speech-bubble {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 232, 240, 0.24);
+  background: rgba(148, 163, 184, 0.16);
+  color: rgb(226 232 240 / 0.95);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  padding: 6px 12px;
+}
+
+.z-bubble-1 {
+  left: 20px;
+  top: 18px;
+  animation: z-bubble-drop 3.2s ease-in-out infinite;
+}
+
+.z-bubble-2 {
+  left: 120px;
+  top: 30px;
+  animation: z-bubble-drop 3.2s ease-in-out 0.4s infinite;
+}
+
+.z-bubble-3 {
+  left: 220px;
+  top: 24px;
+  animation: z-bubble-drop 3.2s ease-in-out 0.8s infinite;
+}
+
+@keyframes z-wave-pulse {
+  0% {
+    transform: scaleY(0.45);
+    opacity: 0.72;
+  }
+
+  35% {
+    transform: scaleY(1.2);
+    opacity: 1;
+  }
+
+  70% {
+    transform: scaleY(0.7);
+    opacity: 0.86;
+  }
+
+  100% {
+    transform: scaleY(0.5);
+    opacity: 0.76;
+  }
+}
+
+@keyframes z-typing-width {
+  0%,
+  16% {
+    width: 0%;
+  }
+
+  52%,
+  78% {
+    width: 100%;
+  }
+
+  100% {
+    width: 0%;
+  }
+}
+
+@keyframes z-caret-blink {
+  0%,
+  49% {
+    border-right-color: rgba(110, 231, 183, 0.95);
+  }
+
+  50%,
+  100% {
+    border-right-color: transparent;
+  }
+}
+
+@keyframes z-dummy-fade {
+  0%,
+  35% {
+    opacity: 0.95;
+  }
+
+  50%,
+  100% {
+    opacity: 0.18;
+  }
+}
+
+@keyframes z-tag-rise {
+  0%,
+  25% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  40%,
+  78% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0.15;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes z-wire-flow {
+  0% {
+    background-position: 0% 50%;
+    opacity: 0.45;
+  }
+
+  50% {
+    background-position: 100% 50%;
+    opacity: 1;
+  }
+
+  100% {
+    background-position: 200% 50%;
+    opacity: 0.55;
+  }
+}
+
+@keyframes z-bubble-drop {
+  0%,
+  20% {
+    transform: translateY(0) scale(1);
+    opacity: 0.95;
+  }
+
+  62% {
+    transform: translateY(84px) scale(0.95);
+    opacity: 0.82;
+  }
+
+  100% {
+    transform: translateY(110px) scale(0.88);
+    opacity: 0;
+  }
+}
+
 .voxera-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;

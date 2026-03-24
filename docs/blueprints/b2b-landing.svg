@@ -1,0 +1,88 @@
+<svg width="1600" height="2200" viewBox="0 0 1600 2200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="800" y1="0" x2="800" y2="2200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07141F"/>
+      <stop offset="1" stop-color="#0B1E2A"/>
+    </linearGradient>
+    <radialGradient id="meshLeft" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(360 220) rotate(35) scale(640 360)">
+      <stop stop-color="#00E5C2" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#00E5C2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="meshRight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1270 420) rotate(145) scale(620 360)">
+      <stop stop-color="#4FA3FF" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#4FA3FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="cardGlow" cx="0" cy="0" r="1" gradientUnits="objectBoundingBox" gradientTransform="translate(0.28 0.2) scale(0.95 0.95)">
+      <stop stop-color="#FFFFFF" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="2200" fill="url(#bg)"/>
+  <ellipse cx="360" cy="220" rx="560" ry="280" fill="url(#meshLeft)"/>
+  <ellipse cx="1270" cy="420" rx="560" ry="300" fill="url(#meshRight)"/>
+
+  <path d="M80 180C250 90 470 60 670 90C890 122 1110 236 1520 200" stroke="#9DE8D7" stroke-opacity="0.14" stroke-width="2"/>
+  <path d="M120 360C340 252 650 250 860 332C1090 422 1270 560 1520 582" stroke="#7ABEFF" stroke-opacity="0.12" stroke-width="2"/>
+  <path d="M90 560C320 462 560 450 770 500C1030 562 1260 760 1510 760" stroke="#A3FFF1" stroke-opacity="0.08" stroke-width="2"/>
+
+  <rect x="160" y="90" width="1280" height="1880" rx="36" stroke="#5B7C88" stroke-dasharray="10 10"/>
+  <text x="188" y="132" fill="#7FA0A9" font-family="Arial, sans-serif" font-size="24">max-w-6xl / centered / Top Nav -&gt; Hero -&gt; Marquee -&gt; 6-column Bento</text>
+
+  <rect x="220" y="150" width="1160" height="92" rx="20" fill="#0D1C28" stroke="#FFFFFF" stroke-opacity="0.12"/>
+  <text x="270" y="206" fill="#F5FBFF" font-family="Arial, sans-serif" font-size="26">Top Nav</text>
+  <text x="1120" y="206" fill="#C6D6DD" font-family="Arial, sans-serif" font-size="24">Demo CTA</text>
+
+  <rect x="220" y="300" width="1160" height="470" rx="28" fill="#0B1825" stroke="#FFFFFF" stroke-opacity="0.12"/>
+  <rect x="272" y="354" width="520" height="46" rx="23" fill="#102B35" stroke="#00E5C2" stroke-opacity="0.56"/>
+  <text x="302" y="384" fill="#86FFF1" font-family="Arial, sans-serif" font-size="20">음성 비서가 아닙니다. 업무 자동화의 새로운 종입니다.</text>
+  <rect x="272" y="430" width="660" height="156" rx="18" fill="#0F2131" stroke="#29495A"/>
+  <text x="308" y="494" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="46" font-weight="700">목소리 하나로,</text>
+  <text x="308" y="550" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="46" font-weight="700">시스템을 통제하라.</text>
+  <text x="308" y="606" fill="#AFC5CF" font-family="Arial, sans-serif" font-size="24">cold hero / break-keep / enterprise tone</text>
+  <rect x="272" y="650" width="220" height="58" rx="18" fill="#00E5C2" fill-opacity="0.12" stroke="#89FFF0" stroke-opacity="0.48"/>
+  <rect x="512" y="650" width="220" height="58" rx="18" fill="#102131" stroke="#FFFFFF" stroke-opacity="0.14"/>
+  <text x="330" y="686" fill="#F5FBFF" font-family="Arial, sans-serif" font-size="22">Book Demo</text>
+  <text x="575" y="686" fill="#D0DEE3" font-family="Arial, sans-serif" font-size="22">See ROI</text>
+  <rect x="1010" y="380" width="300" height="270" rx="24" fill="#102131" stroke="#FFFFFF" stroke-opacity="0.12"/>
+  <rect x="1028" y="398" width="264" height="234" rx="22" fill="url(#cardGlow)"/>
+  <text x="1062" y="444" fill="#F5FBFF" font-family="Arial, sans-serif" font-size="28">Hero Side Proof</text>
+  <text x="1048" y="494" fill="#9AB0B8" font-family="Arial, sans-serif" font-size="20">security, control, governance, velocity</text>
+
+  <rect x="220" y="830" width="1160" height="86" rx="22" fill="#0E1B29" stroke="#FFFFFF" stroke-opacity="0.1"/>
+  <text x="310" y="884" fill="#C8D8DE" font-family="Arial, sans-serif" font-size="26">Logo Marquee / enterprise trust rail</text>
+
+  <rect x="220" y="980" width="1160" height="820" rx="28" fill="#0A1623" stroke="#FFFFFF" stroke-opacity="0.1"/>
+  <text x="260" y="1030" fill="#7B99A3" font-family="Arial, sans-serif" font-size="22">6-column Bento Grid</text>
+
+  <rect x="260" y="1068" width="560" height="430" rx="28" fill="#102030" stroke="#FFFFFF" stroke-opacity="0.18"/>
+  <rect x="280" y="1088" width="520" height="390" rx="24" fill="url(#cardGlow)"/>
+  <text x="302" y="1140" fill="#F8FCFF" font-family="Arial, sans-serif" font-size="30">Large KPI Card</text>
+  <text x="302" y="1190" fill="#A7C5CE" font-family="Arial, sans-serif" font-size="24">이메일 작성 시간 92% 감소</text>
+  <polyline points="326,1390 420,1338 512,1280 624,1208 748,1134" stroke="#88FFF1" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="326" cy="1390" r="8" fill="#88FFF1"/>
+  <circle cx="420" cy="1338" r="8" fill="#88FFF1"/>
+  <circle cx="512" cy="1280" r="8" fill="#88FFF1"/>
+  <circle cx="624" cy="1208" r="8" fill="#88FFF1"/>
+  <circle cx="748" cy="1134" r="8" fill="#88FFF1"/>
+  <text x="612" y="1112" fill="#88FFF1" font-family="Arial, sans-serif" font-size="20">up-right chart mock</text>
+
+  <rect x="850" y="1068" width="240" height="250" rx="24" fill="#102030" stroke="#FFFFFF" stroke-opacity="0.1"/>
+  <rect x="1110" y="1068" width="230" height="250" rx="24" fill="#102030" stroke="#FFFFFF" stroke-opacity="0.1"/>
+  <rect x="850" y="1348" width="230" height="190" rx="24" fill="#102030" stroke="#FFFFFF" stroke-opacity="0.1"/>
+  <rect x="1100" y="1348" width="240" height="190" rx="24" fill="#102030" stroke="#FFFFFF" stroke-opacity="0.1"/>
+  <rect x="260" y="1528" width="420" height="220" rx="24" fill="#102030" stroke="#FFFFFF" stroke-opacity="0.1"/>
+  <rect x="710" y="1560" width="630" height="188" rx="24" fill="#102030" stroke="#FFFFFF" stroke-opacity="0.1"/>
+
+  <text x="892" y="1132" fill="#F8FCFF" font-family="Arial, sans-serif" font-size="24">Workflow Card</text>
+  <text x="1146" y="1132" fill="#F8FCFF" font-family="Arial, sans-serif" font-size="24">Governance Card</text>
+  <text x="888" y="1428" fill="#F8FCFF" font-family="Arial, sans-serif" font-size="24">Integrations Card</text>
+  <text x="1134" y="1428" fill="#F8FCFF" font-family="Arial, sans-serif" font-size="24">Velocity Card</text>
+  <text x="304" y="1612" fill="#F8FCFF" font-family="Arial, sans-serif" font-size="24">ROI Summary Card</text>
+  <text x="754" y="1644" fill="#F8FCFF" font-family="Arial, sans-serif" font-size="24">Closing Proof Cluster</text>
+
+  <rect x="380" y="1860" width="860" height="98" rx="26" fill="#0D1A27" stroke="#FFFFFF" stroke-opacity="0.12"/>
+  <text x="646" y="1920" fill="#F7FBFF" font-family="Arial, sans-serif" font-size="28">Closing CTA Strip</text>
+
+  <text x="80" y="2120" fill="#6F8C95" font-family="Arial, sans-serif" font-size="26">High-end SVG blueprint / B2B cold landing / no React code</text>
+</svg>

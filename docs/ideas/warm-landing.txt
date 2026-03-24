@@ -1,0 +1,23 @@
+﻿[Global Layout & Semantic Hints]
+- Target: 숏폼 도파민 웜 트래픽. 이탈의 원인이 되는 '메뉴바', 'About Us' 등 탈출 링크 전면 폭파.
+- Main Container: bg-[#0A0A0A] min-h-screen w-full flex flex-col items-center justify-center
+- Section Wrapper: max-w-md mx-auto w-full px-6 flex flex-col items-center justify-center (절대 크기 고정)
+
+[Component Details]
+1. Headline
+- Copy: "말하면, 업무가 완성된다"
+- Tailwind: text-4xl font-bold text-white text-center text-balance break-keep tracking-tight (단어 쪼개짐 완벽 방어)
+- Spacing: 아래 마이크 컴포넌트와의 간격 gap: 40px
+
+2. Interactive Mic Demo (핵심 무기)
+- Size: w-[120px] h-[120px]
+- Tailwind: rounded-full bg-zinc-900 flex items-center justify-center cursor-pointer
+- Effect: hover:shadow-[0_0_80px_rgba(255,255,255,0.2)]
+- Logic Freeze: 마이크를 클릭(onClick)하는 순간 기존 로직인 FreeTrialModal.tsx (VIP 팝업창) 상태값이 true로 켜지도록 연결.
+
+3. Single CTA Button
+- Copy: "[🎤 지금 말해보기]"
+- Spacing: 위 마이크와의 간격 gap: 48px
+
+4. Trust Bar
+- Copy: "1,247명이 오늘 이미 체험함"

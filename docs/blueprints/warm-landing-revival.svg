@@ -1,0 +1,69 @@
+<svg width="1440" height="2200" viewBox="0 0 1440 2200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="warmBg" x1="720" y1="0" x2="720" y2="2200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#050505"/>
+      <stop offset="1" stop-color="#0B0B0D"/>
+    </linearGradient>
+    <radialGradient id="warmAura" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(720 860) rotate(90) scale(520 520)">
+      <stop stop-color="#FFFFFF" stop-opacity="0.2"/>
+      <stop offset="0.35" stop-color="#D8E6FF" stop-opacity="0.12"/>
+      <stop offset="0.7" stop-color="#7B8DA8" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#050505" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blurGlow" x="180" y="300" width="1080" height="1120" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+  </defs>
+
+  <rect width="1440" height="2200" fill="url(#warmBg)"/>
+  <ellipse cx="720" cy="860" rx="440" ry="440" fill="url(#warmAura)" filter="url(#blurGlow)"/>
+
+  <rect x="220" y="120" width="1000" height="1760" rx="36" stroke="#2C2C31" stroke-dasharray="10 10"/>
+  <text x="248" y="162" fill="#8E8E98" font-family="Arial, sans-serif" font-size="24">max-w-5xl centered shell</text>
+
+  <rect x="560" y="200" width="320" height="48" rx="24" fill="#0F1014" stroke="#8A8F9B" stroke-opacity="0.6"/>
+  <text x="618" y="231" fill="#F5F7FA" font-family="Arial, sans-serif" font-size="22">Eyebrow Badge</text>
+
+  <rect x="370" y="300" width="700" height="160" rx="24" fill="#0D0E12" stroke="#2A2D34"/>
+  <text x="410" y="360" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="42" font-weight="700">Warm Headline / break-keep</text>
+  <text x="410" y="414" fill="#AEB4C2" font-family="Arial, sans-serif" font-size="24">Premium, high-dopamine message block</text>
+
+  <circle cx="720" cy="860" r="250" stroke="#7D8596" stroke-opacity="0.24" stroke-dasharray="14 14"/>
+  <circle cx="720" cy="860" r="198" stroke="#C9D3E4" stroke-opacity="0.28"/>
+  <circle cx="720" cy="860" r="148" fill="#F5F7FA" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.58"/>
+  <circle cx="720" cy="860" r="118" fill="#DDE6F3" fill-opacity="0.12"/>
+  <rect x="665" y="788" width="110" height="164" rx="52" fill="#FFFFFF" fill-opacity="0.12" stroke="#FFFFFF" stroke-opacity="0.72"/>
+  <rect x="686" y="952" width="68" height="36" rx="18" fill="#FFFFFF" fill-opacity="0.1"/>
+  <path d="M696 990H744" stroke="#FFFFFF" stroke-opacity="0.82" stroke-width="10" stroke-linecap="round"/>
+  <text x="618" y="1110" fill="#F8FAFF" font-family="Arial, sans-serif" font-size="24">Glass Microphone Core</text>
+  <text x="572" y="1146" fill="#99A3B5" font-family="Arial, sans-serif" font-size="20">Pulse + glow + shadow-[0_0_60px_rgba(...)]</text>
+
+  <rect x="410" y="1230" width="620" height="96" rx="28" fill="#0E1016" stroke="#313643"/>
+  <rect x="436" y="1254" width="170" height="48" rx="24" fill="#141823" stroke="#8791A3" stroke-opacity="0.55"/>
+  <rect x="634" y="1254" width="170" height="48" rx="24" fill="#141823" stroke="#8791A3" stroke-opacity="0.55"/>
+  <rect x="832" y="1254" width="170" height="48" rx="24" fill="#141823" stroke="#8791A3" stroke-opacity="0.55"/>
+  <text x="470" y="1285" fill="#F3F5FA" font-family="Arial, sans-serif" font-size="18">Proof Chip</text>
+  <text x="668" y="1285" fill="#F3F5FA" font-family="Arial, sans-serif" font-size="18">Trust Chip</text>
+  <text x="865" y="1285" fill="#F3F5FA" font-family="Arial, sans-serif" font-size="18">VIP Signal</text>
+
+  <rect x="470" y="1390" width="500" height="88" rx="30" fill="#F4F6FA" fill-opacity="0.1" stroke="#FFFFFF" stroke-opacity="0.75"/>
+  <rect x="470" y="1506" width="500" height="88" rx="30" fill="#10131A" stroke="#687186"/>
+  <text x="625" y="1443" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="28">Primary CTA</text>
+  <text x="613" y="1559" fill="#CBD2DF" font-family="Arial, sans-serif" font-size="28">Secondary CTA</text>
+
+  <rect x="900" y="540" width="260" height="420" rx="34" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.42"/>
+  <rect x="924" y="564" width="212" height="372" rx="28" fill="#7A89B8" fill-opacity="0.14"/>
+  <text x="954" y="626" fill="#F9FBFF" font-family="Arial, sans-serif" font-size="28">VIP Modal</text>
+  <text x="954" y="674" fill="#CBD3E6" font-family="Arial, sans-serif" font-size="18">Blurred aura premium card</text>
+  <rect x="954" y="726" width="152" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.12"/>
+  <rect x="954" y="796" width="152" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.12"/>
+  <rect x="954" y="866" width="152" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.12"/>
+
+  <rect x="460" y="1710" width="520" height="82" rx="24" fill="#0B0D12" stroke="#262B36"/>
+  <text x="566" y="1760" fill="#8F97A7" font-family="Arial, sans-serif" font-size="22">Minimal assurance footer note</text>
+
+  <line x1="720" y1="460" x2="720" y2="610" stroke="#5A6270" stroke-dasharray="8 8"/>
+  <line x1="720" y1="1118" x2="720" y2="1230" stroke="#5A6270" stroke-dasharray="8 8"/>
+  <line x1="720" y1="1326" x2="720" y2="1390" stroke="#5A6270" stroke-dasharray="8 8"/>
+  <text x="70" y="2080" fill="#6D7381" font-family="Arial, sans-serif" font-size="26">V-DD Blueprint: Warm landing revival / centered cinematic glass hero / no code</text>
+</svg>

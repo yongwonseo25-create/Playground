@@ -5,3 +5,4 @@ dist
 pnpm-lock.yaml
 .env.local
 .env.*.local
+.env

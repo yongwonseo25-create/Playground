@@ -1,0 +1,70 @@
+{
+    "id":  11,
+    "jsonrpc":  "2.0",
+    "result":  {
+                   "content":  [
+                                   {
+                                       "text":  "{\"projectId\":\"10743081877551191053\",\"sessionId\":\"14163597279211081934\",\"outputComponents\":[{\"design\":{\"screens\":[{\"screenshot\":{\"name\":\"projects/10743081877551191053/files/af6399abfc24423ea467c7c01f764e64\",\"downloadUrl\":\"https://lh3.googleusercontent.com/aida/AOfcidUpdr4FqPNFucaqsfMZmxuylupC_52pmKezm53HWfM7QZ2MHLZ0InBduPOTd1el6kkkdwisbCL38J2x997KjHSc9LAkD0c8EuOMJXPKGvB9sQDF7zmoG0naGqGaypS7TVAmKFK5jgw3Vv1Vh-L8v6FA6f87KpzBT09uwOlEUuUJbi_GRt17ZOcOpTHgZTxrPgXyLslk4sVI2E0PDs_5jCye8uuhEcnfXTP6-vQl8dHJ7-4ICdjJgZeQx_8m\"},\"htmlCode\":{\"name\":\"projects/10743081877551191053/files/2e8a0b03598e488494be228b7fdd06ae\",\"downloadUrl\":\"https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzc1Y2JmYjI3Zjc4MDQ5NjRhYmViODE0YWQ2YThmMDVhEgsSBxCX-qDUhR0YAZIBJAoKcHJvamVjdF9pZBIWQhQxMDc0MzA4MTg3NzU1MTE5MTA1Mw\u0026filename=\u0026opi=96797242\",\"mimeType\":\"text/html\"},\"id\":\"a7bf7e6174364d58879342a0c39780a7\",\"generatedBy\":\"figaro_agent\",\"width\":\"2560\",\"height\":\"4906\",\"title\":\"Voxera B2B Voice Landing Page\",\"prompt\":\"Title: Voxera B2B Voice Landing Page\\nContext: B2B voice execution product landing page for Voxera.\\nDescription of the screen: A premium, continuous long-landing page for Voxera with a deep dark theme and a subtle grid background. The entire layout is perfectly center-aligned on a 1600px desktop canvas. \\n\\nHero Section: Centered two-line Korean headline \u0027말하기. 듣기. 쓰기. 이 모든 것을 하나로.\u0027 and \u0027비즈니스 음성 혁명, 지금 시작하세요.\u0027 below it. Two unified premium CTA buttons (\u0027무료로 시작하기\u0027, \u0027데모 신청하기\u0027) are centered underneath. A large, realistic glass microphone sits centrally below with a strong glow, maintaining a 120px gap from the CTA block. Compact, aurora-colored neon waveform clusters are placed symmetrically on both sides of the microphone.\\n\\nTrust Bar: A centered row of logos including KAKAO, NOTION, GOOGLE, and NAVER MEMO in a subtle, monochromatic treatment.\\n\\nBento Grid Section: A Vercel/Linear-inspired grid with thin 1px translucent borders and spotlight gradients. A large featured KPI card displays \u0027업무 처리 속도 92% 향상\u0027 with a sleek up-right trend chart. \\n\\nAesthetic: High-end B2B tech, dark glassmorphism, neon accents, and refined typography. No playful elements.\\nPlatform: web\\nForm factor: desktop\",\"name\":\"projects/10743081877551191053/screens/a7bf7e6174364d58879342a0c39780a7\",\"theme\":{\"colorMode\":\"DARK\",\"font\":\"SPACE_GROTESK\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#1349ec\",\"saturation\":3},\"deviceType\":\"DESKTOP\",\"screenType\":\"DESIGN\",\"screenMetadata\":{\"agentType\":\"PRO_AGENT\",\"status\":\"COMPLETE\"}}],\"theme\":{\"colorMode\":\"DARK\",\"font\":\"SPACE_GROTESK\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#1349ec\",\"saturation\":3},\"deviceType\":\"DESKTOP\",\"title\":\"Voxera B2B Voice Landing Page\"}},{\"text\":\"The design for the Voxera B2B voice execution landing page has been created:\\n\\n- **Voxera B2B Voice Landing Page**: A high-end, continuous desktop landing page featuring a deep dark premium theme with a central axis. It includes a centered Korean headline, a large glowing glass microphone flanked by neon waveform clusters, a monochromatic trust bar with major brands, and a Vercel-inspired bento grid showcasing key performance metrics.\\n\\nWould you like to adjust the layout of the bento grid or perhaps add more detailed feature sections further down the page?\"},{\"suggestion\":\"Add a detailed \\\"How it Works\\\" section below the bento grid.\"}]}",
+                                       "type":  "text"
+                                   }
+                               ],
+                   "structuredContent":  {
+                                             "outputComponents":  [
+                                                                      {
+                                                                          "design":  {
+                                                                                         "deviceType":  "DESKTOP",
+                                                                                         "screens":  [
+                                                                                                         {
+                                                                                                             "deviceType":  "DESKTOP",
+                                                                                                             "generatedBy":  "figaro_agent",
+                                                                                                             "height":  "4906",
+                                                                                                             "htmlCode":  {
+                                                                                                                              "downloadUrl":  "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzc1Y2JmYjI3Zjc4MDQ5NjRhYmViODE0YWQ2YThmMDVhEgsSBxCX-qDUhR0YAZIBJAoKcHJvamVjdF9pZBIWQhQxMDc0MzA4MTg3NzU1MTE5MTA1Mw\u0026filename=\u0026opi=96797242",
+                                                                                                                              "mimeType":  "text/html",
+                                                                                                                              "name":  "projects/10743081877551191053/files/2e8a0b03598e488494be228b7fdd06ae"
+                                                                                                                          },
+                                                                                                             "id":  "a7bf7e6174364d58879342a0c39780a7",
+                                                                                                             "name":  "projects/10743081877551191053/screens/a7bf7e6174364d58879342a0c39780a7",
+                                                                                                             "prompt":  "Title: Voxera B2B Voice Landing Page\nContext: B2B voice execution product landing page for Voxera.\nDescription of the screen: A premium, continuous long-landing page for Voxera with a deep dark theme and a subtle grid background. The entire layout is perfectly center-aligned on a 1600px desktop canvas. \n\nHero Section: Centered two-line Korean headline \u0027말하기. 듣기. 쓰기. 이 모든 것을 하나로.\u0027 and \u0027비즈니스 음성 혁명, 지금 시작하세요.\u0027 below it. Two unified premium CTA buttons (\u0027무료로 시작하기\u0027, \u0027데모 신청하기\u0027) are centered underneath. A large, realistic glass microphone sits centrally below with a strong glow, maintaining a 120px gap from the CTA block. Compact, aurora-colored neon waveform clusters are placed symmetrically on both sides of the microphone.\n\nTrust Bar: A centered row of logos including KAKAO, NOTION, GOOGLE, and NAVER MEMO in a subtle, monochromatic treatment.\n\nBento Grid Section: A Vercel/Linear-inspired grid with thin 1px translucent borders and spotlight gradients. A large featured KPI card displays \u0027업무 처리 속도 92% 향상\u0027 with a sleek up-right trend chart. \n\nAesthetic: High-end B2B tech, dark glassmorphism, neon accents, and refined typography. No playful elements.\nPlatform: web\nForm factor: desktop",
+                                                                                                             "screenMetadata":  {
+                                                                                                                                    "agentType":  "PRO_AGENT",
+                                                                                                                                    "status":  "COMPLETE"
+                                                                                                                                },
+                                                                                                             "screenType":  "DESIGN",
+                                                                                                             "screenshot":  {
+                                                                                                                                "downloadUrl":  "https://lh3.googleusercontent.com/aida/AOfcidUpdr4FqPNFucaqsfMZmxuylupC_52pmKezm53HWfM7QZ2MHLZ0InBduPOTd1el6kkkdwisbCL38J2x997KjHSc9LAkD0c8EuOMJXPKGvB9sQDF7zmoG0naGqGaypS7TVAmKFK5jgw3Vv1Vh-L8v6FA6f87KpzBT09uwOlEUuUJbi_GRt17ZOcOpTHgZTxrPgXyLslk4sVI2E0PDs_5jCye8uuhEcnfXTP6-vQl8dHJ7-4ICdjJgZeQx_8m",
+                                                                                                                                "name":  "projects/10743081877551191053/files/af6399abfc24423ea467c7c01f764e64"
+                                                                                                                            },
+                                                                                                             "theme":  {
+                                                                                                                           "colorMode":  "DARK",
+                                                                                                                           "customColor":  "#1349ec",
+                                                                                                                           "font":  "SPACE_GROTESK",
+                                                                                                                           "roundness":  "ROUND_EIGHT",
+                                                                                                                           "saturation":  3
+                                                                                                                       },
+                                                                                                             "title":  "Voxera B2B Voice Landing Page",
+                                                                                                             "width":  "2560"
+                                                                                                         }
+                                                                                                     ],
+                                                                                         "theme":  {
+                                                                                                       "colorMode":  "DARK",
+                                                                                                       "customColor":  "#1349ec",
+                                                                                                       "font":  "SPACE_GROTESK",
+                                                                                                       "roundness":  "ROUND_EIGHT",
+                                                                                                       "saturation":  3
+                                                                                                   },
+                                                                                         "title":  "Voxera B2B Voice Landing Page"
+                                                                                     }
+                                                                      },
+                                                                      {
+                                                                          "text":  "The design for the Voxera B2B voice execution landing page has been created:\n\n- **Voxera B2B Voice Landing Page**: A high-end, continuous desktop landing page featuring a deep dark premium theme with a central axis. It includes a centered Korean headline, a large glowing glass microphone flanked by neon waveform clusters, a monochromatic trust bar with major brands, and a Vercel-inspired bento grid showcasing key performance metrics.\n\nWould you like to adjust the layout of the bento grid or perhaps add more detailed feature sections further down the page?"
+                                                                      },
+                                                                      {
+                                                                          "suggestion":  "Add a detailed \"How it Works\" section below the bento grid."
+                                                                      }
+                                                                  ],
+                                             "projectId":  "10743081877551191053",
+                                             "sessionId":  "14163597279211081934"
+                                         }
+               }
+}

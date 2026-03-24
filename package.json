@@ -11,10 +11,15 @@
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "playwright test tests/e2e/env-core.spec.ts tests/e2e/backend-reliability.spec.ts tests/e2e/dual-stt-router.spec.ts -c tests/playwright.env-core.config.ts",
+    "test:billing-mcp": "playwright test tests/e2e/billing-mcp.spec.ts -c tests/playwright.env-core.config.ts",
     "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts tests/e2e/voice-runtime-live.spec.ts tests/e2e/voice-cutoff-ui.spec.ts -c tests/playwright.config.ts",
-    "test:e2e:routing": "playwright test tests/e2e/voice-stt-routing-live.spec.ts -c tests/playwright.routing.config.ts"
+    "test:e2e:routing": "playwright test tests/e2e/voice-stt-routing-live.spec.ts -c tests/playwright.routing.config.ts",
+    "mcp:reviewer": "node --experimental-strip-types scripts/mcp-reviewer-client.ts",
+    "mcp:mock-bridge": "node --experimental-strip-types scripts/mock-mcp-bridge.ts",
+    "verify:real-output": "node --experimental-strip-types scripts/verify-generate-output-real.ts"
   },
   "dependencies": {
+    "@google-cloud/secret-manager": "^6.1.1",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-progress": "^1.1.0",
@@ -23,6 +28,7 @@
     "@radix-ui/react-visually-hidden": "^1.1.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "firebase-admin": "^13.7.0",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",

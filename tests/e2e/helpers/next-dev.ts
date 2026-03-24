@@ -38,6 +38,7 @@ export async function runNextDevOnce(options: {
     let output = '';
     let settled = false;
     let ready = false;
+    let readinessProbeStarted = false;
 
     const settle = (result: NextDevRunResult) => {
       if (settled) {
@@ -51,17 +52,37 @@ export async function runNextDevOnce(options: {
       resolve(result);
     };
 
+    const runReadinessProbe = async () => {
+      if (readinessProbeStarted || settled) {
+        return;
+      }
+
+      readinessProbeStarted = true;
+
+      try {
+        await fetch(`http://127.0.0.1:${options.port}`);
+      } catch {
+        // Ignore probe failures. The process exit path below captures real boot failures.
+      }
+
+      setTimeout(() => {
+        if (!settled) {
+          settle({
+            exitCode: null,
+            output,
+            ready: true,
+            timedOut: false
+          });
+        }
+      }, 2500);
+    };
+
     const onData = (chunk: Buffer) => {
       const text = chunk.toString();
       output += text;
       if (!ready && NEXT_DEV_READY_TOKENS.some((token) => text.includes(token))) {
         ready = true;
-        settle({
-          exitCode: null,
-          output,
-          ready: true,
-          timedOut: false
-        });
+        void runReadinessProbe();
       }
     };
 
@@ -72,7 +93,7 @@ export async function runNextDevOnce(options: {
       settle({
         exitCode,
         output,
-        ready,
+        ready: ready && exitCode === 0,
         timedOut: false
       });
     });

@@ -1301,3 +1301,128 @@ Create a developer handoff document that explains the Notion direct-write pivot 
 - Apply and test Notion direct-write flow
 - Apply and test Google Workspace flow end-to-end
 
+---
+
+### Sprint 3F - Firestore Billing Commit Engine And Stdio MCP Reviewer
+- Date: 2026-03-24
+- Status: completed
+
+#### Goal
+Add a back-end pay-per-output billing route with Firestore reserve/execute/deduct-refund transitions, then add a local stdio JSON-RPC reviewer client that can pull MCP update batches and return allow/deny feedback with line diagnostics.
+
+#### Files Created
+- `src/app/api/v1/generate-output/route.ts`
+- `src/server/auth/verify-firebase-user.ts`
+- `src/server/billing/firestore-billing-store.ts`
+- `src/server/billing/generate-output-contract.ts`
+- `src/server/billing/pay-per-output-service.ts`
+- `src/server/config/server-env.ts`
+- `src/server/firebase/admin.ts`
+- `src/server/generation/google-ai-studio-generator.ts`
+- `src/server/mcp/contracts.ts`
+- `src/server/mcp/json-rpc.ts`
+- `src/server/mcp/reviewer-agent.ts`
+- `src/server/mcp/reviewer-static-analysis.ts`
+- `src/server/mcp/stdio-json-rpc-client.ts`
+- `scripts/mcp-reviewer-client.ts`
+- `scripts/mock-mcp-bridge.ts`
+- `tests/e2e/billing-mcp.spec.ts`
+
+#### Files Modified
+- `.env.local.example`
+- `package.json`
+- `package-lock.json`
+- `tests/e2e/helpers/next-dev.ts`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added `POST /api/v1/generate-output` as a node-runtime server route for authenticated output generation and wallet settlement
+- Added Firebase Admin bootstrap helpers for Auth + Firestore and a Google Secret Manager accessor for pulling the model API key at execution time
+- Added a local stdio JSON-RPC client and reviewer loop that polls `updates.pull` and posts `reviews.submit` results back to a bridge server
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional voice states unchanged
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+- The new MCP reviewer transport uses local stdio only and does not affect production audio transport
+
+#### Submission / Cost Defense Changes
+- Added Firestore billing phases:
+  - reserve: move credits from `availableCredits` to `pendingCredits`
+  - executing: mark the transaction as in-flight before the model call
+  - deducted/refunded: commit charge on success or rollback credits on failure/timeout
+- Added idempotent `clientRequestId` transaction ownership checks so repeated output calls do not double-charge
+- Added response revalidation hints (`wallet:{uid}`, `billing:{uid}`) for cache/SWR refresh wiring
+
+#### Known Risks
+- The reviewer rules are intentionally narrow and should be expanded if the bridge starts sending broader diff shapes or non-TypeScript assets
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:billing-mcp`
+- [x] `corepack pnpm test:e2e`
+- [x] `corepack pnpm mcp:reviewer -- --once` with the local mock bridge returned a `deny` review payload and line diagnostic
+
+#### Next Sprint Prerequisites
+- Provision Firestore `wallets/{uid}` documents and service credentials, then run one end-to-end authenticated call against `/api/v1/generate-output`
+- Decide whether the MCP bridge contract should stay polling-based or move to server-pushed notifications once the cloud side stabilizes
+
+---
+
+### Sprint 3G - Real Cloud Verification And Safe Handoff
+- Date: 2026-03-24
+- Status: completed
+
+#### Goal
+Run the new billing route against real Firebase Admin + Firestore + Secret Manager + Gemini infrastructure, lock the MCP bridge payload contract with Zod schemas, and hand the change off from an isolated worktree without polluting active front-end work.
+
+#### Files Created
+- `scripts/verify-generate-output-real.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `package-lock.json`
+- `package.json`
+
+#### Architecture Changes
+- Added an executable real-cloud verification path that seeds a Firestore wallet, mints a Firebase custom token, boots Next locally, and exercises `POST /api/v1/generate-output` against live Google infrastructure
+- Locked the `updates.pull` and `reviews.submit` payload shapes behind shared Zod schemas so the reviewer loop and its tests now validate the same contract
+- Preserved the existing voice runtime untouched by keeping all Phase 2 work in server-only billing and MCP modules plus an isolated handoff worktree
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional voice states unchanged
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+- The local reviewer continues to use stdio JSON-RPC and does not affect production transport
+
+#### Submission / Cost Defense Changes
+- Verified a real reserve -> execute -> deduct cycle on project `gen-lang-client-0767607744`, Firestore database `voxera-e2e`, and Gemini model `gemini-2.5-pro`
+- Verified real provider usage capture now persists token counts and secret version metadata alongside the finalized billing transaction
+- Previously observed a real reserve -> refund path when Secret Manager access was denied, confirming rollback behavior under live infrastructure failure
+
+#### Known Risks
+- The local `.env.local` and service-account JSON remain machine-local and must never be committed with the branch
+- `reviews.submit` static analysis still focuses on Zod gate coverage and hardcoded-secret detection rather than broad semantic review
+- Firestore and Secret Manager resources now exist in a live project, so secret rotation and cleanup should follow once the branch is merged
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:billing-mcp`
+- [x] `corepack pnpm test:e2e`
+- [x] `corepack pnpm verify:real-output`
+- [x] Real route response returned `billing.status = deducted`, `availableCredits = 15`, `pendingCredits = 0`, and Gemini token usage from the live provider
+
+#### Next Sprint Prerequisites
+- Merge the isolated handoff branch or PR after final review
+- Rotate or confirm the Google AI Studio secret version after integration if this verification key should not remain active
+
