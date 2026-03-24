@@ -8,13 +8,19 @@
         "dev:https": "next dev --experimental-https --hostname localhost --port 3000",
         "build": "next build",
         "start": "next start",
-        "lint": "eslint . --ext .ts,.tsx",
+        "lint": "eslint src tests --ext .ts,.tsx",
         "typecheck": "tsc --noEmit",
         "test": "playwright test tests/e2e/env-core.spec.ts -c tests/playwright.env-core.config.ts",
+        "test:billing-mcp": "playwright test tests/e2e/billing-mcp.spec.ts -c tests/playwright.env-core.config.ts",
         "test:e2e": "playwright test tests/e2e/voice-capture-flow.spec.ts -c tests/playwright.config.ts",
-        "auto:design": "node scripts/auto-design.js"
+        "auto:design": "node scripts/auto-design.js",
+        "voice:wss": "node scripts/voice-wss-server.mjs",
+        "mcp:reviewer": "node --experimental-strip-types scripts/mcp-reviewer-client.ts",
+        "mcp:mock-bridge": "node --experimental-strip-types scripts/mock-mcp-bridge.ts",
+        "verify:real-output": "node --experimental-strip-types scripts/verify-generate-output-real.ts"
     },
     "dependencies": {
+        "@google-cloud/secret-manager": "^6.1.1",
         "@radix-ui/react-alert-dialog": "^1.1.2",
         "@radix-ui/react-dialog": "^1.1.2",
         "@radix-ui/react-progress": "^1.1.0",
@@ -24,6 +30,7 @@
         "chokidar": "^4.0.3",
         "class-variance-authority": "^0.7.0",
         "clsx": "^2.1.1",
+        "firebase-admin": "^13.7.0",
         "framer-motion": "^11.18.2",
         "lucide-react": "^0.468.0",
         "next": "^16.0.0",
@@ -31,7 +38,9 @@
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "sonner": "^1.7.1",
-        "tailwind-merge": "^2.5.5"
+        "tailwind-merge": "^2.5.5",
+        "ws": "^8.19.0",
+        "zod": "^4.3.6"
     },
     "devDependencies": {
         "@playwright/test": "^1.58.2",

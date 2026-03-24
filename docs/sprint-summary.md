@@ -85,14 +85,18 @@ The following 8 states are fixed and must not be arbitrarily restructured:
 ### Transport
 - Status: env and secure transport policy prepared
 - WSS endpoint strategy: env-driven
-- Webhook adapter strategy: planned for Sprint 2
-- Env validation status: implemented for secure endpoint handling
+- Webhook adapter strategy: `/api/voice/submit` remains live for transcript metadata delivery
+- Additional server route: `/api/v1/generate-output` now owns authenticated pay-per-output generation with Firestore-backed billing state
+- Env validation status: implemented for secure endpoint handling and extended with server-side Google AI Studio / Firebase config parsing
 
 ### Submission / Cost Defense
-- Status: UI-integrated placeholder flow active, live transport integration pending
+- Status: live client submission wired to `/api/voice/submit`
 - 15-second cutoff status: reducer timer remains the source of truth and auto-stops at the hard limit
-- `clientRequestId` lock status: generated synchronously before placeholder upload begins
-- Duplicate prevention strategy: upload button disables during `uploading`, reducer lock preserved for real transport wiring
+- `clientRequestId` lock status: generated synchronously before async live submission begins
+- Duplicate prevention strategy: upload button disables during `uploading`, reducer lock preserved for live route wiring
+- Live submit payload: transcript text and lightweight routing/session metadata are posted from the client after WSS transcription completes
+- Back-end billing path: `/api/v1/generate-output` now uses Firestore `reserve -> executing -> deducted/refunded` transitions so output billing is held before model execution and released on failure
+- Local reviewer path: stdio JSON-RPC reviewer client can pull MCP cloud updates and return allow/deny feedback with file line diagnostics
 
 ### Mobile UX
 - Status: premium 3-step capture flow complete
@@ -483,8 +487,11 @@ Establish a repository-level workflow so Excalidraw and exported design assets c
 - backend / Make.com integration not yet tested end-to-end
 - duplicate lock must be verified again once webhook upload is added
 - timeout and upload flow must be verified together once live network flow exists
-- current premium UI is validated against placeholder upload timing, not live backend latency
+- current premium UI still needs broader real-device validation against live backend latency
+- queue fallback can still surface as pending-success UI when webhook delivery is deferred
 - diagram intake depends on source files being added to `docs/diagrams/`
+- Firestore wallet collections, Firebase Auth service credentials, and Google Secret Manager bindings must be provisioned before `/api/v1/generate-output` can be exercised against real cloud state
+- The stdio reviewer currently enforces targeted static rules (Zod gate + hardcoded secret detection) but not full semantic diff review
 
 ---
 
@@ -496,12 +503,16 @@ Establish a repository-level workflow so Excalidraw and exported design assets c
 - [ ] Recording cannot exceed 15 seconds in runtime flow
 - [ ] Submission locks before async upload in live flow
 - [ ] Duplicate `clientRequestId` upload is blocked in live flow
+- [x] Front-end posts metadata-only payloads to `/api/voice/submit`
 - [x] 8-state reducer architecture remains intact
 - [x] No insecure `ws://` remains in production code paths
 - [x] No permission popup infinite loop exists in current shell logic
 - [x] UI supports one-handed mobile use
 - [x] Step 1 -> Step 2 -> Step 3 -> Step 1 loop is Playwright-verified
 - [ ] Excalidraw artifacts in `docs/diagrams/` are treated as the source brief for diagram-driven tasks
+- [x] `/api/v1/generate-output` request bodies are Zod-validated before billing logic runs
+- [x] Firestore billing route uses reserve then deduct/refund instead of direct charge
+- [x] Local stdio MCP reviewer can pull updates and emit allow/deny diagnostics with line numbers
 
 ---
 
@@ -1994,3 +2005,240 @@ Guarantee backend-response feedback UI safety on mobile and desktop while preser
 
 #### Next Sprint Prerequisites
 - If required, add a dedicated mobile real-microphone hardware runbook for non-fake-device environments.
+
+### Sprint 3D - Front-End Live Submission Transport
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Remove the placeholder front-end upload path and weld the voice capture UI to the real `POST /api/voice/submit` route without weakening the 15-second cutoff, duplicate lock, or fixed 8-state reducer.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `src/features/voice-capture/components/voice-capture-screen.tsx`
+- `src/features/voice-capture/services/upload-placeholder.ts`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `src/features/voice-capture/state/voice-capture-reducer.ts`
+- `src/features/voice-capture/types/voice-types.ts`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Replaced the placeholder submit service with a live client-side transport that posts to `/api/voice/submit`
+- Kept AudioWorklet + PCM over WSS for capture/transcript generation while moving final submission ownership to the browser
+- HTTP submit is now limited to transcript text and lightweight metadata while audio remains on the WSS path
+
+#### State Machine Changes
+- Preserved all 8 constitutional states
+- Added success metadata fields so queued backend delivery can render as a pending-success outcome without adding new reducer states
+
+#### Audio / Transport Changes
+- No MediaRecorder path introduced
+- AudioWorklet + PCM over WSS-only architecture preserved
+- Final submit no longer waits for a WSS `session.submit` ack; it now calls `/api/voice/submit` directly after transcript readiness
+
+#### Submission / Cost Defense Changes
+- `clientRequestId` is still created synchronously before async submission begins
+- Added front-end guards for three failure modes:
+  - transcript-not-ready race after stop
+  - empty PCM payload submission
+  - queued backend retry response (`acceptedForRetry: true`) without breaking success UI
+
+#### Known Risks
+- Browser/network verification used fake-device microphone input; a physical-device microphone pass is still recommended before production rollout
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Temporary Playwright verification confirmed one real browser `POST /api/voice/submit` request with:
+  - `clientRequestId`
+  - transcript text
+  - `pcmFrameCount`
+  - routing/session metadata only
+
+### Sprint 3E - Metadata-Only Submit Correction
+- Date: 2026-03-13
+- Status: completed
+
+#### Goal
+Remove the unconstitutional Base64 PCM HTTP payload and restore strict transport separation: audio over WSS only, text and metadata over `POST /api/voice/submit`.
+
+#### Files Created
+- None
+
+#### Files Modified
+- `src/features/voice-capture/components/voice-capture-screen.tsx`
+- `src/features/voice-capture/services/upload-placeholder.ts`
+- `src/features/voice-capture/state/use-voice-capture-machine.ts`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Removed client-side PCM chunk buffering for HTTP submission
+- Kept WSS as the sole audio path and reduced `/api/voice/submit` to transcript plus lightweight metadata
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional states
+
+#### Audio / Transport Changes
+- Audio continues to stream only through AudioWorklet + PCM over WSS
+- HTTP submit now carries only:
+  - `clientRequestId`
+  - `transcriptText`
+  - `spreadsheetId`
+  - `slackChannelId`
+  - `sessionId`
+  - `pcmFrameCount`
+
+#### Submission / Cost Defense Changes
+- Preserved synchronous `clientRequestId` locking before async submit
+- Preserved queue-fallback success/pending UI behavior without sending any audio bytes over HTTP
+
+#### Known Risks
+- Browser/network verification still uses fake-device microphone input; one physical-device manual pass remains recommended
+- `docs/backend-architecture.md` was referenced in the task brief but is not present in this workspace
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:e2e`
+- [x] Temporary browser verification confirmed `POST /api/voice/submit` payload keys are exactly:
+  - `clientRequestId`
+  - `pcmFrameCount`
+  - `sessionId`
+  - `slackChannelId`
+  - `spreadsheetId`
+  - `transcriptText`
+- [x] Temporary browser verification confirmed `pcmPayloadBase64` is absent
+
+#### Next Sprint Prerequisites
+- Run one real hardware microphone pass and visually confirm the same metadata-only payload in DevTools Network
+
+#### Next Sprint Prerequisites
+- Run one hardware-backed microphone pass on mobile and desktop browsers against the live stack
+- Decide whether PCM payload should remain client-posted JSON or move to a more compact binary submission contract later
+
+### Sprint 3F - Firestore Billing Commit Engine And Stdio MCP Reviewer
+- Date: 2026-03-24
+- Status: completed
+
+#### Goal
+Add a back-end pay-per-output billing route with Firestore reserve/execute/deduct-refund transitions, then add a local stdio JSON-RPC reviewer client that can pull MCP update batches and return allow/deny feedback with line diagnostics.
+
+#### Files Created
+- `src/app/api/v1/generate-output/route.ts`
+- `src/server/auth/verify-firebase-user.ts`
+- `src/server/billing/firestore-billing-store.ts`
+- `src/server/billing/generate-output-contract.ts`
+- `src/server/billing/pay-per-output-service.ts`
+- `src/server/config/server-env.ts`
+- `src/server/firebase/admin.ts`
+- `src/server/generation/google-ai-studio-generator.ts`
+- `src/server/mcp/json-rpc.ts`
+- `src/server/mcp/reviewer-agent.ts`
+- `src/server/mcp/reviewer-static-analysis.ts`
+- `src/server/mcp/stdio-json-rpc-client.ts`
+- `scripts/mcp-reviewer-client.ts`
+- `scripts/mock-mcp-bridge.ts`
+- `tests/e2e/billing-mcp.spec.ts`
+
+#### Files Modified
+- `.env.local.example`
+- `package.json`
+- `package-lock.json`
+- `tests/e2e/helpers/next-dev.ts`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Added `POST /api/v1/generate-output` as a node-runtime server route for authenticated output generation and wallet settlement
+- Added Firebase Admin bootstrap helpers for Auth + Firestore and a Google Secret Manager accessor for pulling the model API key at execution time
+- Added a local stdio JSON-RPC client and reviewer loop that polls `updates.pull` and posts `reviews.submit` results back to a bridge server
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional voice states unchanged
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+- The new MCP reviewer transport uses local stdio only and does not affect production audio transport
+
+#### Submission / Cost Defense Changes
+- Added Firestore billing phases:
+  - reserve: move credits from `availableCredits` to `pendingCredits`
+  - executing: mark the transaction as in-flight before the model call
+  - deducted/refunded: commit charge on success or rollback credits on failure/timeout
+- Added idempotent `clientRequestId` transaction ownership checks so repeated output calls do not double-charge
+- Added response revalidation hints (`wallet:{uid}`, `billing:{uid}`) for cache/SWR refresh wiring
+
+#### Known Risks
+- Real cloud validation still requires live Firebase credentials, wallet seed data, and a Secret Manager secret version populated with a valid Google AI Studio key
+- The reviewer rules are intentionally narrow and should be expanded if the bridge starts sending broader diff shapes or non-TypeScript assets
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:billing-mcp`
+- [x] `corepack pnpm test:e2e`
+- [x] `corepack pnpm mcp:reviewer -- --once` with the local mock bridge returned a `deny` review payload and line diagnostic
+
+#### Next Sprint Prerequisites
+- Provision Firestore `wallets/{uid}` documents and service credentials, then run one end-to-end authenticated call against `/api/v1/generate-output`
+- Decide whether the MCP bridge contract should stay polling-based or move to server-pushed notifications once the cloud side stabilizes
+
+### Sprint 3G - Real Cloud Verification And Safe Handoff
+- Date: 2026-03-24
+- Status: completed
+
+#### Goal
+Run the new billing route against real Firebase Admin + Firestore + Secret Manager + Gemini infrastructure, lock the MCP bridge payload contract with Zod schemas, and hand the change off from an isolated worktree without polluting active front-end work.
+
+#### Files Created
+- `scripts/verify-generate-output-real.ts`
+- `src/server/mcp/contracts.ts`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+- `package-lock.json`
+
+#### Architecture Changes
+- Added an executable real-cloud verification path that seeds a Firestore wallet, mints a Firebase custom token, boots Next locally, and exercises `POST /api/v1/generate-output` against live Google infrastructure
+- Locked the `updates.pull` and `reviews.submit` payload shapes behind shared Zod schemas so the reviewer loop and its tests now validate the same contract
+- Preserved the existing voice runtime untouched by keeping all Phase 2 work in server-only billing and MCP modules plus an isolated handoff worktree
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional voice states unchanged
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+- The local reviewer continues to use stdio JSON-RPC and does not affect production transport
+
+#### Submission / Cost Defense Changes
+- Verified a real reserve -> execute -> deduct cycle on project `gen-lang-client-0767607744`, Firestore database `voxera-e2e`, and Gemini model `gemini-2.5-pro`
+- Verified real provider usage capture now persists token counts and secret version metadata alongside the finalized billing transaction
+- Previously observed a real reserve -> refund path when Secret Manager access was denied, confirming rollback behavior under live infrastructure failure
+
+#### Known Risks
+- The local `.env.local` and service-account JSON remain machine-local and must never be committed with the branch
+- `reviews.submit` static analysis still focuses on Zod gate coverage and hardcoded-secret detection rather than broad semantic review
+- Firestore and Secret Manager resources now exist in a live project, so secret rotation and cleanup should follow once the branch is merged
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test`
+- [x] `corepack pnpm test:billing-mcp`
+- [x] `corepack pnpm test:e2e`
+- [x] `corepack pnpm verify:real-output`
+- [x] Real route response returned `billing.status = deducted`, `availableCredits = 15`, `pendingCredits = 0`, and Gemini token usage from the live provider
+
+#### Next Sprint Prerequisites
+- Merge the isolated handoff branch or PR after final review
+- Rotate or confirm the Google AI Studio secret version after integration if this verification key should not remain active
