@@ -16,6 +16,8 @@ test.describe('voice capture 3-step flow', () => {
   });
 
   test('cycles through step1, step2, step3, and auto-returns to step1', async ({ page }) => {
+  test('cycles through step1, step2, step3, and auto-returns to step1', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-chrome', 'Full mic flow runs on desktop chrome project.');
     test.setTimeout(90_000);
 
     await page.goto('/capture');

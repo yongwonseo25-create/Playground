@@ -8,7 +8,6 @@ import {
 import { env } from '@/shared/config/env';
 import { CircuitBreaker } from '@/server/reliability/circuitBreaker';
 import { WebhookClient, type WebhookPayload } from '@/server/reliability/WebhookClient';
-import { FailureQueue } from '@/server/queue/failureQueue';
 
 export const runtime = 'nodejs';
 
@@ -28,7 +27,6 @@ const circuitBreaker = new CircuitBreaker({
   cooldownMs: 30_000
 });
 
-let sharedQueue: FailureQueue | null = null;
 let sharedWebhookClient: WebhookClient | null = null;
 
 function getQueueClient(): { webhookClient: WebhookClient; queue: FailureQueue } {
@@ -43,15 +41,7 @@ function getQueueClient(): { webhookClient: WebhookClient; queue: FailureQueue }
     });
   }
 
-  if (!sharedQueue) {
-    sharedQueue = new FailureQueue({
-      client: sharedWebhookClient,
-      pollIntervalMs: 1_000
-    });
-    sharedQueue.startWorker();
-  }
-
-  return { webhookClient: sharedWebhookClient, queue: sharedQueue };
+  return sharedWebhookClient;
 }
 
 export async function POST(request: Request) {
@@ -85,7 +75,7 @@ export async function POST(request: Request) {
   const payload: WebhookPayload = parsedPayload.data;
 
   try {
-    const { webhookClient } = getQueueClient();
+    const webhookClient = getWebhookClient();
 
     await webhookClient.send(payload, parsedBody.data.clientRequestId);
 
@@ -129,5 +119,13 @@ export async function POST(request: Request) {
         { status: env.NEXT_PUBLIC_APP_ENV === 'local' || env.NEXT_PUBLIC_APP_ENV === 'development' ? 500 : 500 }
       );
     }
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: message
+      },
+      { status: 500 }
+    );
   }
 }

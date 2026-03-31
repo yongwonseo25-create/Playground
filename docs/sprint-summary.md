@@ -1179,6 +1179,7 @@ Add a cleanroom-safe Notion destination path to the existing submit contract so 
 - [ ] Recording cannot exceed 15 seconds in runtime flow
 - [ ] Submission locks before async upload in live flow
 - [ ] Duplicate `clientRequestId` upload is blocked in live flow
+- [x] Front-end posts metadata-only payloads to `/api/voice/submit`
 - [x] 8-state reducer architecture remains intact
 - [x] No insecure `ws://` remains in production code paths
 - [x] No permission popup infinite loop exists in current shell logic

@@ -1,4 +1,4 @@
-﻿import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 const port = Number(process.env.PLAYWRIGHT_PORT ?? '3400');
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
@@ -29,7 +29,7 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command: `node ./node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port ${port}`,
+    command: `node scripts/dev-test-server.mjs`,
     cwd: '..',
     url: `${baseURL}/capture`,
     reuseExistingServer: false,

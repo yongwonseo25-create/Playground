@@ -15,7 +15,7 @@ export type VoiceCaptureAction =
   | { type: 'STOP_RECORDING'; stoppedAt: number }
   | { type: 'AUTO_STOP_AT_LIMIT' }
   | { type: 'LOCK_SUBMISSION'; clientRequestId: string }
-  | { type: 'UPLOAD_SUCCESS' }
+  | { type: 'UPLOAD_SUCCESS'; acceptedForRetry: boolean; message: string | null }
   | { type: 'UPLOAD_ERROR'; reason: string }
   | { type: 'SET_CONNECTION_STATE'; connection: BackendConnectionState }
   | {
@@ -59,6 +59,7 @@ export function voiceCaptureReducer(
         sessionId: null,
         pcmFrameCount: 0,
         lastError: action.reason,
+        submissionMessage: null,
         submissionLocked: false,
         clientRequestId: null,
         transcriptPreview: DEFAULT_TRANSCRIPT_PREVIEW,
@@ -128,6 +129,7 @@ export function voiceCaptureReducer(
         status: ensureValidStatus('uploading'),
         clientRequestId: action.clientRequestId,
         submissionLocked: true,
+        submissionMessage: null,
         lastError: null
       };
     }
@@ -139,6 +141,8 @@ export function voiceCaptureReducer(
       return {
         ...state,
         status: ensureValidStatus('success'),
+        submissionAcceptedForRetry: action.acceptedForRetry,
+        submissionMessage: action.message,
         lastError: null
       };
     }
@@ -147,6 +151,7 @@ export function voiceCaptureReducer(
         ...state,
         status: ensureValidStatus('error'),
         clientRequestId: null,
+        submissionMessage: null,
         submissionLocked: false,
         lastError: action.reason
       };

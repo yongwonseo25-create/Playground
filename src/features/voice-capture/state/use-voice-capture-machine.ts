@@ -15,6 +15,18 @@ import {
   type VoiceCaptureMachineState,
   initialVoiceCaptureState
 } from '@/features/voice-capture/types/voice-types';
+import { clientEnv } from '@/shared/config/env.client';
+
+type ServerEvent =
+  | { type: 'session.ready'; sessionId: string }
+  | { type: 'session.transcript'; transcriptText: string; pcmFrameCount: number }
+  | { type: 'session.error'; reason: string };
+
+type TranscriptWaiter = {
+  resolve: (transcriptText: string) => void;
+  reject: (reason: string) => void;
+  timeout: number;
+};
 
 function createClientRequestId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -99,6 +111,206 @@ export function useVoiceCaptureMachine() {
         handleRuntimeFailure(error);
       });
   };
+
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioNodeRef = useRef<AudioWorkletNode | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  const pcmFrameCountRef = useRef(0);
+  const stopCommandSentRef = useRef(false);
+  const transcriptWaitersRef = useRef<TranscriptWaiter[]>([]);
+
+  const clearTranscriptWaiters = useCallback((reason: string) => {
+    for (const waiter of transcriptWaitersRef.current) {
+      window.clearTimeout(waiter.timeout);
+      waiter.reject(reason);
+    }
+
+    transcriptWaitersRef.current = [];
+  }, []);
+
+  function resolveTranscriptWaiters(transcriptText: string) {
+    if (!isTranscriptReady(transcriptText)) {
+      return;
+    }
+
+    for (const waiter of transcriptWaitersRef.current) {
+      window.clearTimeout(waiter.timeout);
+      waiter.resolve(transcriptText.trim());
+    }
+
+    transcriptWaitersRef.current = [];
+  }
+
+  function waitForTranscriptReady(): Promise<string> {
+    if (isTranscriptReady(state.transcriptPreview)) {
+      return Promise.resolve(state.transcriptPreview.trim());
+    }
+
+    return new Promise<string>((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        transcriptWaitersRef.current = transcriptWaitersRef.current.filter(
+          (waiter) => waiter.timeout !== timeout
+        );
+        reject(new Error('Transcript did not arrive before submit timeout.'));
+      }, 5000);
+
+      transcriptWaitersRef.current.push({
+        resolve,
+        reject: (reason) => reject(new Error(reason)),
+        timeout
+      });
+    });
+  }
+
+  function parseServerEvent(raw: string): ServerEvent | null {
+    try {
+      const parsed = JSON.parse(raw) as ServerEvent;
+      if (!parsed || typeof parsed !== 'object' || typeof parsed.type !== 'string') {
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function handleServerEvent(event: ServerEvent) {
+    switch (event.type) {
+      case 'session.ready': {
+        sessionIdRef.current = event.sessionId;
+        break;
+      }
+      case 'session.transcript': {
+        const transcriptText = event.transcriptText || initialVoiceCaptureState.transcriptPreview;
+        pcmFrameCountRef.current = Math.max(pcmFrameCountRef.current, event.pcmFrameCount || 0);
+        dispatch({
+          type: 'SET_TRANSCRIPT_PREVIEW',
+          transcript: transcriptText
+        });
+        resolveTranscriptWaiters(transcriptText);
+        break;
+      }
+      case 'session.error': {
+        clearTranscriptWaiters(event.reason);
+        dispatch({ type: 'UPLOAD_ERROR', reason: event.reason });
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  async function ensureSocketOpen(sessionId: string): Promise<WebSocket> {
+    const current = wsRef.current;
+    if (current && current.readyState === WebSocket.OPEN) {
+      return current;
+    }
+
+    return await new Promise<WebSocket>((resolve, reject) => {
+      const wsUrl = new URL(clientEnv.NEXT_PUBLIC_WSS_URL);
+      wsUrl.searchParams.set('sessionId', sessionId);
+
+      const socket = new WebSocket(wsUrl.toString());
+      let settled = false;
+
+      socket.onopen = () => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        wsRef.current = socket;
+        resolve(socket);
+      };
+
+      socket.onmessage = (message) => {
+        if (typeof message.data !== 'string') {
+          return;
+        }
+
+        const event = parseServerEvent(message.data);
+        if (event) {
+          handleServerEvent(event);
+        }
+      };
+
+      socket.onerror = () => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        reject(new Error('WebSocket connection failed.'));
+      };
+
+      socket.onclose = () => {
+        if (!settled) {
+          settled = true;
+          reject(new Error('WebSocket closed before opening.'));
+        }
+
+        clearTranscriptWaiters('Connection closed while waiting for transcript.');
+        wsRef.current = null;
+      };
+    });
+  }
+
+  const cleanupCapture = useCallback(async (closeSocket: boolean) => {
+    const node = audioNodeRef.current;
+    if (node) {
+      node.port.onmessage = null;
+      node.disconnect();
+      audioNodeRef.current = null;
+    }
+
+    const stream = mediaStreamRef.current;
+    if (stream) {
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+      mediaStreamRef.current = null;
+    }
+
+    const audioContext = audioContextRef.current;
+    if (audioContext) {
+      await audioContext.close().catch(() => undefined);
+      audioContextRef.current = null;
+    }
+
+    if (closeSocket) {
+      const socket = wsRef.current;
+      if (socket && socket.readyState <= WebSocket.OPEN) {
+        socket.close();
+      }
+
+      clearTranscriptWaiters('Voice session closed.');
+      wsRef.current = null;
+      sessionIdRef.current = null;
+    }
+  }, [clearTranscriptWaiters]);
+
+  const stopCaptureAndFinalize = useCallback(async () => {
+    const socket = wsRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(
+        JSON.stringify({
+          type: 'session.stop',
+          sessionId: sessionIdRef.current,
+          pcmFrameCount: pcmFrameCountRef.current
+        })
+      );
+    }
+
+    await cleanupCapture(false);
+  }, [cleanupCapture]);
+
+  useEffect(() => {
+    const spreadsheetId = window.localStorage.getItem('voxera.spreadsheetId') ?? '';
+    const slackChannelId = window.localStorage.getItem('voxera.slackChannelId') ?? '';
+    dispatch({ type: 'SET_ROUTING_TARGETS', spreadsheetId, slackChannelId });
+  }, []);
 
   useEffect(() => {
     if (state.status !== 'recording' || state.recordingStartedAt === null) {
@@ -241,6 +453,11 @@ export function useVoiceCaptureMachine() {
         type: 'UPLOAD_ERROR',
         reason: 'Transcript is not ready from the WSS runtime yet.'
       });
+      return;
+    }
+
+    if (pcmFrameCountRef.current <= 0) {
+      dispatch({ type: 'UPLOAD_ERROR', reason: 'PCM capture is empty. Record again before sending.' });
       return;
     }
 

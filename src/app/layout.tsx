@@ -12,7 +12,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         {children}
-        <Toaster position="top-center" richColors closeButton />
+        <Toaster
+          position="top-center"
+          richColors
+          closeButton
+          toastOptions={{
+            classNames: {
+              toast: 'max-w-md break-keep text-balance',
+              title: 'break-keep text-balance',
+              description: 'break-keep text-balance'
+            }
+          }}
+        />
       </body>
     </html>
   );
