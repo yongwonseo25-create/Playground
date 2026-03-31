@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { CircuitBreaker } from '@/server/reliability/circuitBreaker';
 import { WebhookClient, type WebhookPayload } from '@/server/reliability/WebhookClient';
-import { FailureQueue } from '@/server/queue/failureQueue';
 
 export const runtime = 'nodejs';
 
@@ -23,10 +22,9 @@ const circuitBreaker = new CircuitBreaker({
   cooldownMs: 30_000
 });
 
-let sharedQueue: FailureQueue | null = null;
 let sharedWebhookClient: WebhookClient | null = null;
 
-function getQueueClient(): { webhookClient: WebhookClient; queue: FailureQueue } {
+function getWebhookClient(): WebhookClient {
   const webhookUrl = process.env.MAKE_WEBHOOK_URL || process.env.NEXT_PUBLIC_WEBHOOK_URL;
   const webhookSecret = process.env.MAKE_WEBHOOK_SECRET;
 
@@ -49,15 +47,7 @@ function getQueueClient(): { webhookClient: WebhookClient; queue: FailureQueue }
     });
   }
 
-  if (!sharedQueue) {
-    sharedQueue = new FailureQueue({
-      client: sharedWebhookClient,
-      pollIntervalMs: 1_000
-    });
-    sharedQueue.startWorker();
-  }
-
-  return { webhookClient: sharedWebhookClient, queue: sharedQueue };
+  return sharedWebhookClient;
 }
 
 export async function POST(request: Request) {
@@ -85,7 +75,7 @@ export async function POST(request: Request) {
   };
 
   try {
-    const { webhookClient } = getQueueClient();
+    const webhookClient = getWebhookClient();
 
     await webhookClient.send(payload, body.clientRequestId);
 
@@ -97,37 +87,21 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown submit error.';
 
-    try {
-      const { queue, webhookClient } = getQueueClient();
-      await queue.enqueue(body.clientRequestId, payload);
-
+    if (appEnv === 'local' || appEnv === 'development') {
       return NextResponse.json({
         ok: true,
-        acceptedForRetry: true,
-        reason: message,
-        circuitState: webhookClient.circuitBreaker.snapshot().state
+        mocked: true,
+        acceptedForRetry: false,
+        reason: message
       });
-    } catch (queueError) {
-      const queueMessage =
-        queueError instanceof Error ? queueError.message : 'Unknown queue enqueue error.';
-
-      if (appEnv === 'local' || appEnv === 'development') {
-        return NextResponse.json({
-          ok: true,
-          mocked: true,
-          acceptedForRetry: false,
-          reason: `${message} | ${queueMessage}`
-        });
-      }
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error: message,
-          queueError: queueMessage
-        },
-        { status: 500 }
-      );
     }
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: message
+      },
+      { status: 500 }
+    );
   }
 }

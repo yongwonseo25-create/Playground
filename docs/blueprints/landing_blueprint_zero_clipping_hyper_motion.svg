@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="3600" viewBox="0 0 1600 3600" fill="none">
+  <defs>
+    <linearGradient id="heroGlowMint" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00E5A0" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#00E5A0" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="heroGlowPurple" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="ctaPrimary" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6D28D9"/>
+      <stop offset="52%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="metricMint" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#00E5A0"/>
+    </linearGradient>
+    <linearGradient id="metricPurple" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <filter id="softBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="3600" fill="#0A0A0A"/>
+  <ellipse cx="430" cy="290" rx="320" ry="220" fill="url(#heroGlowMint)" filter="url(#softBlur)"/>
+  <ellipse cx="1190" cy="360" rx="360" ry="260" fill="url(#heroGlowPurple)" filter="url(#softBlur)"/>
+
+  <!-- HERO SECTION -->
+  <g id="hero-section">
+    <text x="800" y="160" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="84" font-weight="700" fill="#FFFFFF" letter-spacing="-1.2">
+      <tspan x="800" dy="0">말하면 정리되고,</tspan>
+      <tspan x="800" dy="98">바로 업무로 연결됩니다</tspan>
+    </text>
+
+    <text x="800" y="420" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="30" fill="#D1D5DB" letter-spacing="-0.2">
+      <tspan x="800" dy="0">회의 직후, 이동 중, 통화 후 떠오른 생각까지. 타이핑 대신 말하면,</tspan>
+      <tspan x="800" dy="48">AI가 자동으로 정리하고 카카오톡·노션·업무 도구로 바로 연결해줍니다.</tspan>
+    </text>
+
+    <!-- CTA -->
+    <rect x="470" y="520" width="300" height="78" rx="20" fill="url(#ctaPrimary)"/>
+    <rect x="830" y="520" width="300" height="78" rx="20" fill="transparent" stroke="#94A3B8" stroke-width="2"/>
+    <text x="620" y="569" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="26" font-weight="600" fill="#FFFFFF">무료로 시작하기</text>
+    <text x="980" y="569" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="26" font-weight="600" fill="#E5E7EB">30초 데모 보기</text>
+
+    <!-- Mic + Wave -->
+    <rect x="430" y="670" width="740" height="390" rx="32" fill="#0D111A" stroke="#374151" stroke-width="2"/>
+    <rect x="456" y="696" width="688" height="338" rx="26" fill="#070B12" stroke="#1F2937" stroke-width="1"/>
+
+    <!-- Left pulse bars -->
+    <g transform="translate(525 800)">
+      <rect x="0" y="58" width="14" height="88" rx="7" fill="#00E5A0"/>
+      <rect x="22" y="30" width="14" height="116" rx="7" fill="#8B5CF6"/>
+      <rect x="44" y="46" width="14" height="100" rx="7" fill="#3B82F6"/>
+      <rect x="66" y="18" width="14" height="128" rx="7" fill="#8B5CF6"/>
+      <rect x="88" y="42" width="14" height="104" rx="7" fill="#00E5A0"/>
+    </g>
+    <!-- Right pulse bars -->
+    <g transform="translate(973 800)">
+      <rect x="0" y="42" width="14" height="104" rx="7" fill="#00E5A0"/>
+      <rect x="22" y="18" width="14" height="128" rx="7" fill="#8B5CF6"/>
+      <rect x="44" y="46" width="14" height="100" rx="7" fill="#3B82F6"/>
+      <rect x="66" y="30" width="14" height="116" rx="7" fill="#8B5CF6"/>
+      <rect x="88" y="58" width="14" height="88" rx="7" fill="#00E5A0"/>
+    </g>
+
+    <!-- Mic core -->
+    <g transform="translate(705 742)">
+      <ellipse cx="95" cy="76" rx="52" ry="64" fill="#CBD5E1" fill-opacity="0.85"/>
+      <rect x="43" y="110" width="104" height="122" rx="48" fill="#111827" stroke="#475569" stroke-width="1.5"/>
+      <rect x="84" y="232" width="22" height="42" rx="8" fill="#64748B"/>
+      <ellipse cx="95" cy="286" rx="60" ry="12" fill="#475569"/>
+      <text x="95" y="178" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="20" font-weight="700" fill="#A7F3D0">VOICE</text>
+    </g>
+  </g>
+
+  <!-- TRUST BAR -->
+  <g id="trust-bar">
+    <rect x="200" y="1120" width="1200" height="78" rx="39" fill="#0A0A0A" stroke="#E5E7EB" stroke-opacity="0.22" stroke-width="2"/>
+    <text x="800" y="1169" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="20" font-weight="600" fill="#E5E7EB" letter-spacing="4">
+      MEMO   KAKAO   NOTION   GOOGLE   NAVER   MEMO
+    </text>
+  </g>
+
+  <!-- PROBLEM SECTION -->
+  <g id="problem-section">
+    <text x="200" y="1295" font-family="Pretendard, sans-serif" font-size="22" font-weight="700" fill="#00E5A0" letter-spacing="2">PROBLEMS</text>
+    <rect x="200" y="1330" width="560" height="200" rx="24" fill="#111111" stroke="#2F2F2F" stroke-width="1.5"/>
+    <rect x="840" y="1330" width="560" height="200" rx="24" fill="#111111" stroke="#2F2F2F" stroke-width="1.5"/>
+    <rect x="200" y="1560" width="560" height="200" rx="24" fill="#111111" stroke="#2F2F2F" stroke-width="1.5"/>
+    <rect x="840" y="1560" width="560" height="200" rx="24" fill="#111111" stroke="#2F2F2F" stroke-width="1.5"/>
+
+    <text x="248" y="1420" font-family="Pretendard, sans-serif" font-size="34" font-weight="600" fill="#E5E7EB">⚠️ 카톡에 적어두고</text>
+    <text x="248" y="1468" font-family="Pretendard, sans-serif" font-size="34" font-weight="600" fill="#E5E7EB">다시 못 찾습니다</text>
+
+    <text x="888" y="1420" font-family="Pretendard, sans-serif" font-size="34" font-weight="600" fill="#E5E7EB">⚠️ 현장/이동 중</text>
+    <text x="888" y="1468" font-family="Pretendard, sans-serif" font-size="34" font-weight="600" fill="#E5E7EB">수동 입력의 한계</text>
+
+    <text x="248" y="1650" font-family="Pretendard, sans-serif" font-size="34" font-weight="600" fill="#E5E7EB">⚠️ 흩어져서 쓸모없어지는</text>
+    <text x="248" y="1698" font-family="Pretendard, sans-serif" font-size="34" font-weight="600" fill="#E5E7EB">정보들</text>
+
+    <text x="888" y="1650" font-family="Pretendard, sans-serif" font-size="34" font-weight="600" fill="#E5E7EB">⚠️ 회의 후 메모 정리에만</text>
+    <text x="888" y="1698" font-family="Pretendard, sans-serif" font-size="34" font-weight="600" fill="#E5E7EB">30분 낭비</text>
+  </g>
+
+  <!-- SOLUTION SECTION -->
+  <g id="solution-section">
+    <text x="200" y="1885" font-family="Pretendard, sans-serif" font-size="22" font-weight="700" fill="#00E5A0" letter-spacing="2">SOLUTION FLOW</text>
+    <rect x="200" y="1920" width="370" height="220" rx="24" fill="#151515" stroke="rgba(255,255,255,0.1)"/>
+    <rect x="615" y="1920" width="370" height="220" rx="24" fill="#151515" stroke="rgba(255,255,255,0.1)"/>
+    <rect x="1030" y="1920" width="370" height="220" rx="24" fill="#151515" stroke="rgba(255,255,255,0.1)"/>
+
+    <text x="385" y="2018" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="46">🎙️</text>
+    <text x="385" y="2080" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="33" font-weight="600" fill="#FFFFFF">말합니다</text>
+    <text x="385" y="2120" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="21" fill="#9CA3AF">You Speak</text>
+
+    <text x="800" y="2018" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="46">🧠</text>
+    <text x="800" y="2080" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="33" font-weight="600" fill="#FFFFFF">AI가 구조화합니다</text>
+    <text x="800" y="2120" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="21" fill="#9CA3AF">AI Structures</text>
+
+    <text x="1215" y="2018" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="46">🚀</text>
+    <text x="1215" y="2080" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="33" font-weight="600" fill="#FFFFFF">업무 툴로 전송</text>
+    <text x="1215" y="2120" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="21" fill="#9CA3AF">Tools Receive</text>
+
+    <text x="592" y="2046" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="44" fill="#00E5A0">⇒</text>
+    <text x="1007" y="2046" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="44" fill="#00E5A0">⇒</text>
+  </g>
+
+  <!-- METRICS SECTION -->
+  <g id="metrics-section">
+    <line x1="200" y1="2300" x2="1400" y2="2300" stroke="#333333" stroke-width="1"/>
+    <text x="410" y="2468" font-family="Pretendard, sans-serif" font-size="98" font-weight="800" fill="url(#metricMint)">37 min → 3 min</text>
+    <text x="410" y="2530" font-family="Pretendard, sans-serif" font-size="34" fill="#A7F3D0">회의록 정리 시간 단축</text>
+
+    <text x="410" y="2690" font-family="Pretendard, sans-serif" font-size="98" font-weight="800" fill="url(#metricPurple)">92% time saved</text>
+    <text x="410" y="2752" font-family="Pretendard, sans-serif" font-size="34" fill="#DDD6FE">건당 처리 시간 92% 단축</text>
+  </g>
+
+  <!-- Partner Marquee Blueprint -->
+  <g id="partner-marquee">
+    <rect x="200" y="2860" width="1200" height="120" rx="20" fill="#0B0B0B" stroke="#2F2F2F"/>
+    <text x="230" y="2934" font-family="Pretendard, sans-serif" font-size="25" fill="#6B7280" letter-spacing="3">
+      [ 2000+ teams ]   [ Notion ]   [ Slack ]   [ Salesforce ]   [ Jira ]   [ Google Workspace ]
+    </text>
+  </g>
+
+  <!-- Motion/Implementation Notes -->
+  <g id="motion-spec-notes">
+    <rect x="200" y="3040" width="1200" height="450" rx="20" fill="#0F1115" stroke="#374151"/>
+    <text x="240" y="3098" font-family="Pretendard, sans-serif" font-size="26" font-weight="700" fill="#E5E7EB">[ZERO-CLIPPING &amp; HYPER-MOTION SPEC NOTES]</text>
+    <text x="240" y="3150" font-family="Pretendard, sans-serif" font-size="22" fill="#CBD5E1">
+      <tspan x="240" dy="0">1) 모든 텍스트 컨테이너: word-break: keep-all; line-height: 1.6; 폰트는 clamp() 기반으로 반응형 적용.</tspan>
+      <tspan x="240" dy="38">2) Hero: 로드시 translateY(20px→0), 0.6s ease-out 등장.</tspan>
+      <tspan x="240" dy="38">3) Mic Wave: idle 2.0s pulse, hover 시 진폭 1.5배 + 0.5s 주기 가속.</tspan>
+      <tspan x="240" dy="38">4) Problems: viewport 20% 진입 시 0.15s 간격 staggered fade-up(좌상→우상→좌하→우하).</tspan>
+      <tspan x="240" dy="38">5) Solution Arrow: 네온 민트 입자 1.2s linear 무한 이동.</tspan>
+      <tspan x="240" dy="38">6) Metrics: 0→92, 37→3 숫자 카운팅 2.0s cubic-bezier.</tspan>
+      <tspan x="240" dy="38">7) Partner Marquee: 30px/s linear 무한 스크롤, hover 시 일시정지 + 대상 로고 컬러 복원.</tspan>
+    </text>
+  </g>
+</svg>

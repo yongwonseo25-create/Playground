@@ -53,16 +53,16 @@ const zigzagSections: ZigzagSection[] = [
 
 function PanelWaveTyping() {
   const bars = [
-    { h: 32, c: 'from-[#79f7e2] via-[#63e6ff] to-[#ff82dc]', d: 1.8 },
-    { h: 54, c: 'from-[#ff82dc] via-[#c58fff] to-[#7c8cff]', d: 2.2 },
-    { h: 42, c: 'from-[#ffe07a] via-[#ffb86b] to-[#f97316]', d: 1.9 },
-    { h: 64, c: 'from-[#77d6ff] via-[#56ccf2] to-[#5b21b6]', d: 2.4 },
-    { h: 48, c: 'from-[#7af7e3] via-[#6ad7ff] to-[#c59bff]', d: 2.05 }
+    { h: 34, c: 'from-[#79f7e2] via-[#63e6ff] to-[#ff82dc]', d: 1.7 },
+    { h: 56, c: 'from-[#ff82dc] via-[#c58fff] to-[#7c8cff]', d: 2.1 },
+    { h: 44, c: 'from-[#ffe07a] via-[#ffb86b] to-[#f97316]', d: 1.9 },
+    { h: 66, c: 'from-[#77d6ff] via-[#56ccf2] to-[#5b21b6]', d: 2.3 },
+    { h: 50, c: 'from-[#7af7e3] via-[#6ad7ff] to-[#c59bff]', d: 2.0 }
   ];
 
   return (
     <div className="grid h-full grid-cols-[auto_1fr] items-center gap-4">
-      <div className="flex h-[148px] items-end gap-2">
+      <div className="flex h-[146px] items-end gap-2">
         {bars.map((bar, index) => (
           <span
             key={`wave-${index}`}
@@ -133,7 +133,7 @@ function PanelStackingGrid() {
         {Array.from({ length: 8 }).map((_, index) => (
           <span
             key={`stack-${index}`}
-            className="h-5 rounded-md border border-violet-200/20 bg-violet-300/10"
+            className="z-stack-block h-5 rounded-md border border-violet-200/20 bg-violet-300/10"
             style={{ animationDelay: `${0.45 + index * 0.08}s` }}
           />
         ))}
@@ -181,7 +181,7 @@ export function BentoGridSection() {
           {zigzagSections.map((item) => (
             <section
               key={`${item.titleLine1}-${item.titleLine2}`}
-              className="flex flex-col items-stretch gap-6 rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,15,25,0.94),rgba(7,11,19,0.98))] p-6 shadow-[0_30px_100px_rgba(2,6,23,0.38)] md:grid md:grid-cols-2 md:items-center md:gap-10 md:p-10"
+              className="flex flex-col-reverse items-stretch gap-6 rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,15,25,0.94),rgba(7,11,19,0.98))] p-6 shadow-[0_30px_100px_rgba(2,6,23,0.38)] md:grid md:grid-cols-2 md:items-center md:gap-10 md:p-10"
             >
               <div className={`${item.reverse ? 'md:order-2' : 'md:order-1'}`}>
                 <h3 className="break-keep text-3xl font-semibold leading-relaxed tracking-[-0.03em] text-white sm:text-4xl">

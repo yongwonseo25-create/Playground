@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="3200" viewBox="0 0 1600 3200" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1600" y2="3200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0A0A0A"/>
+      <stop offset="100%" stop-color="#070B14"/>
+    </linearGradient>
+    <linearGradient id="mintPurple" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E5A0"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="primaryBtn" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6D28D9"/>
+      <stop offset="50%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="3200" fill="url(#bgGrad)"/>
+  <ellipse cx="420" cy="280" rx="340" ry="250" fill="#00E5A0" fill-opacity="0.12" filter="url(#softGlow)"/>
+  <ellipse cx="1180" cy="360" rx="360" ry="260" fill="#8B5CF6" fill-opacity="0.12" filter="url(#softGlow)"/>
+
+  <!-- HERO -->
+  <text x="800" y="160" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="84" font-weight="700" fill="#FFFFFF" letter-spacing="-1.2">
+    <tspan x="800" dy="0">말하면 정리되고,</tspan>
+    <tspan x="800" dy="96">바로 업무로 연결됩니다</tspan>
+  </text>
+  <text x="800" y="420" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="30" fill="#D1D5DB">
+    <tspan x="800" dy="0">회의 직후, 이동 중, 통화 후 떠오른 생각까지. 타이핑 대신 말하면,</tspan>
+    <tspan x="800" dy="46">AI가 자동으로 정리하고 카카오톡·노션·업무 도구로 바로 연결해줍니다.</tspan>
+  </text>
+
+  <!-- CTA -->
+  <rect x="468" y="520" width="300" height="78" rx="20" fill="url(#primaryBtn)"/>
+  <rect x="832" y="520" width="300" height="78" rx="20" fill="transparent" stroke="#94A3B8" stroke-width="2"/>
+  <text x="618" y="569" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="26" font-weight="600" fill="#FFFFFF">무료로 시작하기</text>
+  <text x="982" y="569" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="26" font-weight="600" fill="#E5E7EB">30초 데모 보기</text>
+
+  <!-- Wireframe Mic Container -->
+  <rect x="420" y="668" width="760" height="400" rx="34" fill="#0C111A" stroke="#2A3548" stroke-width="2"/>
+  <rect x="448" y="696" width="704" height="344" rx="28" fill="#070B12" stroke="#1D283A" stroke-width="1"/>
+
+  <!-- EQ Left -->
+  <g transform="translate(520 790)">
+    <rect x="0" y="64" width="12" height="84" rx="6" fill="#00E5A0"/>
+    <rect x="20" y="34" width="12" height="114" rx="6" fill="#4ADE80"/>
+    <rect x="40" y="52" width="12" height="96" rx="6" fill="#8B5CF6"/>
+    <rect x="60" y="20" width="12" height="128" rx="6" fill="#6366F1"/>
+    <rect x="80" y="44" width="12" height="104" rx="6" fill="#A855F7"/>
+    <rect x="100" y="58" width="12" height="90" rx="6" fill="#22D3EE"/>
+  </g>
+
+  <!-- EQ Right -->
+  <g transform="translate(968 790)">
+    <rect x="0" y="58" width="12" height="90" rx="6" fill="#22D3EE"/>
+    <rect x="20" y="44" width="12" height="104" rx="6" fill="#A855F7"/>
+    <rect x="40" y="20" width="12" height="128" rx="6" fill="#6366F1"/>
+    <rect x="60" y="52" width="12" height="96" rx="6" fill="#8B5CF6"/>
+    <rect x="80" y="34" width="12" height="114" rx="6" fill="#4ADE80"/>
+    <rect x="100" y="64" width="12" height="84" rx="6" fill="#00E5A0"/>
+  </g>
+
+  <!-- High-end wireframe mic -->
+  <g transform="translate(690 744)">
+    <ellipse cx="110" cy="62" rx="46" ry="52" fill="none" stroke="url(#mintPurple)" stroke-width="2"/>
+    <ellipse cx="110" cy="62" rx="38" ry="42" fill="none" stroke="#334155" stroke-width="1"/>
+    <rect x="66" y="114" width="88" height="114" rx="42" fill="none" stroke="url(#mintPurple)" stroke-width="2"/>
+    <rect x="72" y="122" width="76" height="98" rx="36" fill="none" stroke="#334155" stroke-width="1"/>
+    <line x1="110" y1="228" x2="110" y2="274" stroke="#64748B" stroke-width="2"/>
+    <ellipse cx="110" cy="286" rx="54" ry="10" fill="none" stroke="#475569" stroke-width="2"/>
+    <circle cx="110" cy="170" r="8" fill="#00E5A0"/>
+    <text x="110" y="172" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, sans-serif" font-size="14" fill="#04120D">AI</text>
+  </g>
+
+  <!-- Trust bar -->
+  <rect x="200" y="1128" width="1200" height="78" rx="39" fill="#0A0A0A" stroke="#E5E7EB" stroke-opacity="0.24" stroke-width="2"/>
+  <text x="800" y="1177" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="20" font-weight="600" fill="#E5E7EB" letter-spacing="4">
+    MEMO   KAKAO   NOTION   GOOGLE   NAVER   MEMO
+  </text>
+
+  <!-- Z-Pattern Card 1 -->
+  <g transform="translate(120 1280)">
+    <rect x="0" y="0" width="1360" height="300" rx="30" fill="#0D121B" stroke="#3A4A61" stroke-width="2"/>
+    <rect x="40" y="36" width="620" height="228" rx="22" fill="#0F1520" stroke="#263244"/>
+    <text x="70" y="106" font-family="Pretendard, sans-serif" font-size="44" font-weight="700" fill="#F8FAFC">
+      <tspan x="70" dy="0">타이핑은 끝났다.</tspan>
+      <tspan x="70" dy="52">그냥 말하십시오.</tspan>
+    </text>
+    <text x="70" y="206" font-family="Pretendard, sans-serif" font-size="24" fill="#CBD5E1">
+      <tspan x="70" dy="0">회의 직후, 이동 중 떠오른 생각.</tspan>
+      <tspan x="70" dy="38">앱 전환이나 타이핑 없이 가장 빠르게 즉시 기록합니다.</tspan>
+    </text>
+    <rect x="710" y="36" width="610" height="228" rx="22" fill="#0A1321" stroke="#334155"/>
+    <rect x="748" y="82" width="14" height="82" rx="7" fill="#00E5A0"/>
+    <rect x="770" y="56" width="14" height="108" rx="7" fill="#8B5CF6"/>
+    <rect x="792" y="72" width="14" height="92" rx="7" fill="#3B82F6"/>
+    <rect x="826" y="70" width="454" height="42" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="846" y="97" font-family="Pretendard, sans-serif" font-size="18" fill="#D1FAE5">회의 요약 생성 중...</text>
+    <rect x="826" y="126" width="454" height="42" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="846" y="153" font-family="Pretendard, sans-serif" font-size="18" fill="#E9D5FF">액션 아이템 처리</text>
+  </g>
+
+  <!-- Z-Pattern Card 2 -->
+  <g transform="translate(120 1620)">
+    <rect x="0" y="0" width="1360" height="300" rx="30" fill="#0D121B" stroke="#3A4A61" stroke-width="2"/>
+    <rect x="40" y="36" width="610" height="228" rx="22" fill="#0A1321" stroke="#334155"/>
+    <rect x="74" y="68" width="544" height="16" rx="8" fill="#475569"/>
+    <rect x="74" y="96" width="494" height="16" rx="8" fill="#475569"/>
+    <rect x="74" y="124" width="430" height="16" rx="8" fill="#475569"/>
+    <rect x="74" y="164" width="544" height="32" rx="10" fill="#052E25" stroke="#00E5A0"/>
+    <text x="92" y="186" font-family="Pretendard, sans-serif" font-size="17" fill="#D1FAE5">✓ 핵심 요약 자동 추출 / 담당자 태깅</text>
+    <rect x="700" y="36" width="620" height="228" rx="22" fill="#0F1520" stroke="#263244"/>
+    <text x="730" y="108" font-family="Pretendard, sans-serif" font-size="44" font-weight="700" fill="#F8FAFC">
+      <tspan x="730" dy="0">AI 완벽</tspan>
+      <tspan x="730" dy="52">자동 구조화</tspan>
+    </text>
+    <text x="730" y="206" font-family="Pretendard, sans-serif" font-size="24" fill="#CBD5E1">
+      <tspan x="730" dy="0">단순 받아쓰기가 아닙니다.</tspan>
+      <tspan x="730" dy="38">발화 의도를 파악해 요약, 할 일, 핵심 액션 아이템을 완벽히 추출합니다.</tspan>
+    </text>
+  </g>
+
+  <!-- Z-Pattern Card 3 -->
+  <g transform="translate(120 1960)">
+    <rect x="0" y="0" width="1360" height="300" rx="30" fill="#0D121B" stroke="#3A4A61" stroke-width="2"/>
+    <rect x="40" y="36" width="620" height="228" rx="22" fill="#0F1520" stroke="#263244"/>
+    <text x="70" y="108" font-family="Pretendard, sans-serif" font-size="44" font-weight="700" fill="#F8FAFC">
+      <tspan x="70" dy="0">원래 쓰던 도구로</tspan>
+      <tspan x="70" dy="52">즉시 꽂힌다</tspan>
+    </text>
+    <text x="70" y="206" font-family="Pretendard, sans-serif" font-size="24" fill="#CBD5E1">
+      <tspan x="70" dy="0">새로운 툴을 배울 필요 없습니다.</tspan>
+      <tspan x="70" dy="38">카카오톡, 노션, 구글 시트 등 팀 워크플로우에 1초 만에 자동 배포됩니다.</tspan>
+    </text>
+    <rect x="710" y="36" width="610" height="228" rx="22" fill="#0A1321" stroke="#334155"/>
+    <circle cx="1015" cy="150" r="16" fill="#00E5A0" fill-opacity="0.2" stroke="#00E5A0"/>
+    <line x1="1015" y1="150" x2="900" y2="100" stroke="url(#mintPurple)" stroke-width="2"/>
+    <line x1="1015" y1="150" x2="1126" y2="98" stroke="url(#mintPurple)" stroke-width="2"/>
+    <line x1="1015" y1="150" x2="1126" y2="202" stroke="url(#mintPurple)" stroke-width="2"/>
+    <rect x="862" y="84" width="78" height="28" rx="14" fill="#111827" stroke="#64748B"/>
+    <rect x="1088" y="84" width="90" height="28" rx="14" fill="#111827" stroke="#64748B"/>
+    <rect x="1088" y="188" width="90" height="28" rx="14" fill="#111827" stroke="#64748B"/>
+    <text x="901" y="103" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, sans-serif" font-size="13" fill="#E2E8F0">KAKAO</text>
+    <text x="1133" y="103" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, sans-serif" font-size="13" fill="#E2E8F0">NOTION</text>
+    <text x="1133" y="207" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, sans-serif" font-size="13" fill="#E2E8F0">GOOGLE</text>
+  </g>
+
+  <!-- Z-Pattern Card 4 -->
+  <g transform="translate(120 2300)">
+    <rect x="0" y="0" width="1360" height="300" rx="30" fill="#0D121B" stroke="#3A4A61" stroke-width="2"/>
+    <rect x="40" y="36" width="610" height="228" rx="22" fill="#0A1321" stroke="#334155"/>
+    <rect x="74" y="74" width="140" height="32" rx="16" fill="#111827" stroke="#64748B"/>
+    <rect x="224" y="74" width="140" height="32" rx="16" fill="#111827" stroke="#64748B"/>
+    <rect x="374" y="74" width="170" height="32" rx="16" fill="#111827" stroke="#64748B"/>
+    <text x="144" y="96" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, sans-serif" font-size="14" fill="#E2E8F0">회의 요약</text>
+    <text x="294" y="96" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, sans-serif" font-size="14" fill="#E2E8F0">일정 정리</text>
+    <text x="459" y="96" text-anchor="middle" dominant-baseline="middle" font-family="Pretendard, sans-serif" font-size="14" fill="#E2E8F0">이슈 트래커</text>
+    <rect x="74" y="128" width="536" height="112" rx="12" fill="#111827" stroke="#334155"/>
+    <line x1="100" y1="160" x2="584" y2="160" stroke="#475569"/>
+    <line x1="100" y1="194" x2="542" y2="194" stroke="#475569"/>
+    <rect x="700" y="36" width="620" height="228" rx="22" fill="#0F1520" stroke="#263244"/>
+    <text x="730" y="108" font-family="Pretendard, sans-serif" font-size="44" font-weight="700" fill="#F8FAFC">
+      <tspan x="730" dy="0">흩어진 메모의</tspan>
+      <tspan x="730" dy="52">자산화</tspan>
+    </text>
+    <text x="730" y="206" font-family="Pretendard, sans-serif" font-size="24" fill="#CBD5E1">
+      <tspan x="730" dy="0">개인 채팅방에서 휘발되던 메모가,</tspan>
+      <tspan x="730" dy="38">조직 전체가 검색·재사용 가능한 데이터 자산으로 축적됩니다.</tspan>
+    </text>
+  </g>
+
+  <!-- Overflow/typography control notes -->
+  <g id="notes">
+    <rect x="120" y="2680" width="1360" height="420" rx="18" fill="#0F1115" stroke="#374151"/>
+    <text x="160" y="2740" font-family="Pretendard, sans-serif" font-size="26" font-weight="700" fill="#E5E7EB">[RESET SPEC: Overflow &amp; Layout Hard Control]</text>
+    <text x="160" y="2800" font-family="Pretendard, sans-serif" font-size="22" fill="#CBD5E1">
+      <tspan x="160" dy="0">- 카드 공통 규칙: overflow-hidden + p-8/p-10 + display:flex + flex-direction:column + justify-content:center</tspan>
+      <tspan x="160" dy="36">- 텍스트 공통 규칙: break-keep + text-balance + leading-relaxed</tspan>
+      <tspan x="160" dy="36">- 목표: 텍스트가 카드 테두리를 절대 벗어나지 않음 (ZERO-CLIPPING)</tspan>
+      <tspan x="160" dy="36">- 마이크 교체: 싸구려 3D 덩어리 삭제 → Linear/Vapi 톤의 와이어프레임 미니멀 마이크</tspan>
+      <tspan x="160" dy="36">- EQ 톤: Neon Mint + Cyber Purple 복합 파형으로 프리미엄 B2B 감성 강화</tspan>
+    </text>
+  </g>
+</svg>

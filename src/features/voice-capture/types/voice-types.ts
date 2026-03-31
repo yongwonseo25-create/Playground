@@ -1,4 +1,4 @@
-﻿import type { BackendConnectionState, VoiceSessionContract } from '@/shared/contracts/voice';
+import type { BackendConnectionState, VoiceSessionContract } from '@/shared/contracts/voice';
 
 export const FIXED_VOICE_STATES = [
   'idle',
@@ -27,6 +27,10 @@ export interface VoiceCaptureMachineState {
   clientRequestId: string | null;
   submissionLocked: boolean;
   transcriptPreview: string;
+  spreadsheetId: string;
+  slackChannelId: string;
+  submissionAcceptedForRetry: boolean;
+  submissionMessage: string | null;
   lastError: string | null;
 }
 
@@ -39,6 +43,10 @@ export const initialVoiceCaptureState: VoiceCaptureMachineState = {
   clientRequestId: null,
   submissionLocked: false,
   transcriptPreview: DEFAULT_TRANSCRIPT_PREVIEW,
+  spreadsheetId: '',
+  slackChannelId: '',
+  submissionAcceptedForRetry: false,
+  submissionMessage: null,
   lastError: null
 };
 

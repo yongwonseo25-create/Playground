@@ -1,4 +1,4 @@
-﻿import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 const port = Number(process.env.PLAYWRIGHT_PORT ?? '3400');
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
@@ -20,12 +20,32 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] }
+      name: 'desktop-chrome',
+      use: {
+        ...devices['Desktop Chrome'],
+        permissions: ['microphone'],
+        launchOptions: {
+          args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream']
+        }
+      }
+    },
+    {
+      name: 'mobile-chrome',
+      use: {
+        ...devices['Pixel 7'],
+        permissions: ['microphone'],
+        launchOptions: {
+          args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream']
+        }
+      }
+    },
+    {
+      name: 'mobile-safari',
+      use: { ...devices['iPhone 13'] }
     }
   ],
   webServer: {
-    command: `node ./node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port ${port}`,
+    command: `node scripts/dev-test-server.mjs`,
     cwd: '..',
     url: `${baseURL}/capture`,
     reuseExistingServer: false,
@@ -33,7 +53,12 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_APP_ENV: 'local',
       NEXT_PUBLIC_WSS_URL: process.env.NEXT_PUBLIC_WSS_URL ?? 'ws://127.0.0.1:8787/voice',
-      NEXT_PUBLIC_WEBHOOK_URL: process.env.NEXT_PUBLIC_WEBHOOK_URL ?? 'http://127.0.0.1:8788/webhook'
+      NEXT_PUBLIC_WEBHOOK_URL: process.env.NEXT_PUBLIC_WEBHOOK_URL ?? 'http://127.0.0.1:8788/webhook',
+      MAKE_WEBHOOK_URL: process.env.MAKE_WEBHOOK_URL ?? 'http://127.0.0.1:8788/webhook',
+      MAKE_WEBHOOK_SECRET: process.env.MAKE_WEBHOOK_SECRET ?? 'playwright-secret',
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
+      INTERNAL_APP_BASE_URL: process.env.INTERNAL_APP_BASE_URL ?? baseURL,
+      PLAYWRIGHT_PORT: String(port)
     }
   }
 });

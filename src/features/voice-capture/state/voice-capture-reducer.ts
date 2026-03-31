@@ -1,4 +1,4 @@
-﻿import {
+import {
   type VoiceCaptureMachineState,
   type VoiceReducerState,
   initialVoiceCaptureState
@@ -13,8 +13,10 @@ export type VoiceCaptureAction =
   | { type: 'STOP_RECORDING'; stoppedAt: number }
   | { type: 'AUTO_STOP_AT_LIMIT' }
   | { type: 'LOCK_SUBMISSION'; clientRequestId: string }
-  | { type: 'UPLOAD_SUCCESS' }
+  | { type: 'UPLOAD_SUCCESS'; acceptedForRetry: boolean; message: string | null }
   | { type: 'UPLOAD_ERROR'; reason: string }
+  | { type: 'SET_TRANSCRIPT_PREVIEW'; transcript: string }
+  | { type: 'SET_ROUTING_TARGETS'; spreadsheetId: string; slackChannelId: string }
   | { type: 'RESET' };
 
 function ensureValidStatus(status: VoiceReducerState): VoiceReducerState {
@@ -45,6 +47,7 @@ export function voiceCaptureReducer(
         ...state,
         status: ensureValidStatus('error'),
         lastError: action.reason,
+        submissionMessage: null,
         submissionLocked: false,
         clientRequestId: null
       };
@@ -57,6 +60,9 @@ export function voiceCaptureReducer(
         elapsedMs: 0,
         clientRequestId: null,
         submissionLocked: false,
+        transcriptPreview: initialVoiceCaptureState.transcriptPreview,
+        submissionAcceptedForRetry: false,
+        submissionMessage: null,
         lastError: null
       };
     }
@@ -107,6 +113,7 @@ export function voiceCaptureReducer(
         status: ensureValidStatus('uploading'),
         clientRequestId: action.clientRequestId,
         submissionLocked: true,
+        submissionMessage: null,
         lastError: null
       };
     }
@@ -118,6 +125,8 @@ export function voiceCaptureReducer(
       return {
         ...state,
         status: ensureValidStatus('success'),
+        submissionAcceptedForRetry: action.acceptedForRetry,
+        submissionMessage: action.message,
         lastError: null
       };
     }
@@ -126,14 +135,30 @@ export function voiceCaptureReducer(
         ...state,
         status: ensureValidStatus('error'),
         clientRequestId: null,
+        submissionMessage: null,
         submissionLocked: false,
         lastError: action.reason
+      };
+    }
+    case 'SET_TRANSCRIPT_PREVIEW': {
+      return {
+        ...state,
+        transcriptPreview: action.transcript
+      };
+    }
+    case 'SET_ROUTING_TARGETS': {
+      return {
+        ...state,
+        spreadsheetId: action.spreadsheetId,
+        slackChannelId: action.slackChannelId
       };
     }
     case 'RESET': {
       return {
         ...initialVoiceCaptureState,
-        connection: state.connection
+        connection: state.connection,
+        spreadsheetId: state.spreadsheetId,
+        slackChannelId: state.slackChannelId
       };
     }
     default: {

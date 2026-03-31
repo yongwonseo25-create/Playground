@@ -224,7 +224,13 @@ export function VoiceCaptureScreen() {
               />
             )}
 
-            {step === 'step3' && <Step3Complete key="step3" />}
+            {step === 'step3' && (
+              <Step3Complete
+                key="step3"
+                acceptedForRetry={state.submissionAcceptedForRetry}
+                message={state.submissionMessage}
+              />
+            )}
           </AnimatePresence>
         </div>
 
@@ -423,8 +429,21 @@ function Step2Confirm({
         </div>
 
         {errorMessage ? (
-          <p className="mt-4 w-full rounded-2xl border border-rose-300/18 bg-rose-400/8 px-4 py-3 text-[13px] text-rose-100/90">
+          <p
+            data-testid="voice-error-alert"
+            className="mt-4 w-full max-w-md break-keep text-balance rounded-2xl border border-rose-300/18 bg-rose-400/8 px-4 py-3 text-[13px] text-rose-100/90"
+          >
             {errorMessage}
+          </p>
+        ) : null}
+
+        {isSending ? (
+          <p
+            data-testid="voice-processing-notice"
+            className="mt-4 w-full max-w-md break-keep text-balance rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-[13px] text-cyan-100/90"
+          >
+            Only transcript text and routing metadata are being posted to `/api/voice/submit`.
+            Audio stays on the WSS path.
           </p>
         ) : null}
 
@@ -454,9 +473,19 @@ function Step2Confirm({
   );
 }
 
-function Step3Complete() {
+function Step3Complete({
+  acceptedForRetry,
+  message
+}: {
+  acceptedForRetry: boolean;
+  message: string | null;
+}) {
   const radius = 48;
   const circumference = 2 * Math.PI * radius;
+  const heading = '전송 완료!';
+  const body = acceptedForRetry
+    ? message || '백그라운드 전송 중입니다. 서버가 큐에서 계속 전달합니다.'
+    : message || 'Transcript metadata reached the backend successfully.';
 
   return (
     <motion.section
@@ -546,8 +575,16 @@ function Step3Complete() {
           data-testid="voice-success-text"
           className="mt-6 text-center text-[28px] font-semibold tracking-[-0.02em] text-emerald-300"
         >
-          전송 완료!
+          {heading}
         </motion.h2>
+        <motion.p
+          variants={completionTextVariants}
+          initial="initial"
+          animate="animate"
+          className="mt-3 max-w-[280px] break-keep text-balance text-center text-[14px] leading-6 text-white/74"
+        >
+          {body}
+        </motion.p>
       </div>
     </motion.section>
   );

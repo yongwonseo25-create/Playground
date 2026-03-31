@@ -1,0 +1,40 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model NotionOAuthConnection {
+  id                  String   @id @default(cuid())
+  workspaceId         String   @unique
+  botId               String   @unique
+  workspaceName       String?
+  workspaceIcon       String?
+  duplicatedTemplateId String?
+  ownerJson           Json?
+  encryptedAccessToken String
+  encryptionIv        String
+  encryptionTag       String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model ExecutionBillingLog {
+  id                        String   @id @default(cuid())
+  user_id                   String
+  session_id                String
+  audio_duration            Float
+  destination_type          String
+  execution_attempted       Boolean
+  destination_delivered     Boolean
+  billed_transcription_unit Int
+  billed_execution_unit     Int
+  createdAt                 DateTime @default(now())
+
+  @@index([user_id, createdAt])
+  @@index([session_id, createdAt])
+  @@index([destination_type, destination_delivered, createdAt])
+}
