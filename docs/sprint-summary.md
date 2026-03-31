@@ -1666,3 +1666,56 @@ Replace the heuristic-only Oracle path with a live Google AI Studio Gemini integ
 - Replace repair-baseline fallback with stricter structured output once a more reliable Gemini schema mode or judge prompt is chosen
 - Hand the merged backend state plus `docs/UI_CONSTITUTION.md` to the frontend agent before the first UI render sprint starts
 
+---
+
+### Sprint 3L - Zero-Waste Gemini Schema Tuning And Final Self-Inspection
+- Date: 2026-03-24
+- Status: completed
+
+#### Goal
+Eliminate the Gemini `repair-baseline` fallback path by tightening the structured-output contract, then run a final reviewer-driven failure-mode inspection before backend closure.
+
+#### Files Modified
+- `apps/api/src/services/semantic-diff-oracle.ts`
+- `apps/api/src/routes/ssce-api.spec.ts`
+- `VOXERA_BACKEND_ARCHITECTURE.md`
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- Replaced the larger freeform Gemini judgment contract with a compact wire schema that uses short keys and enum-constrained tone labels
+- Removed the `repair-baseline` parse-recovery path from the live Gemini branch so malformed structured output now fails fast during development instead of silently degrading
+- Added stronger Gemini request controls:
+  - compact JSON prompt payload
+  - strict system instruction
+  - `thinkingBudget: 0`
+  - deterministic sampling (`temperature: 0`, `topK: 1`, seeded request)
+- Tightened the SSCE feedback spec so live-provider assertions now also reject any provider string that contains `repair-baseline`
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional voice states unchanged
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The Gemini path is now clean under repeated live tests, but the implementation still depends on the model honoring `responseJsonSchema`; future model regressions would now fail fast instead of degrading quietly
+- Reviewer self-inspection still flags three non-blocking backend risks: Gemini as a live single point of failure in SSCE feedback, concurrent scope upsert races, and unbounded payload snapshot growth in SQLite
+- The Node warning around `apps/api/src/db/run-ssce-migrations.ts` module typing remains and should be cleaned up separately if startup noise matters
+- Prisma's Windows schema-engine issue still exists, so local SSCE schema application continues to depend on the checked-in SQL runner
+
+#### Manual QA
+- [x] `corepack pnpm typecheck`
+- [x] `corepack pnpm lint`
+- [x] `corepack pnpm test:ssce`
+- [x] `corepack pnpm test`
+- [x] Verified repeated live SSCE runs no longer emitted the string `repair-baseline`
+
+#### Next Sprint Prerequisites
+- If Gemini output reliability ever regresses, add an automated canary that fails the pipeline on any structured-output parse error before runtime traffic sees it
+- Decide whether to clean up the Node ESM warning in the migration runner or leave it as acceptable local-only noise
