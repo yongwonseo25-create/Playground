@@ -1719,3 +1719,43 @@ Eliminate the Gemini `repair-baseline` fallback path by tightening the structure
 #### Next Sprint Prerequisites
 - If Gemini output reliability ever regresses, add an automated canary that fails the pipeline on any structured-output parse error before runtime traffic sees it
 - Decide whether to clean up the Node ESM warning in the migration runner or leave it as acceptable local-only noise
+
+---
+
+### Sprint 3M - Backend Status Matrix
+- Date: 2026-03-31
+- Status: completed
+
+#### Goal
+Split the backend architecture description into a simpler implementation-status matrix that clearly separates completed work, partially completed work, and still-unimplemented work.
+
+#### Files Created
+- `VOXERA_BACKEND_IMPLEMENTATION_STATUS.md`
+
+#### Files Modified
+- `docs/sprint-summary.md`
+
+#### Architecture Changes
+- No runtime code changed
+- Added a status-only backend document derived from the architecture spec
+
+#### State Machine Changes
+- None
+- Preserved all 8 constitutional voice states unchanged
+
+#### Audio / Transport Changes
+- None
+- AudioWorklet + PCM over WSS-only architecture preserved
+
+#### Submission / Cost Defense Changes
+- None
+- Exact 15-second cutoff and synchronous `clientRequestId` lock behavior preserved unchanged
+
+#### Known Risks
+- The new status matrix is documentation only; it does not close the previously identified backend risks
+
+#### Manual QA
+- [x] Verified the status matrix matches the architecture document and existing code paths
+
+#### Next Sprint Prerequisites
+- Use `VOXERA_BACKEND_IMPLEMENTATION_STATUS.md` as the quick project-status reference, and keep `VOXERA_BACKEND_ARCHITECTURE.md` as the detailed technical source

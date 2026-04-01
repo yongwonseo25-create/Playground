@@ -23,14 +23,15 @@
     "verify:real-output": "node --experimental-strip-types scripts/verify-generate-output-real.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.7.0",
     "@google-cloud/secret-manager": "^6.1.1",
+    "@prisma/client": "^6.7.0",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-progress": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.2",
     "@radix-ui/react-visually-hidden": "^1.1.0",
+    "bullmq": "^5.71.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "firebase-admin": "^13.7.0",

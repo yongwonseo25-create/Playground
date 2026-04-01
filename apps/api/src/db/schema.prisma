@@ -97,3 +97,100 @@ model ReferenceEdge {
   @@index([targetArtifactId])
   @@map("reference_edges")
 }
+
+model BillingExecutionLog {
+  id                    String    @id @default(cuid())
+  userId                String    @map("user_id")
+  workspaceId           String?   @map("workspace_id")
+  sessionId             String    @unique @map("session_id")
+  audioDuration         Float     @map("audio_duration")
+  executionSucceeded    Boolean   @map("execution_succeeded")
+  destinationDelivered  Boolean   @map("destination_delivered")
+  processingTimeMs      Int       @map("processing_time_ms")
+  t1SttMs               Int?      @map("t1_stt_ms")
+  t2LlmMs               Int?      @map("t2_llm_ms")
+  t3TargetMs            Int?      @map("t3_target_ms")
+  costInput             Float     @map("cost_input")
+  costExecution         Int       @map("cost_execution")
+  status                String    @default("PENDING") @map("status")
+  retryCount            Int       @default(0) @map("retry_count")
+  errorMessage          String?   @map("error_message")
+  failedAt              DateTime? @map("failed_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([createdAt])
+  @@index([status])
+  @@map("billing_execution_logs")
+}
+
+model UserIntegration {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  provider              String    @map("provider")
+  accessTokenEncrypted  String    @map("access_token_encrypted")
+  refreshTokenEncrypted String?   @map("refresh_token_encrypted")
+  metadata              String    @default("{}") @map("metadata")
+  expiresAt             DateTime? @map("expires_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([userId, provider])
+  @@map("user_integrations")
+}
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  ownerId     String   @map("owner_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  members     WorkspaceMember[]
+  credit      WorkspaceCredit?
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String   @map("workspace_id")
+  userId      String   @map("user_id")
+  role        String   @default("MEMBER") // ADMIN, MEMBER
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+model WorkspaceCredit {
+  id               String   @id @default(cuid())
+  workspaceId      String   @unique @map("workspace_id")
+  availableCredits Float    @default(0) @map("available_credits")
+  reservedCredits  Float    @default(0) @map("reserved_credits")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("workspace_credits")
+}
+
+model UserClaudeContext {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  workspaceId String?  @map("workspace_id")
+  contextType String   @map("context_type") // GLOBAL_PROJECT, STYLE, SKILL_NOTION, SKILL_SLACK
+  content     String
+  version     Int      @default(1)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, contextType, version])
+  @@index([workspaceId])
+  @@map("user_claude_contexts")
+}
+
