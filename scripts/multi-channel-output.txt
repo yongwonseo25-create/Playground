@@ -1,0 +1,238 @@
+```prisma
+// schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Provider {
+  NOTION
+  SLACK
+  KAKAO
+  EMAIL
+}
+
+enum DeliveryStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED_RETRYABLE
+  FAILED_TERMINAL
+  UNKNOWN
+}
+
+model Workspace {
+  id        String        @id @default(uuid())
+  name      String
+  createdAt DateTime      @default(now())
+  jobs      DeliveryJob[]
+}
+
+model User {
+  id          String        @id @default(uuid())
+  email       String        @unique
+  workspaceId String?
+  workspace   Workspace?    @relation(fields: [workspaceId], references: [id])
+  jobs        DeliveryJob[]
+}
+
+model DeliveryJob {
+  id              String        @id @default(uuid())
+  requestId       String        @map("request_id")
+  provider        Provider
+  recipientKey    String        @map("recipient_key")
+  idempotencyKey  String        @unique @map("idempotency_key")
+  status          DeliveryStatus @default(PENDING)
+  attemptCount    Int           @default(0) @map("attempt_count")
+  lastErrorCode   String?       @map("last_error_code")
+  payload         Json
+  
+  userId          String?       @map("user_id")
+  user            User?         @relation(fields: [userId], references: [id])
+  workspaceId     String?       @map("workspace_id")
+  workspace       Workspace?    @relation(fields: [workspaceId], references: [id])
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  scheduledAt     DateTime?     @map("scheduled_at")
+
+  @@map("delivery_jobs")
+}
+```
+
+```typescript
+// multi-channel.dispatcher.ts
+import { PrismaClient, Provider, DeliveryStatus } from '@prisma/client';
+import { handleDeliveryResult } from './retry-state-machine';
+
+const prisma = new PrismaClient();
+
+interface SenderResult {
+  success: boolean;
+  statusCode: number;
+  errorCode?: string;
+  message?: string;
+}
+
+interface Sender {
+  send(idempotencyKey: string, recipientKey: string, payload: any): Promise<SenderResult>;
+}
+
+// Mock senders for routing
+const senderMap: Record<Provider, Sender> = {
+  [Provider.NOTION]: new NotionSender(),
+  [Provider.SLACK]: new SlackSender(),
+  [Provider.KAKAO]: new KakaoSender(),
+  [Provider.EMAIL]: new EmailSender(),
+};
+
+interface PolledJob {
+  id: string;
+  idempotency_key: string;
+  provider: Provider;
+  recipient_key: string;
+  payload: any;
+  attempt_count: number;
+}
+
+export async function startDispatcher() {
+  console.log('Starting VOXERA Multi-Channel Dispatcher...');
+
+  while (true) {
+    try {
+      const jobs = await pollAndProcessJobs();
+      if (jobs.length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Polling interval
+      }
+    } catch (error) {
+      console.error('Dispatcher loop error:', error);
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+  }
+}
+
+async function pollAndProcessJobs(): Promise<PolledJob[]> {
+  return await prisma.$transaction(async (tx) => {
+    // Atomic poll using PostgreSQL FOR UPDATE SKIP LOCKED
+    const jobs = await tx.$queryRaw<PolledJob[]>`
+      UPDATE delivery_jobs
+      SET status = 'PROCESSING', 
+          attempt_count = attempt_count + 1, 
+          updated_at = NOW()
+      WHERE id IN (
+        SELECT id FROM delivery_jobs
+        WHERE (status = 'PENDING' OR status = 'FAILED_RETRYABLE')
+          AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+        ORDER BY updated_at ASC
+        LIMIT 10
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING id, idempotency_key, provider, recipient_key, payload, attempt_count
+    `;
+
+    // Process fetched jobs concurrently
+    const processingPromises = jobs.map(async (job) => {
+      const sender = senderMap[job.provider];
+      
+      if (!sender) {
+        await handleDeliveryResult(tx, job, {
+          success: false,
+          statusCode: 400,
+          errorCode: 'UNSUPPORTED_PROVIDER',
+          message: 'No sender configured for this provider'
+        });
+        return;
+      }
+
+      try {
+        const result = await sender.send(job.idempotency_key, job.recipient_key, job.payload);
+        await handleDeliveryResult(tx, job, result);
+      } catch (error: any) {
+        await handleDeliveryResult(tx, job, {
+          success: false,
+          statusCode: error.statusCode || 500,
+          errorCode: error.code || 'UNKNOWN_RUNTIME_ERROR',
+          message: error.message
+        });
+      }
+    });
+
+    await Promise.allSettled(processingPromises);
+    return jobs;
+  });
+}
+```
+
+```typescript
+// retry-state-machine.ts
+import { PrismaClient, DeliveryStatus } from '@prisma/client';
+
+const MAX_RETRY_ATTEMPTS = 5;
+
+interface PolledJob {
+  id: string;
+  attempt_count: number;
+}
+
+interface SenderResult {
+  success: boolean;
+  statusCode: number;
+  errorCode?: string;
+  message?: string;
+}
+
+export async function handleDeliveryResult(
+  prisma: PrismaClient | Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>,
+  job: PolledJob,
+  result: SenderResult
+): Promise<void> {
+  if (result.success) {
+    await prisma.deliveryJob.update({
+      where: { id: job.id },
+      data: {
+        status: DeliveryStatus.COMPLETED,
+        lastErrorCode: null,
+      },
+    });
+    return;
+  }
+
+  let nextStatus: DeliveryStatus;
+  let scheduledAt: Date | null = null;
+  const errorCode = result.errorCode || `HTTP_${result.statusCode}`;
+
+  // State Machine Transitions
+  if (result.statusCode === 429 || result.statusCode >= 500) {
+    // 429 Rate Limit / Throttle OR 5xx Server Error -> FAILED_RETRYABLE
+    if (job.attempt_count >= MAX_RETRY_ATTEMPTS) {
+      nextStatus = DeliveryStatus.FAILED_TERMINAL;
+    } else {
+      nextStatus = DeliveryStatus.FAILED_RETRYABLE;
+      
+      // Exponential backoff calculation: 2^attempt * 1000ms + random jitter
+      const baseDelay = Math.pow(2, job.attempt_count) * 1000;
+      const jitter = Math.floor(Math.random() * 500);
+      scheduledAt = new Date(Date.now() + baseDelay + jitter);
+    }
+  } else if (result.statusCode >= 400 && result.statusCode < 500) {
+    // 4xx Client / Auth Error -> FAILED_TERMINAL
+    nextStatus = DeliveryStatus.FAILED_TERMINAL;
+  } else {
+    // Timeout, Network errors, or Ambiguous Status -> UNKNOWN (Sends to Reconciliation Queue)
+    nextStatus = DeliveryStatus.UNKNOWN;
+  }
+
+  await prisma.deliveryJob.update({
+    where: { id: job.id },
+    data: {
+      status: nextStatus,
+      lastErrorCode: errorCode,
+      scheduledAt: scheduledAt,
+    },
+  });
+}
+```

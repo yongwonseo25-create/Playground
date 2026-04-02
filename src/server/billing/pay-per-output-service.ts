@@ -2,7 +2,6 @@ import type {
   BillingReservationResult,
   BillingSettlementResult
 } from '@/server/billing/firestore-billing-store';
-import { BillingExecutionService } from '@ssce/services/billing-execution-service';
 
 export interface GenerateOutputInput {
   uid: string;
@@ -11,7 +10,6 @@ export interface GenerateOutputInput {
   outputType: string;
   costCredits: number;
   timeoutMs: number;
-  audioDuration?: number;
 }
 
 export interface OutputGeneratorRequest {
@@ -85,15 +83,12 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 }
 
 export class PayPerOutputService {
-  private readonly executionLogger = new BillingExecutionService();
-
   constructor(
     private readonly billingStore: BillingStore,
     private readonly outputGenerator: OutputGenerator
   ) {}
 
   async execute(input: GenerateOutputInput): Promise<GenerateOutputResult> {
-    const startTime = Date.now();
     const reservation = await this.billingStore.reserve(input);
 
     if (reservation.kind === 'already-deducted') {
@@ -135,16 +130,6 @@ export class PayPerOutputService {
         providerUsage: output.providerUsage
       });
 
-      // 2축 과금 로그 기록 (Prisma)
-      await this.executionLogger.logAndCalculate({
-        userId: input.uid,
-        sessionId: input.clientRequestId,
-        audioDuration: input.audioDuration ?? 0,
-        executionSucceeded: true,
-        destinationDelivered: true,
-        processingTimeMs: Date.now() - startTime
-      });
-
       return {
         outputText: output.outputText,
         reusedExistingResult: false,
@@ -159,17 +144,6 @@ export class PayPerOutputService {
         clientRequestId: input.clientRequestId,
         reason: message
       });
-
-      // 실패 로그 기록
-      await this.executionLogger.logAndCalculate({
-        userId: input.uid,
-        sessionId: input.clientRequestId,
-        audioDuration: input.audioDuration ?? 0,
-        executionSucceeded: false,
-        destinationDelivered: false,
-        processingTimeMs: Date.now() - startTime
-      });
-
       throw new OutputGenerationRefundedError(message, settlement);
     }
   }

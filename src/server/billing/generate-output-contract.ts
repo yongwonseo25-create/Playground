@@ -16,8 +16,7 @@ export const generateOutputRequestSchema = z.object({
       sourceSessionId: z.string().trim().max(128).optional(),
       requestedBy: z.string().trim().max(128).optional()
     })
-    .optional(),
-  audio_duration: z.number().min(0).default(0)
+    .optional()
 });
 
 export type GenerateOutputRequest = z.infer<typeof generateOutputRequestSchema>;

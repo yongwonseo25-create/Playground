@@ -1,0 +1,138 @@
+```typescript
+// notion-markdown.service.ts
+export interface VoxeraPayload {
+  title: string;
+  intent: string;
+  body: string;
+}
+
+export class NotionMarkdownService {
+  public static toMarkdown(data: VoxeraPayload): string {
+    let md = '';
+    if (data.title) md += `# ${data.title}\n\n`;
+    if (data.intent) md += `> **Intent:** ${data.intent}\n\n`;
+    if (data.body) md += `${data.body}\n`;
+    
+    return md.trim();
+  }
+}
+```
+
+```typescript
+// notion-write.worker.ts
+import { PrismaClient } from '@prisma/client';
+import { Client } from '@notionhq/client';
+import { NotionMarkdownService, VoxeraPayload } from './notion-markdown.service';
+
+const prisma = new PrismaClient();
+const notion = new Client({ auth: process.env.NOTION_API_KEY });
+
+const MINIMUM_INTERVAL_MS = 500; // 1000ms / 2 RPS = 500ms per request
+
+async function appendMarkdownToNotion(pageId: string, markdown: string, attempt: number = 1): Promise<void> {
+  try {
+    // Note: Notion API limits text blocks to 2000 chars. 
+    // Chunking logic should be added here for bodies exceeding 2000 characters.
+    await notion.blocks.children.append({
+      block_id: pageId,
+      children: [
+        {
+          object: 'block',
+          type: 'paragraph',
+          paragraph: {
+            rich_text: [{ type: 'text', text: { content: markdown.substring(0, 2000) } }],
+          },
+        },
+      ],
+    });
+  } catch (error: any) {
+    const status = error?.status || error?.code;
+    
+    // Exponential Backoff for 429 (Rate Limit) or 50x (Server) errors
+    if ((status === 429 || (status >= 500 && status <= 599)) && attempt <= 5) {
+      const backoffMs = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+      console.warn(`[Notion API] Error ${status}. Retrying in ${backoffMs}ms (Attempt ${attempt})`);
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      return appendMarkdownToNotion(pageId, markdown, attempt + 1);
+    }
+    
+    throw error;
+  }
+}
+
+export async function startNotionWriteWorker(): Promise<void> {
+  console.log('[Worker] Notion Write Worker started (Max 2 RPS).');
+
+  while (true) {
+    const cycleStart = Date.now();
+    let hasJob = true;
+
+    try {
+      const job = await prisma.jobQueue.findFirst({
+        where: { status: 'PENDING' },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (!job) {
+        hasJob = false;
+      } else {
+        // Atomic update: PENDING -> PROCESSING (prevents duplicate processing if scaled)
+        const atomicUpdate = await prisma.jobQueue.updateMany({
+          where: {
+            id: job.id,
+            status: 'PENDING',
+          },
+          data: {
+            status: 'PROCESSING',
+            startedAt: new Date(),
+          },
+        });
+
+        if (atomicUpdate.count === 0) {
+          // Job was already picked up by another worker instance
+          continue; 
+        }
+
+        try {
+          const payload = job.payload as unknown as VoxeraPayload;
+          const pageId = job.targetId; 
+
+          const markdown = NotionMarkdownService.toMarkdown(payload);
+          await appendMarkdownToNotion(pageId, markdown);
+
+          // Update to COMPLETED
+          await prisma.jobQueue.update({
+            where: { id: job.id },
+            data: {
+              status: 'COMPLETED',
+              completedAt: new Date(),
+            },
+          });
+        } catch (processingError: any) {
+          console.error(`[Worker] Job ${job.id} failed:`, processingError.message);
+
+          // Update to FAILED
+          await prisma.jobQueue.update({
+            where: { id: job.id },
+            data: {
+              status: 'FAILED',
+              error: processingError.message || 'Unknown processing error',
+              completedAt: new Date(),
+            },
+          });
+        }
+      }
+    } catch (dbError) {
+      console.error('[Worker] Database polling error:', dbError);
+    }
+
+    // Throttle globally to Max 2 RPS
+    const cycleDuration = Date.now() - cycleStart;
+    const delay = hasJob ? MINIMUM_INTERVAL_MS - cycleDuration : 1000; // Idle longer if queue is empty
+
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+```

@@ -793,12 +793,8 @@ const DEFAULT_GOOGLE_AI_STUDIO_API_BASE_URL = 'https://generativelanguage.google
 const MAX_GEMINI_ORACLE_TEXT_LENGTH = 480;
 const MAX_GEMINI_ORACLE_NOTE_LENGTH = 160;
 
-type OracleRuntimeConfig = {
-  apiKey: string | null;
-  model: string;
-  apiBaseUrl: string;
-  requireLive: boolean;
   allowFallback: boolean;
+  timeoutMs?: number;
 };
 
 type GeminiGenerateContentResponse = {
@@ -1049,7 +1045,8 @@ function readOracleRuntimeConfig(env = process.env): OracleRuntimeConfig {
     model,
     apiBaseUrl,
     requireLive,
-    allowFallback: !requireLive
+    allowFallback: !requireLive,
+    timeoutMs: env.SSCE_ORACLE_TIMEOUT_MS ? parseInt(env.SSCE_ORACLE_TIMEOUT_MS, 10) : 15_000
   };
 }
 
@@ -1309,66 +1306,80 @@ export class GoogleAiStudioSemanticDiffOracle implements SemanticDiffOracle {
       throw new Error('GOOGLE_AI_STUDIO_KEY is required for live Oracle analysis.');
     }
 
-    const response = await fetch(`${this.config.apiBaseUrl}/models/${this.config.model}:generateContent`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': this.config.apiKey
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          role: 'system',
-          parts: [
-            {
-              text:
-                'You are the Voxera SSCE Oracle. Return one JSON object that matches the schema exactly. No markdown, no prose, no code fences.'
-            }
-          ]
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 15_000);
+
+    try {
+      const response = await fetch(`${this.config.apiBaseUrl}/models/${this.config.model}:generateContent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': this.config.apiKey
         },
-        contents: [
-          {
-            role: 'user',
+        body: JSON.stringify({
+          systemInstruction: {
+            role: 'system',
             parts: [
               {
-                text: buildGeminiOraclePrompt(parsedInput, baseline)
+                text:
+                  'You are the Voxera SSCE Oracle. Return one JSON object that matches the schema exactly. No markdown, no prose, no code fences.'
               }
             ]
+          },
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: buildGeminiOraclePrompt(parsedInput, baseline)
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0,
+            topP: 0.1,
+            topK: 1,
+            candidateCount: 1,
+            seed: 7,
+            maxOutputTokens: 180,
+            responseMimeType: 'application/json',
+            responseJsonSchema: geminiOracleResponseJsonSchema,
+            thinkingConfig: {
+              thinkingBudget: 0
+            }
           }
-        ],
-        generationConfig: {
-          temperature: 0,
-          topP: 0.1,
-          topK: 1,
-          candidateCount: 1,
-          seed: 7,
-          maxOutputTokens: 180,
-          responseMimeType: 'application/json',
-          responseJsonSchema: geminiOracleResponseJsonSchema,
-          thinkingConfig: {
-            thinkingBudget: 0
-          }
-        }
-      })
-    });
+        }),
+        signal: controller.signal
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Google AI Studio request failed (${response.status} ${response.statusText}): ${errorText}`
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Google AI Studio request failed (${response.status} ${response.statusText}): ${errorText}`
+        );
+      }
+
+      const payload = (await response.json()) as GeminiGenerateContentResponse;
+      const text = extractGeminiText(payload);
+      const rawCandidate = JSON.parse(text) as unknown;
+      const judgment = geminiOracleWireSchema.parse(rawCandidate);
+      const result = mergeGeminiJudgmentWithBaseline(judgment, baseline, this.config.model);
+
+      console.info(
+        `[ssce-oracle] provider=${result.provider} promptTokens=${payload.usageMetadata?.promptTokenCount ?? 0} totalTokens=${payload.usageMetadata?.totalTokenCount ?? 0} primaryShift=${result.tone_delta.primary_shift}`
       );
+
+      return result;
+    } catch (error) {
+      if (this.config.allowFallback && (error instanceof Error && error.name === 'AbortError')) {
+        console.warn(`[ssce-oracle] Gemini request timed out after ${this.config.timeoutMs ?? 15_000}ms. Falling back to heuristic oracle.`);
+        return this.fallbackOracle.analyze(parsedInput);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const payload = (await response.json()) as GeminiGenerateContentResponse;
-    const text = extractGeminiText(payload);
-    const rawCandidate = JSON.parse(text) as unknown;
-    const judgment = geminiOracleWireSchema.parse(rawCandidate);
-    const result = mergeGeminiJudgmentWithBaseline(judgment, baseline, this.config.model);
-
-    console.info(
-      `[ssce-oracle] provider=${result.provider} promptTokens=${payload.usageMetadata?.promptTokenCount ?? 0} totalTokens=${payload.usageMetadata?.totalTokenCount ?? 0} primaryShift=${result.tone_delta.primary_shift}`
-    );
-
-    return result;
   }
 }
 
