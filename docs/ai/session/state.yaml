@@ -1,0 +1,54 @@
+level: L4
+updated_at: 2026-04-07T23:09:00+09:00
+worktree:
+  name: Worktree 3
+  path: C:\Users\Master\Documents\Playground-worktree3-qa
+  branch: codex/worktree3-qa-global-verification
+context:
+  upstream_handoff: C:\Users\Master\Documents\Playground-worktree1-backend\docs\ai\handoff\backend_db_live_verification.md
+  scope:
+    - tests/e2e/voice-capture-flow.spec.ts
+    - tests/e2e/backend-reliability.spec.ts
+    - next.config.ts
+    - src/features/voice-capture/components/voice-capture-screen.tsx
+    - src/features/voice-capture/state/use-voice-capture-machine.ts
+    - src/features/voice-capture/types/voice-types.ts
+    - src/app/api/voice/submit/route.ts
+    - src/server/config/server-env.ts
+    - types/prisma-root-compat.d.ts
+    - docs/ai/session/state.yaml
+  out_of_scope:
+    - apps/api/**
+    - backend DB migration files
+    - Turbopack issues outside worktree/node_modules root resolution
+status:
+  blockers:
+    e2e_parse_error:
+      file: C:\Users\Master\Documents\Playground-worktree3-qa\tests\e2e\voice-capture-flow.spec.ts
+      resolution: Removed duplicated test declaration and aligned the project guard with Playwright's actual chromium project name.
+    turbopack_symlink_root:
+      file: C:\Users\Master\Documents\Playground-worktree3-qa\next.config.ts
+      resolution: Added official turbopack.root override to the common parent directory and preloaded env from the shared checkout for worktree builds.
+    prisma_client_schema_conflict:
+      file: C:\Users\Master\Documents\Playground-worktree3-qa\types\prisma-root-compat.d.ts
+      resolution: Added root-side Prisma type compatibility so the shared generated client no longer blocks global typecheck/build in Worktree 3.
+    voice_submit_guard_mismatch:
+      file: C:\Users\Master\Documents\Playground-worktree3-qa\src\features\voice-capture\state\use-voice-capture-machine.ts
+      resolution: Reconnected PCM/transcript submit guards to the live runtime state so E2E submit paths reach success instead of failing before /api/voice/submit.
+verification:
+  passed:
+    - command: corepack pnpm build
+      result: passed
+      note: Build completed on April 7, 2026 with one non-blocking Turbopack NFT tracing warning from next.config.ts.
+    - command: corepack pnpm test:e2e
+      result: passed
+      note: 5 passed, 1 skipped on April 7, 2026. The skipped case is chromium-only by test design.
+    - command: corepack pnpm typecheck
+      result: passed
+      note: Passed before final build/test confirmation.
+    - command: corepack pnpm lint
+      result: passed
+      note: ESLint completed cleanly on April 7, 2026.
+    - command: corepack pnpm test
+      result: passed
+      note: 15 Playwright env-core/backend-reliability/dual-stt tests plus 9 SSCE Vitest tests passed on April 7, 2026.

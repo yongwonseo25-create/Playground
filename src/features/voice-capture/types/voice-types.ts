@@ -32,6 +32,8 @@ export interface VoiceCaptureMachineState {
   pcmFrameCount: number;
   clientRequestId: string | null;
   submissionLocked: boolean;
+  submissionAcceptedForRetry: boolean;
+  submissionMessage: string | null;
   transcriptPreview: string;
   transcriptFinalized: boolean;
   lastError: string | null;
@@ -47,6 +49,8 @@ export const initialVoiceCaptureState: VoiceCaptureMachineState = {
   pcmFrameCount: 0,
   clientRequestId: null,
   submissionLocked: false,
+  submissionAcceptedForRetry: false,
+  submissionMessage: null,
   transcriptPreview: DEFAULT_TRANSCRIPT_PREVIEW,
   transcriptFinalized: false,
   lastError: null

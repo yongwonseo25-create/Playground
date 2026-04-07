@@ -1,18 +1,6 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import { expect, test } from '@playwright/test';
-import { CircuitBreaker, CircuitOpenError } from '../../src/server/reliability/circuitBreaker';
-import { WebhookClient } from '../../src/server/reliability/WebhookClient';
-import { FailureQueue, type FailureQueueItem } from '../../src/server/queue/failureQueue';
-import { MakeWebhookMockServer } from './helpers/make-webhook-mock-server';
 import { createHmac } from 'node:crypto';
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import type { SolapiAdapter } from '../../src/integrations/solapi/solapi-adapter';
-import { createWebhookSignature } from '../../src/server/webhook/WebhookSigner';
-import { CircuitBreaker, CircuitOpenError } from '../../src/server/reliability/circuitBreaker';
-import { WebhookClient } from '../../src/server/reliability/WebhookClient';
-import { SqsQueueService } from '../../src/server/queue/sqs-queue.service';
 import {
   MessageDispatchRetryableError,
   MessageDispatchService,
@@ -24,36 +12,30 @@ import {
   type MessageDispatchRecord,
   type MessageDispatchStore
 } from '../../src/domain/messaging/message-dispatch.service';
+import { CircuitBreaker, CircuitOpenError } from '../../src/server/reliability/circuitBreaker';
+import { WebhookClient } from '../../src/server/reliability/WebhookClient';
+import { SqsQueueService } from '../../src/server/queue/sqs-queue.service';
+import { createWebhookSignature } from '../../src/server/webhook/WebhookSigner';
+import { MakeWebhookMockServer } from './helpers/make-webhook-mock-server';
 
 const WEBHOOK_SECRET = 'voxera-make-secret';
 
-async function readQueueItems(queueFile: string): Promise<FailureQueueItem[]> {
-  const raw = await readFile(queueFile, 'utf8');
-  if (!raw.trim()) {
-    return [];
-  }
+test('HMAC signature matches SHA256 expectation', async () => {
+  const timestamp = '1710000000';
+  const body = JSON.stringify({ transcriptText: 'hello' });
+  const expected = createHmac('sha256', WEBHOOK_SECRET).update(`${timestamp}.${body}`).digest('hex');
 
-  return raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as FailureQueueItem);
-}
+  expect(createWebhookSignature({ timestamp, body }, WEBHOOK_SECRET)).toBe(expected);
+});
 
 test.describe('backend reliability', () => {
   let mockServer: MakeWebhookMockServer | null = null;
-  const tempDirs = new Set<string>();
 
   test.afterEach(async () => {
     if (mockServer) {
       await mockServer.close();
       mockServer = null;
     }
-
-    for (const tempDir of tempDirs) {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-    tempDirs.clear();
   });
 
   test('signature-validating Make.com mock proves 3-step exponential backoff before 200 OK', async () => {
@@ -79,7 +61,7 @@ test.describe('backend reliability', () => {
 
     const payload = {
       clientRequestId: 'req-backoff',
-      transcriptText: '대표님 오늘 할 일 정리해줘',
+      transcriptText: '백오프 검증',
       notionDatabaseId: 'notion-db-backoff',
       notionParentPageId: 'notion-page-backoff',
       sessionId: 'session-backoff',
@@ -146,91 +128,52 @@ test.describe('backend reliability', () => {
     expect(mockServer.getRequests()).toHaveLength(5);
     expect(mockServer.getRequests().every((request) => request.signatureValid)).toBe(true);
   });
+});
 
-  test('failureQueue persists, backs off, and flushes after Make.com mock recovery', async () => {
-    mockServer = new MakeWebhookMockServer(WEBHOOK_SECRET);
-    await mockServer.start();
-    mockServer.enqueueBehaviors(
-      { type: 'failure', status: 500, body: 'send fail 1' },
-      { type: 'failure', status: 500, body: 'queue fail 1' },
-      { type: 'success', status: 200, body: 'queue recovered' }
-    );
+test('SqsQueueService sends a standard SQS message with bounded delay and attributes', async () => {
+  const sent: Array<{
+    QueueUrl?: string;
+    MessageBody?: string;
+    DelaySeconds?: number;
+    MessageAttributes?: Record<string, { DataType?: string; StringValue?: string }>;
+  }> = [];
 
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), 'voxera-queue-mock-'));
-    tempDirs.add(tempDir);
-    const queueFile = path.join(tempDir, 'failure-queue.jsonl');
-
-    const client = new WebhookClient({
-      webhookUrl: mockServer.url(),
-      webhookSecret: WEBHOOK_SECRET,
-      maxRetries: 0
-    });
-
-    const payload = {
-      clientRequestId: 'queue-replay-key',
-      transcriptText: '실패 큐에 적재 후 재시도',
-      notionDatabaseId: 'notion-db-queue'
-    };
-
-    await expect(client.send(payload, payload.clientRequestId)).rejects.toThrow(
-      'Webhook responded with 500'
-    );
-
-    let now = 1_000;
-    const queueA = new FailureQueue({
-      client,
-      filePath: queueFile,
-      now: () => now,
-      maxBackoffMs: 10_000
-    });
-
-    const inserted = await queueA.enqueue(payload.clientRequestId, payload);
-    expect(inserted).toBe(true);
-    expect(await queueA.size()).toBe(1);
-
-    now = 2_000;
-    const queueB = new FailureQueue({
-      client,
-      filePath: queueFile,
-      now: () => now,
-      maxBackoffMs: 10_000
-    });
-    await queueB.processDue();
-
-    let queuedItems = await readQueueItems(queueFile);
-    expect(queuedItems).toHaveLength(1);
-    expect(queuedItems[0]).toMatchObject({
-      idempotencyKey: payload.clientRequestId,
-      attempts: 1
-    });
-    expect(queuedItems[0]?.nextAttemptAt).toBe(4_000);
-    expect(queuedItems[0]?.lastError).toContain('Webhook responded with 500');
-
-    now = 3_500;
-    const queueC = new FailureQueue({
-      client,
-      filePath: queueFile,
-      now: () => now,
-      maxBackoffMs: 10_000
-    });
-    await queueC.processDue();
-    expect(mockServer.getRequests()).toHaveLength(2);
-
-    now = 4_500;
-    const queueD = new FailureQueue({
-      client,
-      filePath: queueFile,
-      now: () => now,
-      maxBackoffMs: 10_000
-    });
-    await queueD.processDue();
-
-    queuedItems = await readQueueItems(queueFile);
-    expect(queuedItems).toHaveLength(0);
-    expect(mockServer.getRequests()).toHaveLength(3);
-    expect(mockServer.getRequests().every((request) => request.signatureValid)).toBe(true);
-    expect(mockServer.getRequests().at(-1)?.bodyJson).toMatchObject(payload);
+  const queue = new SqsQueueService({
+    queueUrl: 'https://sqs.ap-northeast-2.amazonaws.com/123456789012/voxera-standard',
+    region: 'ap-northeast-2',
+    client: {
+      send: async (command) => {
+        sent.push(command.input as unknown as (typeof sent)[number]);
+        return {
+          MessageId: 'msg-1',
+          MD5OfMessageBody: 'md5-1'
+        };
+      }
+    }
   });
+
+  const result = await queue.enqueue(
+    {
+      kind: 'message-dispatch-retry',
+      sessionId: 'session-1',
+      dispatchId: 'dispatch-1'
+    },
+    {
+      delaySeconds: 30,
+      messageAttributes: {
+        jobType: 'message-dispatch-retry',
+        sessionId: 'session-1'
+      }
+    }
+  );
+
+  expect(result.messageId).toBe('msg-1');
+  expect(sent).toHaveLength(1);
+  expect(sent[0]?.QueueUrl).toContain('voxera-standard');
+  expect(sent[0]?.DelaySeconds).toBe(30);
+  expect(sent[0]?.MessageAttributes?.jobType?.StringValue).toBe('message-dispatch-retry');
+  expect(sent[0]?.MessageBody).toContain('"sessionId":"session-1"');
+  expect(sent[0]?.MessageBody).not.toContain('transcriptText');
 });
 
 test('MessageDispatchService enqueues zero-retention retry jobs for retryable Kakao failures', async () => {

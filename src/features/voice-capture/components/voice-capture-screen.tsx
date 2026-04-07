@@ -567,7 +567,13 @@ function Step2Confirm({
     </motion.section>
   );
 }
-function Step3Complete() {
+function Step3Complete({
+  acceptedForRetry,
+  message
+}: {
+  acceptedForRetry: boolean;
+  message: string | null;
+}) {
   const radius = 48;
   const circumference = 2 * Math.PI * radius;
   const heading = '전송 완료!';
@@ -673,7 +679,6 @@ function Step3Complete() {
     </motion.section>
   );
 }
-
 
 
 

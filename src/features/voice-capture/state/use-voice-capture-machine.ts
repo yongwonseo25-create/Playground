@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import {
   createRealtimeVoiceSession,
   type RealtimeVoiceSession,
@@ -27,6 +27,11 @@ type TranscriptWaiter = {
   reject: (reason: string) => void;
   timeout: number;
 };
+
+function isTranscriptReady(transcriptText: string): boolean {
+  const normalized = transcriptText.trim();
+  return normalized.length > 0 && normalized !== DEFAULT_TRANSCRIPT_PREVIEW.trim();
+}
 
 function createClientRequestId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -84,6 +89,7 @@ export function useVoiceCaptureMachine() {
   };
 
   const syncSnapshot = (snapshot: VoiceRuntimeSnapshot) => {
+    pcmFrameCountRef.current = Math.max(pcmFrameCountRef.current, snapshot.pcmFrameCount);
     dispatch({ type: 'SYNC_PCM_FRAME_COUNT', pcmFrameCount: snapshot.pcmFrameCount });
 
     if (snapshot.transcriptText.trim().length > 0) {
@@ -186,8 +192,10 @@ export function useVoiceCaptureMachine() {
         const transcriptText = event.transcriptText || initialVoiceCaptureState.transcriptPreview;
         pcmFrameCountRef.current = Math.max(pcmFrameCountRef.current, event.pcmFrameCount || 0);
         dispatch({
-          type: 'SET_TRANSCRIPT_PREVIEW',
-          transcript: transcriptText
+          type: 'SYNC_TRANSCRIPT',
+          transcriptPreview: transcriptText,
+          finalized: true,
+          pcmFrameCount: pcmFrameCountRef.current
         });
         resolveTranscriptWaiters(transcriptText);
         break;
@@ -307,12 +315,6 @@ export function useVoiceCaptureMachine() {
   }, [cleanupCapture]);
 
   useEffect(() => {
-    const spreadsheetId = window.localStorage.getItem('voxera.spreadsheetId') ?? '';
-    const slackChannelId = window.localStorage.getItem('voxera.slackChannelId') ?? '';
-    dispatch({ type: 'SET_ROUTING_TARGETS', spreadsheetId, slackChannelId });
-  }, []);
-
-  useEffect(() => {
     if (state.status !== 'recording' || state.recordingStartedAt === null) {
       return;
     }
@@ -401,6 +403,7 @@ export function useVoiceCaptureMachine() {
           dispatch({ type: 'SET_CONNECTION_STATE', connection });
         },
         onTranscript: ({ text, finalized, pcmFrameCount }) => {
+          pcmFrameCountRef.current = Math.max(pcmFrameCountRef.current, pcmFrameCount);
           dispatch({
             type: 'SYNC_TRANSCRIPT',
             transcriptPreview: text,
@@ -409,6 +412,7 @@ export function useVoiceCaptureMachine() {
           });
         },
         onMetricsChange: ({ pcmFrameCount }) => {
+          pcmFrameCountRef.current = Math.max(pcmFrameCountRef.current, pcmFrameCount);
           dispatch({ type: 'SYNC_PCM_FRAME_COUNT', pcmFrameCount });
         },
         onRuntimeError: (message) => {
@@ -456,11 +460,6 @@ export function useVoiceCaptureMachine() {
       return;
     }
 
-    if (pcmFrameCountRef.current <= 0) {
-      dispatch({ type: 'UPLOAD_ERROR', reason: 'PCM capture is empty. Record again before sending.' });
-      return;
-    }
-
     const clientRequestId = createClientRequestId();
     const submitTargets = resolveSubmitTargets();
     dispatch({ type: 'LOCK_SUBMISSION', clientRequestId });
@@ -468,13 +467,20 @@ export function useVoiceCaptureMachine() {
     try {
       const activeSession = activeSessionRef.current;
       const snapshot = activeSession?.getSnapshot();
+      const effectivePcmFrameCount =
+        state.pcmFrameCount || snapshot?.pcmFrameCount || pcmFrameCountRef.current;
+
+      if (effectivePcmFrameCount <= 0) {
+        dispatch({ type: 'UPLOAD_ERROR', reason: 'PCM capture is empty. Record again before sending.' });
+        return;
+      }
 
       if (activeSession) {
         await activeSession.close('submit');
         activeSessionRef.current = null;
       }
 
-      await submitVoiceCapture({
+      const submitResult = await submitVoiceCapture({
         clientRequestId,
         transcriptText,
         spreadsheetId: submitTargets.spreadsheetId,
@@ -482,11 +488,15 @@ export function useVoiceCaptureMachine() {
         notionDatabaseId: submitTargets.notionDatabaseId,
         notionParentPageId: submitTargets.notionParentPageId,
         sessionId: state.sessionId ?? snapshot?.sessionId ?? undefined,
-        pcmFrameCount: state.pcmFrameCount || snapshot?.pcmFrameCount || 0,
+        pcmFrameCount: effectivePcmFrameCount,
         stt_provider: snapshot?.sttProvider ?? 'whisper',
         audio_duration_sec: snapshot?.audioDurationSec ?? 0
       });
-      dispatch({ type: 'UPLOAD_SUCCESS' });
+      dispatch({
+        type: 'UPLOAD_SUCCESS',
+        acceptedForRetry: submitResult.acceptedForRetry,
+        message: submitResult.reason ?? null
+      });
     } catch (error) {
       dispatch({
         type: 'UPLOAD_ERROR',
