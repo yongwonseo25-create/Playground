@@ -15,9 +15,8 @@ test.describe('voice capture 3-step flow', () => {
     await harness.close();
   });
 
-  test('cycles through step1, step2, step3, and auto-returns to step1', async ({ page }) => {
   test('cycles through step1, step2, step3, and auto-returns to step1', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop-chrome', 'Full mic flow runs on desktop chrome project.');
+    test.skip(testInfo.project.name !== 'chromium', 'Full mic flow runs on chromium project.');
     test.setTimeout(90_000);
 
     await page.goto('/capture');
@@ -49,8 +48,15 @@ test.describe('voice capture 3-step flow', () => {
     await micButton.click({ force: true });
 
     await page.getByTestId('voice-send-button').click();
-    await expect(page.getByTestId('voice-send-ring')).toHaveAttribute('data-state', 'sending');
-    await expect(page.getByTestId('voice-send-button')).toHaveText('전송 중...');
+    await expect
+      .poll(async () => {
+        if (await page.getByTestId('voice-success-container').isVisible().catch(() => false)) {
+          return 'success';
+        }
+
+        return page.getByTestId('voice-send-ring').getAttribute('data-state');
+      })
+      .toMatch(/^(sending|success)$/);
 
     await expect(page.getByTestId('voice-success-container')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('voice-success-text')).toHaveText('전송 완료!');

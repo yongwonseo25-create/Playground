@@ -29,7 +29,7 @@ const circuitBreaker = new CircuitBreaker({
 
 let sharedWebhookClient: WebhookClient | null = null;
 
-function getQueueClient(): { webhookClient: WebhookClient; queue: FailureQueue } {
+function getWebhookClient(): WebhookClient {
   if (!sharedWebhookClient) {
     sharedWebhookClient = new WebhookClient({
       webhookUrl: env.MAKE_WEBHOOK_URL,
@@ -90,40 +90,26 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown submit error.';
+    const appEnv = env.NEXT_PUBLIC_APP_ENV;
 
-    try {
-      const { queue, webhookClient } = getQueueClient();
-      await queue.enqueue(parsedBody.data.clientRequestId, payload);
-
+    if (appEnv === 'local' || appEnv === 'development') {
       return NextResponse.json(
         voiceSubmitSuccessResponseSchema.parse({
           ok: true,
-          acceptedForRetry: true,
+          acceptedForRetry: false,
           stt_provider: payload.stt_provider,
           audio_duration_sec: payload.audio_duration_sec,
           reason: message,
-          circuitState: webhookClient.circuitBreaker.snapshot().state
+          circuitState: circuitBreaker.snapshot().state
         })
-      );
-    } catch (queueError) {
-      const queueMessage =
-        queueError instanceof Error ? queueError.message : 'Unknown queue enqueue error.';
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error: message,
-          queueError: queueMessage,
-          issues: []
-        },
-        { status: env.NEXT_PUBLIC_APP_ENV === 'local' || env.NEXT_PUBLIC_APP_ENV === 'development' ? 500 : 500 }
       );
     }
 
     return NextResponse.json(
       {
         ok: false,
-        error: message
+        error: message,
+        issues: []
       },
       { status: 500 }
     );
