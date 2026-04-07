@@ -6,6 +6,9 @@ import { mapZodIssues } from '@adapter/validators/ssce-zod';
 import { createSsceRouter, type SsceRouteResult } from '@ssce/routes/ssce-router';
 
 type RouterMethodName = 'harvest' | 'generate' | 'feedback';
+type RouterFactory = () => ReturnType<typeof createSsceRouter>;
+
+let routerFactory: RouterFactory = () => createSsceRouter();
 
 function errorJson(status: number, code: string, message: string, issues: SsceErrorResponse['error']['issues'] = []) {
   return NextResponse.json(
@@ -21,6 +24,10 @@ function errorJson(status: number, code: string, message: string, issues: SsceEr
   );
 }
 
+export function setSsceRouterFactoryForTests(factory: RouterFactory | null) {
+  routerFactory = factory ?? (() => createSsceRouter());
+}
+
 export async function handleSsceRoute<TRequest, TResponse>(
   request: Request,
   schema: ZodType<TRequest>,
@@ -28,7 +35,7 @@ export async function handleSsceRoute<TRequest, TResponse>(
 ) {
   try {
     const parsedBody = schema.parse(await request.json());
-    const router = createSsceRouter();
+    const router = routerFactory();
     const result = (await router[methodName](parsedBody)) as SsceRouteResult<TResponse>;
 
     return NextResponse.json(result.body, {
