@@ -3,13 +3,9 @@ import type { ZodType } from 'zod';
 import type {
   ArtifactPayload,
   FeedbackArtifact,
-  FeedbackRequest,
   FeedbackResponse,
-  GenerateRequest,
   GenerateResponse,
-  HarvestRequest,
   HarvestResponse,
-  ReferenceLinkInput,
   ScopeContext,
   SsceErrorResponse,
   SsceIssue,
@@ -26,8 +22,10 @@ import {
   mapZodIssues,
   ssceErrorResponseSchema
 } from '@adapter/validators/ssce-zod';
-import type { ArtifactRecord } from '@ssce/db/schema/ssce-schema';
+import { persistJsonPayload } from '@ssce/db/payload-storage';
+import { createSerializableRetryError, runSerializableTransactionWithRetry } from '@ssce/db/serializable-retry';
 import { getSscePrismaClient } from '@ssce/db/ssce-prisma';
+import { enqueueOutboxEvent } from '@ssce/db/transactional-outbox';
 import {
   getSemanticDiffOracle,
   type SemanticDiffOracle,
@@ -175,7 +173,7 @@ function mergeSummary(existingSummary: unknown, nextSummary: string[]) {
 function artifactPayloadToCreateInput(
   artifact: ArtifactPayload | FeedbackArtifact,
   context: ScopeContext,
-  artifactKindOverride?: ArtifactRecord['artifactKind']
+  artifactKindOverride?: 'reference' | 'generated_draft' | 'final_artifact'
 ): Prisma.ArtifactUncheckedCreateInput {
   const artifactPayload = artifact as ArtifactPayload;
   const feedbackArtifact = artifact as FeedbackArtifact;
@@ -218,44 +216,51 @@ function signatureToSnapshot(signature: StyleSignature) {
   };
 }
 
-async function upsertSignatureFromHarvest(
+type SignatureMutationPlan = {
+  signalCount: number;
+  confidenceScore: number;
+  traitsJson: Record<string, unknown>;
+};
+
+async function appendSignatureVersion(
   db: SsceDbClient,
   scope: ScopeDescriptor,
   context: ScopeContext,
-  signals: TraitSignal[],
-  sourceArtifactId: string
+  plan: SignatureMutationPlan,
+  sourceArtifactId: string,
+  now: Date
 ) {
-  const existing = await db.styleSignature.findUnique({
+  const current = await db.styleSignature.findFirst({
     where: {
-      workspaceId_scopeType_scopeKey: {
-        workspaceId: context.workspace_id,
-        scopeType: scope.scopeType,
-        scopeKey: scope.scopeKey
-      }
+      workspaceId: context.workspace_id,
+      scopeType: scope.scopeType,
+      scopeKey: scope.scopeKey,
+      isCurrent: true
+    },
+    orderBy: {
+      versionNo: 'desc'
     }
   });
 
-  const summary = createTraitSummary(signals);
-
-  if (existing) {
-    const existingTraits = parseJson<Record<string, unknown>>(existing.traitsJson, {});
-    const mergedSummary = mergeSummary(existingTraits.summary, summary);
-
-    return db.styleSignature.update({
-      where: { id: existing.id },
+  if (current) {
+    const retired = await db.styleSignature.updateMany({
+      where: {
+        id: current.id,
+        occVersion: current.occVersion,
+        isCurrent: true
+      },
       data: {
-        signatureVersion: existing.signatureVersion + 1,
-        signalCount: existing.signalCount + signals.length,
-        confidenceScore: Math.min(1, existing.confidenceScore + 0.05),
-        traitsJson: serializeJson({
-          ...existingTraits,
-          summary: mergedSummary,
-          signal_count: existing.signalCount + signals.length,
-          last_harvest_source_artifact_id: sourceArtifactId
-        }),
-        sourceArtifactId
+        isCurrent: false,
+        supersededAt: now,
+        occVersion: {
+          increment: 1
+        }
       }
     });
+
+    if (retired.count !== 1) {
+      throw createSerializableRetryError(`Current signature changed during ${scope.scopeType} append.`);
+    }
   }
 
   return db.styleSignature.create({
@@ -266,77 +271,93 @@ async function upsertSignatureFromHarvest(
       destinationKey: scope.destinationKey,
       recipientKey: scope.recipientKey,
       taskKey: scope.taskKey,
-      signatureVersion: 1,
-      signalCount: signals.length,
-      confidenceScore: Math.min(1, 0.35 + signals.length * 0.1),
-      traitsJson: serializeJson({
-        summary,
-        signal_count: signals.length
-      }),
-      sourceArtifactId
+      versionNo: (current?.versionNo ?? 0) + 1,
+      occVersion: 1,
+      isCurrent: true,
+      signalCount: plan.signalCount,
+      confidenceScore: plan.confidenceScore,
+      traitsJson: serializeJson(plan.traitsJson),
+      sourceArtifactId,
+      previousSignatureId: current?.id ?? null,
+      supersededAt: null
     }
   });
 }
 
-async function upsertSignatureFromFeedback(
+async function appendSignatureFromHarvest(
+  db: SsceDbClient,
+  scope: ScopeDescriptor,
+  context: ScopeContext,
+  signals: TraitSignal[],
+  sourceArtifactId: string,
+  now: Date
+) {
+  const current = await db.styleSignature.findFirst({
+    where: {
+      workspaceId: context.workspace_id,
+      scopeType: scope.scopeType,
+      scopeKey: scope.scopeKey,
+      isCurrent: true
+    },
+    orderBy: {
+      versionNo: 'desc'
+    }
+  });
+  const existingTraits = current ? parseJson<Record<string, unknown>>(current.traitsJson, {}) : {};
+  const summary = createTraitSummary(signals);
+
+  return appendSignatureVersion(
+    db,
+    scope,
+    context,
+    {
+      signalCount: (current?.signalCount ?? 0) + signals.length,
+      confidenceScore: Math.min(1, (current?.confidenceScore ?? 0.35) + 0.05),
+      traitsJson: {
+        ...existingTraits,
+        summary: mergeSummary(existingTraits.summary, summary),
+        signal_count: (current?.signalCount ?? 0) + signals.length,
+        last_harvest_source_artifact_id: sourceArtifactId
+      }
+    },
+    sourceArtifactId,
+    now
+  );
+}
+
+async function appendSignatureFromFeedback(
   db: SsceDbClient,
   scope: ScopeDescriptor,
   context: ScopeContext,
   oracleAnalysis: SemanticDiffOracleResult,
-  sourceArtifactId: string
+  sourceArtifactId: string,
+  now: Date
 ) {
-  const scopeUpdate = oracleAnalysis.scope_updates[scope.scopeType];
-  const summary = createTraitSummary(scopeUpdate.trait_signals);
-
-  const existing = await db.styleSignature.findUnique({
+  const current = await db.styleSignature.findFirst({
     where: {
-      workspaceId_scopeType_scopeKey: {
-        workspaceId: context.workspace_id,
-        scopeType: scope.scopeType,
-        scopeKey: scope.scopeKey
-      }
-    }
-  });
-
-  if (existing) {
-    const existingTraits = parseJson<Record<string, unknown>>(existing.traitsJson, {});
-
-    return db.styleSignature.update({
-      where: { id: existing.id },
-      data: {
-        signatureVersion: existing.signatureVersion + 1,
-        signalCount: existing.signalCount + scopeUpdate.signal_count_delta,
-        confidenceScore: Math.min(1, existing.confidenceScore + scopeUpdate.confidence_delta),
-        traitsJson: serializeJson({
-          ...existingTraits,
-          summary: mergeSummary(existingTraits.summary, summary),
-          last_oracle_provider: oracleAnalysis.provider,
-          last_diff_summary: oracleAnalysis.diff_summary.summary,
-          last_diff_snapshot: oracleAnalysis.diff_summary,
-          last_lexical_changes: oracleAnalysis.lexical_changes,
-          last_structure_changes: oracleAnalysis.structure_changes,
-          last_tone_delta: oracleAnalysis.tone_delta,
-          last_scope_update: scopeUpdate
-        }),
-        sourceArtifactId
-      }
-    });
-  }
-
-  return db.styleSignature.create({
-    data: {
       workspaceId: context.workspace_id,
       scopeType: scope.scopeType,
       scopeKey: scope.scopeKey,
-      destinationKey: scope.destinationKey,
-      recipientKey: scope.recipientKey,
-      taskKey: scope.taskKey,
-      signatureVersion: 1,
-      signalCount: scopeUpdate.signal_count_delta,
-      confidenceScore: Math.min(1, Math.max(0.35, 0.35 + scopeUpdate.confidence_delta)),
-      traitsJson: serializeJson({
-        bootstrap_from_feedback: true,
-        summary,
+      isCurrent: true
+    },
+    orderBy: {
+      versionNo: 'desc'
+    }
+  });
+  const existingTraits = current ? parseJson<Record<string, unknown>>(current.traitsJson, {}) : {};
+  const scopeUpdate = oracleAnalysis.scope_updates[scope.scopeType];
+  const summary = createTraitSummary(scopeUpdate.trait_signals);
+
+  return appendSignatureVersion(
+    db,
+    scope,
+    context,
+    {
+      signalCount: (current?.signalCount ?? 0) + scopeUpdate.signal_count_delta,
+      confidenceScore: Math.min(1, Math.max(0.35, (current?.confidenceScore ?? 0.35) + scopeUpdate.confidence_delta)),
+      traitsJson: {
+        ...existingTraits,
+        summary: mergeSummary(existingTraits.summary, summary),
         last_oracle_provider: oracleAnalysis.provider,
         last_diff_summary: oracleAnalysis.diff_summary.summary,
         last_diff_snapshot: oracleAnalysis.diff_summary,
@@ -344,10 +365,11 @@ async function upsertSignatureFromFeedback(
         last_structure_changes: oracleAnalysis.structure_changes,
         last_tone_delta: oracleAnalysis.tone_delta,
         last_scope_update: scopeUpdate
-      }),
-      sourceArtifactId
-    }
-  });
+      }
+    },
+    sourceArtifactId,
+    now
+  );
 }
 
 export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
@@ -370,7 +392,15 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
       }
 
       try {
-        const result = await prisma.$transaction(async (tx) => {
+        const eventSnapshot = await persistJsonPayload({
+          namespace: 'style-events/harvest',
+          value: parsed.data
+        });
+
+        const result = await runSerializableTransactionWithRetry(prisma, async (rawTx) => {
+          const tx = rawTx as Prisma.TransactionClient;
+          const timestamp = now();
+
           const sourceArtifact = await tx.artifact.create({
             data: artifactPayloadToCreateInput(parsed.data.source_artifact, parsed.data)
           });
@@ -417,12 +447,13 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
           const signatures = [];
           for (const scope of buildScopeDescriptors(parsed.data)) {
             signatures.push(
-              await upsertSignatureFromHarvest(
+              await appendSignatureFromHarvest(
                 tx,
                 scope,
                 parsed.data,
                 parsed.data.content_signals,
-                sourceArtifact.id
+                sourceArtifact.id,
+                timestamp
               )
             );
           }
@@ -434,8 +465,24 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
               artifactId: sourceArtifact.id,
               signatureId: signatures[0]?.id ?? null,
               diffSummary: null,
-              payloadSnapshot: serializeJson(parsed.data),
-              createdAt: now()
+              payloadSnapshotInline:
+                eventSnapshot.inlineJson === null ? null : JSON.stringify(eventSnapshot.inlineJson),
+              payloadSnapshotUri: eventSnapshot.externalUri,
+              payloadSnapshotSha256: eventSnapshot.sha256,
+              payloadSnapshotBytes: eventSnapshot.sizeBytes,
+              createdAt: timestamp
+            }
+          });
+
+          await enqueueOutboxEvent(tx, {
+            aggregateId: event.id,
+            aggregateType: 'style_event',
+            eventType: 'ssce.harvest.recorded',
+            idempotencyKey: `ssce:harvest:${event.id}`,
+            payload: {
+              workspaceId: parsed.data.workspace_id,
+              artifactId: sourceArtifact.id,
+              signatureIds: signatures.map((signature) => signature.id)
             }
           });
 
@@ -470,7 +517,9 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
       }
 
       try {
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await runSerializableTransactionWithRetry(prisma, async (rawTx) => {
+          const tx = rawTx as Prisma.TransactionClient;
+          const timestamp = now();
           const scopes = buildScopeDescriptors(parsed.data);
           const scopeMap = new Map(scopes.map((scope) => [scope.scopeType, scope]));
           const requestedScopeOrder = parsed.data.override_scope_order ?? [...DEFAULT_SCOPE_ORDER];
@@ -482,13 +531,15 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
               continue;
             }
 
-            const signature = await tx.styleSignature.findUnique({
+            const signature = await tx.styleSignature.findFirst({
               where: {
-                workspaceId_scopeType_scopeKey: {
-                  workspaceId: parsed.data.workspace_id,
-                  scopeType: scope.scopeType,
-                  scopeKey: scope.scopeKey
-                }
+                workspaceId: parsed.data.workspace_id,
+                scopeType: scope.scopeType,
+                scopeKey: scope.scopeKey,
+                isCurrent: true
+              },
+              orderBy: {
+                versionNo: 'desc'
               }
             });
 
@@ -502,7 +553,7 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
               ? ['No prior signatures matched this scope stack; using prompt-only generation.']
               : signatures.map(
                   (signature) =>
-                    `${signature.scopeType} -> ${signature.scopeKey} (confidence ${signature.confidenceScore.toFixed(2)})`
+                    `${signature.scopeType} -> ${signature.scopeKey} (confidence ${signature.confidenceScore.toFixed(2)}, v${signature.versionNo})`
                 );
 
           const generatedDraft = await tx.artifact.create({
@@ -527,6 +578,14 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
             )
           });
 
+          const eventSnapshot = await persistJsonPayload({
+            namespace: 'style-events/generate',
+            value: {
+              request: parsed.data,
+              compoundSummary
+            }
+          });
+
           const event = await tx.styleEvent.create({
             data: {
               workspaceId: parsed.data.workspace_id,
@@ -535,11 +594,24 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
               generatedDraftArtifactId: generatedDraft.id,
               signatureId: signatures[0]?.id ?? null,
               diffSummary: null,
-              payloadSnapshot: serializeJson({
-                request: parsed.data,
-                compoundSummary
-              }),
-              createdAt: now()
+              payloadSnapshotInline:
+                eventSnapshot.inlineJson === null ? null : JSON.stringify(eventSnapshot.inlineJson),
+              payloadSnapshotUri: eventSnapshot.externalUri,
+              payloadSnapshotSha256: eventSnapshot.sha256,
+              payloadSnapshotBytes: eventSnapshot.sizeBytes,
+              createdAt: timestamp
+            }
+          });
+
+          await enqueueOutboxEvent(tx, {
+            aggregateId: event.id,
+            aggregateType: 'style_event',
+            eventType: 'ssce.generate.recorded',
+            idempotencyKey: `ssce:generate:${event.id}`,
+            payload: {
+              workspaceId: parsed.data.workspace_id,
+              generatedDraftId: generatedDraft.id,
+              appliedSignatureIds: signatures.map((signature) => signature.id)
             }
           });
 
@@ -590,7 +662,18 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
           accepted_reference_artifact_ids: parsed.data.accepted_reference_artifact_ids
         });
 
-        const result = await prisma.$transaction(async (tx) => {
+        const eventSnapshot = await persistJsonPayload({
+          namespace: 'style-events/feedback',
+          value: {
+            request: parsed.data,
+            oracle_analysis: oracleAnalysis
+          }
+        });
+
+        const result = await runSerializableTransactionWithRetry(prisma, async (rawTx) => {
+          const tx = rawTx as Prisma.TransactionClient;
+          const timestamp = now();
+
           if (parsed.data.generated_draft.artifact_id) {
             const knownDraft = await tx.artifact.findUnique({
               where: { id: parsed.data.generated_draft.artifact_id }
@@ -612,7 +695,14 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
           const updatedSignatures = [];
           for (const scope of buildScopeDescriptors(parsed.data)) {
             updatedSignatures.push(
-              await upsertSignatureFromFeedback(tx, scope, parsed.data, oracleAnalysis, finalArtifact.id)
+              await appendSignatureFromFeedback(
+                tx,
+                scope,
+                parsed.data,
+                oracleAnalysis,
+                finalArtifact.id,
+                timestamp
+              )
             );
           }
 
@@ -632,27 +722,41 @@ export function createSsceRouter(dependencies: SsceRouterDependencies = {}) {
             data: {
               workspaceId: parsed.data.workspace_id,
               eventType: 'feedback',
-                artifactId: finalArtifact.id,
-                generatedDraftArtifactId: parsed.data.generated_draft.artifact_id ?? null,
-                finalArtifactId: finalArtifact.id,
-                signatureId: updatedSignatures[0]?.id ?? null,
-                diffSummary: oracleAnalysis.diff_summary.summary,
-                payloadSnapshot: serializeJson({
-                  request: parsed.data,
-                  oracle_analysis: oracleAnalysis
-                }),
-                createdAt: now()
-              }
-            });
+              artifactId: finalArtifact.id,
+              generatedDraftArtifactId: parsed.data.generated_draft.artifact_id ?? null,
+              finalArtifactId: finalArtifact.id,
+              signatureId: updatedSignatures[0]?.id ?? null,
+              diffSummary: oracleAnalysis.diff_summary.summary,
+              payloadSnapshotInline:
+                eventSnapshot.inlineJson === null ? null : JSON.stringify(eventSnapshot.inlineJson),
+              payloadSnapshotUri: eventSnapshot.externalUri,
+              payloadSnapshotSha256: eventSnapshot.sha256,
+              payloadSnapshotBytes: eventSnapshot.sizeBytes,
+              createdAt: timestamp
+            }
+          });
+
+          await enqueueOutboxEvent(tx, {
+            aggregateId: event.id,
+            aggregateType: 'style_event',
+            eventType: 'ssce.feedback.recorded',
+            idempotencyKey: `ssce:feedback:${event.id}`,
+            payload: {
+              workspaceId: parsed.data.workspace_id,
+              finalArtifactId: finalArtifact.id,
+              updatedSignatureIds: updatedSignatures.map((signature) => signature.id),
+              oracleProvider: oracleAnalysis.provider
+            }
+          });
 
           return {
-              ok: true as const,
-              event_id: event.id,
-              final_artifact_id: finalArtifact.id,
-              diff_summary: oracleAnalysis.diff_summary,
-              updated_signature_ids: updatedSignatures.map((signature) => signature.id)
-            };
-          });
+            ok: true as const,
+            event_id: event.id,
+            final_artifact_id: finalArtifact.id,
+            diff_summary: oracleAnalysis.diff_summary,
+            updated_signature_ids: updatedSignatures.map((signature) => signature.id)
+          };
+        });
 
         return successResponse(feedbackResponseSchema, result);
       } catch (error) {
